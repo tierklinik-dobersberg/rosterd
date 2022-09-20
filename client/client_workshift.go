@@ -51,13 +51,17 @@ func (cli *Client) DeleteWorkShift(ctx context.Context, id string) error {
 	return nil
 }
 
-func (cli *Client) GetRequiredShifts(ctx context.Context, from time.Time, to time.Time) (map[string][]structs.RosterShift, error) {
+func (cli *Client) GetRequiredShifts(ctx context.Context, from time.Time, to time.Time, evalConstraints bool) (map[string][]structs.RosterShiftWithStaffList, error) {
 	query := url.Values{
 		"from": []string{from.Format("2006-01-02")},
 		"to":   []string{to.Format("2006-01-02")},
 	}
 
-	var result map[string][]structs.RosterShift
+	if evalConstraints {
+		query.Add("stafflist", "y")
+	}
+
+	var result map[string][]structs.RosterShiftWithStaffList
 	res, err := cli.doReq(ctx, "v1/roster/shifts", "GET", nil, query, &result)
 	if err != nil {
 		return nil, err

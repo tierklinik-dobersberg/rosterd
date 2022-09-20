@@ -45,13 +45,15 @@ func getRootCommand() *cobra.Command {
 
 	flags := cmd.PersistentFlags()
 	{
-		flags.StringVarP(&config.Server, "server", "s", "", "The address of the rosterd server")
+		flags.StringVarP(&config.Server, "server", "s", "http://localhost:8080", "The address of the rosterd server")
 	}
 
 	cmd.AddCommand(
 		getWorkShiftCommand(),
 		getRosterCommand(),
 		getOffTimeCommand(),
+		getConstraintCommand(),
+		getWorkTimeCommand(),
 	)
 
 	return cmd

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
@@ -17,6 +19,8 @@ import (
 
 func main() {
 	ctx := context.Background()
+
+	rand.Seed(time.Now().UnixNano())
 
 	l := hclog.Default().Named("rosterd")
 
@@ -51,9 +55,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	identityProvider := &identity.HTTPProvider{
-		BaseURL: cfg.IdentityProvider,
-		Client:  retryablehttp.NewClient(),
+	var identityProvider identity.Provider
+	if _, err := os.Stat(cfg.IdentityProvider); err == nil {
+		identityProvider, err = identity.NewFileProvider(cfg.IdentityProvider)
+		if err != nil {
+			l.Error("invalid identity provider configuration")
+			os.Exit(1)
+		}
+	} else {
+		identityProvider = &identity.HTTPProvider{
+			BaseURL: cfg.IdentityProvider,
+			Client:  retryablehttp.NewClient(),
+		}
 	}
 
 	srv := server.Server{
@@ -62,7 +75,6 @@ func main() {
 		JWTSecret:        cfg.JWTSecret,
 		Logger:           l.Named("server"),
 		AdminRoles:       cfg.AdminRoles,
-		Standalone:       cfg.Standalone,
 		Address:          cfg.Address,
 		Holidays:         holiday.NewHolidayCache(l.Named("holiday")),
 		Country:          cfg.Country,

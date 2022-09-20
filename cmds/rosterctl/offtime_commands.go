@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 )
@@ -73,10 +75,12 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 
 func getListOffTimeRequestsCommand() *cobra.Command {
 	var (
-		from     string
-		to       string
-		approved bool
-		staff    []string
+		from       string
+		to         string
+		approved   bool
+		staff      []string
+		long       bool
+		jsonOutput bool
 	)
 
 	cmd := &cobra.Command{
@@ -116,19 +120,84 @@ func getListOffTimeRequestsCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "   ")
+			if jsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "    ")
+				enc.Encode(res)
 
-			enc.Encode(res)
+				return
+			}
+
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+
+			t.SetStyle((table.StyleRounded))
+			t.Style().Color.Header = text.Colors{text.FgHiWhite, text.Bold}
+			t.Style().Options.DrawBorder = false
+			t.Style().Options.SeparateColumns = false
+			t.Style().Options.SeparateHeader = false
+			t.Style().Options.SeparateRows = false
+
+			t.SetColumnConfigs([]table.ColumnConfig{
+				{
+					Name: "Approved",
+					Transformer: func(val any) string {
+						v := val.(string)
+						if v == "✓" {
+							return text.Colors{text.FgGreen, text.Bold}.Sprint("✓")
+						} else if v == "𐄂" {
+							return text.Colors{text.FgRed, text.Bold}.Sprint("𐄂")
+						}
+
+						return ""
+					},
+					Align:  text.AlignCenter,
+					Hidden: !long,
+				},
+			})
+
+			t.AppendHeader(table.Row{
+				"ID",
+				"From",
+				"To",
+				"Duration",
+				"Staff",
+				"Approved",
+				"Description",
+			})
+
+			for _, req := range res {
+				var approved string
+				if req.Approved != nil {
+					if *req.Approved {
+						approved = "✓"
+					} else {
+						approved = "𐄂"
+					}
+				}
+				t.AppendRow(table.Row{
+					req.ID.Hex(),
+					req.From.Format("2006-01-02"),
+					req.To.Format("2006-01-02"),
+					req.To.Sub(req.From).String(),
+					req.StaffID,
+					approved,
+					req.Description,
+				})
+			}
+
+			t.Render()
 		},
 	}
 
 	flags := cmd.Flags()
 	{
+		flags.BoolVarP(&long, "long", "l", false, "Display long output")
 		flags.BoolVar(&approved, "approved", false, "Only search for approved or rejected requests")
 		flags.StringVar(&from, "from", "", "Only search for off-time requests after this date")
 		flags.StringVar(&to, "to", "", "Only search for off-time requests before this date")
 		flags.StringSliceVar(&staff, "staff", nil, "Only search for off-time requests of the give staff")
+		flags.BoolVar(&jsonOutput, "json", false, "Display result in JSON")
 	}
 
 	return cmd

@@ -64,16 +64,37 @@ func (db *DatabaseImpl) DeleteOffTimeRequest(ctx context.Context, id string) err
 func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string) ([]structs.OffTimeRequest, error) {
 	filter := bson.M{}
 
+	var fromFilter bson.M
 	if !from.IsZero() {
-		filter["from"] = bson.M{
-			"$ge": from,
+		fromFilter = bson.M{
+			"from": bson.M{
+				"$lte": from,
+			},
+			"to": bson.M{
+				"$gte": from,
+			},
 		}
 	}
 
+	var toFilter bson.M
 	if !to.IsZero() {
-		filter["to"] = bson.M{
-			"$le": to,
+		toFilter = bson.M{
+			"from": bson.M{
+				"$lte": to,
+			},
+			"to": bson.M{
+				"$gte": to,
+			},
 		}
+	}
+
+	switch {
+	case fromFilter != nil && toFilter != nil:
+		filter["$or"] = bson.A{fromFilter, toFilter}
+	case fromFilter != nil:
+		filter = fromFilter
+	case toFilter != nil:
+		filter = toFilter
 	}
 
 	if approved != nil {

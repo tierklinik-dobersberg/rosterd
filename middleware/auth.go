@@ -3,13 +3,17 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/tierklinik-dobersberg/cis/pkg/jwt"
 )
 
-var ClaimsContextKey = struct{ s string }{"claims"}
+var (
+	ClaimsContextKey = struct{ s string }{"claims"}
+	RawJWTContextKey = struct{ s string }{"rawjwt"}
+)
 
 func ClaimsFromContext(ctx context.Context) *jwt.Claims {
 	c := ctx.Value(ClaimsContextKey)
@@ -19,6 +23,16 @@ func ClaimsFromContext(ctx context.Context) *jwt.Claims {
 	claims, _ := c.(*jwt.Claims)
 
 	return claims
+}
+
+func JWTFromContext(ctx context.Context) string {
+	c := ctx.Value(RawJWTContextKey)
+	if c == nil {
+		return ""
+	}
+	token, _ := c.(string)
+
+	return token
 }
 
 func JWTAuth(cookieName string, secret string) echo.MiddlewareFunc {
@@ -46,8 +60,10 @@ func JWTAuth(cookieName string, secret string) echo.MiddlewareFunc {
 
 			claims, err := jwt.ParseAndVerify([]byte(secret), jwtValue)
 			if err != nil {
-				L(c.Request().Context()).Info("invalid authorization header", "error", err)
-				return c.NoContent(http.StatusForbidden)
+				if os.Getenv("ROSTERD_DEBUG") == "" || claims == nil {
+					L(c.Request().Context()).Info("invalid authorization header", "error", err)
+					return c.NoContent(http.StatusForbidden)
+				}
 			}
 
 			AddLogFields(c,
@@ -56,6 +72,7 @@ func JWTAuth(cookieName string, secret string) echo.MiddlewareFunc {
 			)
 
 			ctx := context.WithValue(c.Request().Context(), ClaimsContextKey, claims)
+			ctx = context.WithValue(ctx, RawJWTContextKey, jwtValue)
 
 			c.SetRequest(c.Request().WithContext(ctx))
 

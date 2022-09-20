@@ -14,6 +14,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/holiday"
 	"github.com/tierklinik-dobersberg/rosterd/identity"
 	"github.com/tierklinik-dobersberg/rosterd/middleware"
+	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -26,6 +27,8 @@ type (
 		Database interface {
 			database.WorkShiftDatabase
 			database.OffTimeDatabase
+			database.ConstraintDatabase
+			database.WorkTimeDatabase
 		}
 
 		// IdentityProvider provides access to all available identities.
@@ -42,10 +45,6 @@ type (
 		// AdminRoles defines a list of user roles that are allowed to manage
 		// rosters and off-times.
 		AdminRoles []string
-
-		// Standalone may be set to true to avoid verification of identities
-		// with the identity server.
-		Standalone bool
 
 		// Address holds the listen address of the server.
 		Address string
@@ -86,6 +85,8 @@ func (srv *Server) Setup() error {
 	roster := v1.Group("roster/")
 	{
 		roster.GET("shifts", wrap(srv.GetRequiredShifts))
+		roster.POST("analyze", wrap(srv.AnalyzeRoster))
+		roster.POST("generate/:year/:month", wrap(srv.GenerateRoster))
 	}
 
 	offTime := v1.Group("offtime/")
@@ -97,7 +98,36 @@ func (srv *Server) Setup() error {
 		offTime.POST(":id/reject", wrap(srv.RejectOffTimeRequest))
 	}
 
+	constraints := v1.Group("constraint/")
+	{
+		constraints.GET("", wrap(srv.FindConstraints))
+		constraints.POST("", wrap(srv.CreateConstraint))
+		constraints.DELETE(":id", wrap(srv.DeleteConstraint))
+	}
+
+	worktime := v1.Group("worktime/")
+	{
+		worktime.POST("", wrap(srv.SetWorkTime))
+		worktime.GET("", wrap(srv.GetCurrentWorkTimes))
+		worktime.GET(":staff/history", wrap(srv.GetWorkTimeHistory))
+	}
+
 	return nil
+}
+
+func (srv *Server) listUsers(ctx context.Context) (map[string]structs.User, error) {
+	token := middleware.JWTFromContext(ctx)
+	res, err := srv.IdentityProvider.ListUsers(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[string]structs.User, len(res))
+	for _, usr := range res {
+		m[usr.Name] = usr
+	}
+
+	return m, nil
 }
 
 func wrap(fn HandlerFunc) echo.HandlerFunc {

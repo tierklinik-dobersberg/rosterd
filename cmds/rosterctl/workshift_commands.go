@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/hashicorp/go-hclog"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/tierklinik-dobersberg/cis/pkg/daytime"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
@@ -40,15 +39,32 @@ func getListWorkshiftCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
-			shiftHeader := color.New(color.FgGreen, color.Bold, color.Underline).Sprint
-			shiftID := color.New(color.Italic).Sprint
+			tb := getTbWriter()
+			tb.AppendHeader(table.Row{
+				"Name",
+				"From",
+				"Duration",
+				"Worth",
+				"Count",
+				"Days",
+				"Holiday",
+				"ID",
+			})
 
-			fmt.Println("Working Shifts:")
-			for _, shift := range shifts {
-				fmt.Printf(" • %s %s\n", shiftHeader(shift.Name), shiftID("("+shift.ID.Hex()+")"))
-				fmt.Printf("   %s for %s\n", shift.From, shift.Duration.String())
-				fmt.Println()
+			for _, s := range shifts {
+				tb.AppendRow(table.Row{
+					s.Name,
+					s.From,
+					s.Duration,
+					s.MinutesWorth,
+					s.RequiredStaffCount,
+					s.Days,
+					s.OnHoliday,
+					s.ID.Hex(),
+				})
 			}
+
+			tb.Render()
 		},
 	}
 
@@ -57,13 +73,19 @@ func getListWorkshiftCommand() *cobra.Command {
 
 func getDeleteWorkShiftCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		Use:   "delete <id>",
 		Short: "Delete a workshift definition by id",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cli.DeleteWorkShift(cmd.Context(), args[0])
-			if err != nil {
-				hclog.L().Error("failed to delete work shift", "id", args[0], "error", err)
+			hasError := false
+			for _, id := range args {
+				err := cli.DeleteWorkShift(cmd.Context(), id)
+				if err != nil {
+					hclog.L().Error("failed to delete work shift", "id", id, "error", err)
+					hasError = true
+				}
+			}
+			if hasError {
 				os.Exit(1)
 			}
 		},

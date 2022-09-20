@@ -7,4 +7,3 @@ Work on this project is still in-progress and it's not yet feature complete (not
 
 Maybe come back later to see how to use `rosterd` to manage your duty-rosters, off-time requests and auto-generate
 duty-rosters based on a list of per-employee constraints and working hours.
-

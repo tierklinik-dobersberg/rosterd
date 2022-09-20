@@ -1,23 +1,26 @@
 package structs
 
 import (
-	"time"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type (
 	Constraint struct {
-		ID             primitive.ObjectID `json:"id" bson:"_id"`
-		Expression     string             `json:"expression" bson:"expression"`
-		AppliesToStaff []string           `json:"appliesToStaff" bson:"appliesToStaff"`
-		AppliesToRole  []string           `json:"appliesToRole" bson:"appliesToRole"`
+		ID          primitive.ObjectID `json:"id" bson:"_id"`
+		Description string             `json:"description" bson:"description" hcl:",label"`
+		Expression  string             `json:"expression" bson:"expression" hcl:"expr"`
+		AppliesTo   []string           `json:"appliesTo" bson:"appliesTo" hcl:"appliesTo"`
+		Hard        bool               `json:"hard" bson:"hard" hcl:"hard"`
+		Penalty     int                `json:"penalty" bson:"penalty" hcl:"penalty"`
+		Deny        bool               `json:"deny" bson:"deny" hcl:"deny"`
+		RosterOnly  bool               `json:"rosterOnly" bson:"rosterOnly"`
 	}
 
-	EvalContext struct {
-		Staff   string
-		Shift   WorkShift
-		Day     time.Weekday
-		Holiday bool
+	ConstraintViolation struct {
+		ID      primitive.ObjectID `json:"id"`
+		Panalty int                `json:"penalty"`
+		Type    string             `json:"type"` // offtime, constraint
+		Name    string             `json:"name"`
+		Hard    bool               `json:"hard"`
 	}
 )

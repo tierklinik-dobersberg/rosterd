@@ -23,30 +23,39 @@ type (
 	Daytime time.Duration
 
 	WorkShift struct {
-		From               Daytime            `json:"from" bson:"from"`
-		Duration           time.Duration      `json:"duration" bson:"duration"`
+		From               Daytime            `json:"from" bson:"from" hcl:"from"`
+		Duration           time.Duration      `json:"duration" bson:"duration" hcl:"to"`
 		ID                 primitive.ObjectID `json:"id" bson:"_id"`
-		Days               []time.Weekday     `json:"days" bson:"days"`
-		Name               string             `json:"name" bson:"name"`
-		OnHoliday          bool               `json:"onHoliday" bson:"onHoliday"`
-		EligibleRoles      []string           `json:"eligibleRoles" bson:"eligibleRoles,omitempty"`
-		MinutesWorth       *int               `json:"minutesWorth" bson:"minutesWorth,omitempty"`
-		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount"`
+		Days               []time.Weekday     `json:"days" bson:"days" hcl:"days"`
+		Name               string             `json:"name" bson:"name" hcl:",label"`
+		OnHoliday          bool               `json:"onHoliday" bson:"onHoliday" hcl:"onHoliday"`
+		EligibleRoles      []string           `json:"eligibleRoles" bson:"eligibleRoles,omitempty" hcl:"eligibleRoles"`
+		MinutesWorth       *int               `json:"minutesWorth,omitempty" bson:"minutesWorth,omitempty" hcl:"minutesWorth"`
+		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount" hcl:"requiredStaffCount"`
 	}
 
 	RosterShift struct {
-		Staff        []string           `json:"staff" bson:"staff"`
-		ShiftID      primitive.ObjectID `json:"shiftID" bson:"shiftID"`
-		Name         string             `json:"name" bson:"name"`
-		IsHoliday    bool               `json:"isHoliday" bson:"isHoliday"`
-		IsWeekend    bool               `json:"isWeekend" bson:"isWeekend"`
-		From         time.Time          `json:"from" bson:"from"`
-		To           time.Time          `json:"to" bson:"to"`
-		MinutesWorth float64            `json:"minutesWorth" bson:"minutesWorth"`
+		Staff              []string           `json:"staff" bson:"staff"`
+		ShiftID            primitive.ObjectID `json:"shiftID" bson:"shiftID"`
+		Name               string             `json:"name" bson:"name"`
+		IsHoliday          bool               `json:"isHoliday" bson:"isHoliday"`
+		IsWeekend          bool               `json:"isWeekend" bson:"isWeekend"`
+		From               time.Time          `json:"from" bson:"from"`
+		To                 time.Time          `json:"to" bson:"to"`
+		MinutesWorth       float64            `json:"minutesWorth" bson:"minutesWorth"`
+		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount"`
+	}
+
+	RosterShiftWithStaffList struct {
+		RosterShift   `json:",inline"`
+		EligibleStaff []string                         `json:"eligibleStaff"`
+		Violations    map[string][]ConstraintViolation `json:"constraintViolations"`
 	}
 
 	Roster struct {
 		ID         primitive.ObjectID `json:"id" bson:"_id"`
+		Month      time.Month         `json:"month" bson:"month"`
+		Year       int                `json:"year" bson:"year"`
 		Shifts     []RosterShift      `json:"shifts" bson:"shifts"`
 		Approved   *bool              `json:"approved" bson:"approved"`
 		ApprovedAt time.Time          `json:"approvedAt" bson:"approvedAt"`
@@ -73,6 +82,40 @@ type (
 		Approved         *bool              `json:"approved" bson:"approved"`
 		ApprovedAt       *time.Time         `json:"approvedAt" bson:"approvedAt"`
 		CreatedAt        *time.Time         `json:"createdAt" bson:"createdAt"`
+	}
+
+	WorkTime struct {
+		ID                    primitive.ObjectID `json:"id" bson:"_id"`
+		Staff                 string             `json:"staff" bson:"staff"`
+		TimePerWeek           time.Duration      `json:"timePerWeek" bson:"timePerWeek"`
+		ApplicableFrom        time.Time          `json:"applicableFrom" bson:"applicableFrom"`
+		OvertimePenaltyRatio  float64            `json:"overtimePenaltyRation" bson:"overtimePenaltyRation"`
+		UndertimePenaltyRatio float64            `json:"undertimePenaltyRation" bson:"undertimePenaltyRation"`
+	}
+
+	WorkTimeStatus struct {
+		TimePerWeek           time.Duration `json:"timePerWeek"`
+		ExpectedMonthlyHours  float64       `json:"expectedMonthlyHours"`
+		PlannedMonthlyHours   float64       `json:"plannedMonthlyHours"`
+		DifferenceMonth       int           `json:"differenceMonth"`
+		DifferencePerWeek     map[int]int   `json:"differencePerWeek"`
+		Panelty               int           `json:"penalty"`
+		OvertimePenaltyRatio  float64       `json:"overtimePenaltyRation" bson:"overtimePenaltyRation"`
+		UndertimePenaltyRatio float64       `json:"undertimePenaltyRation" bson:"undertimePenaltyRation"`
+	}
+
+	Diagnostic struct {
+		Type        string `json:"type,omitempty"`
+		Date        string `json:"date,omitempty"`
+		Description string `json:"description,omitempty"`
+		Details     any    `json:"details,omitempty"`
+		Panelty     int    `json:"penalty,omitempty"`
+	}
+
+	RosterAnalysis struct {
+		Diagnostics []Diagnostic               `json:"diagnostics"`
+		WorkTime    map[string]*WorkTimeStatus `json:"workTime"`
+		Panalty     int                        `json:"penalty"`
 	}
 )
 

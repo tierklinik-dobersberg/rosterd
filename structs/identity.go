@@ -1,13 +1,10 @@
 package structs
 
-import "time"
-
 type (
 	// User describes the user object.
 	User struct {
-		Name            string        `json:"name"`
-		Roles           []string      `json:"roles"`
-		Disabled        *bool         `json:"disabled,omitempty"`
-		WorktimePerWeek time.Duration `json:"worktimePerWeek"`
+		Name     string   `json:"name" hcl:",label"`
+		Roles    []string `json:"roles" hcl:"roles,optional"`
+		Disabled *bool    `json:"disabled,omitempty" hcl:"disabled"`
 	}
 )

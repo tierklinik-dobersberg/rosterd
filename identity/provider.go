@@ -24,8 +24,8 @@ type (
 )
 
 const (
-	listUsersEndpoint = "v1/users"
-	profileEndpoint   = "v1/profile"
+	listUsersEndpoint = "identity/v1/users"
+	profileEndpoint   = "identity/v1/profile"
 )
 
 func (cli *HTTPProvider) endpoint(e string) string {
@@ -45,7 +45,10 @@ func (cli *HTTPProvider) doRequest(ctx context.Context, method string, endpoint 
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+auth)
+	req.AddCookie(&http.Cookie{
+		Name:  "cis-session",
+		Value: auth,
+	})
 
 	httpCli := cli.Client
 	if httpCli == nil {
@@ -62,13 +65,17 @@ func (cli *HTTPProvider) ListUsers(ctx context.Context, auth string) ([]structs.
 	}
 	defer res.Body.Close()
 
-	var users []structs.User
-	decoder := json.NewDecoder(res.Body)
-	if err := decoder.Decode(&users); err != nil {
+	blob, err := io.ReadAll(res.Body)
+	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	var users []structs.User
+	if err := json.Unmarshal(blob, &users); err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // Interface check
