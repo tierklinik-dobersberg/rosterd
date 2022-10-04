@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/PaesslerAG/gval v1.2.0
+	github.com/ccssmnn/hego v0.0.0-20220220103052-7e3e58211887
 	github.com/fatih/color v1.13.0
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -21,8 +22,8 @@ require (
 require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
-	github.com/ccssmnn/hego v0.0.0-20220220103052-7e3e58211887 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -51,6 +52,6 @@ require (
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 )
 
-replace github.com/tierklinik-dobersberg/cis => ../cis

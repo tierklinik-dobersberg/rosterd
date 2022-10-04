@@ -29,12 +29,13 @@ type (
 	}
 
 	OffTimeDatabase interface {
-		GetOffTimeRequest(ctx context.Context, id string) (*structs.OffTimeRequest, error)
-		CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeRequest) error
+		GetOffTimeRequest(ctx context.Context, id string) (*structs.OffTimeEntry, error)
+		CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeEntry) error
 		DeleteOffTimeRequest(ctx context.Context, id string) error
-		FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string) ([]structs.OffTimeRequest, error)
+		FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string, isCredit *bool) ([]structs.OffTimeEntry, error)
 		UpdateOffTimeRequest(ctx context.Context, upd structs.OffTimeRequestUpdate) error
-		ApproveOffTimeRequest(ctx context.Context, id string, approved bool) error
+		ApproveOffTimeRequest(ctx context.Context, id string, approved bool, comment string, usedAsVacation bool) error
+		CalculateOffTimeCredits(ctx context.Context) (map[string]structs.JSDuration, error)
 	}
 
 	ConstraintDatabase interface {

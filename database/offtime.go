@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (db *DatabaseImpl) GetOffTimeRequest(ctx context.Context, id string) (*structs.OffTimeRequest, error) {
+func (db *DatabaseImpl) GetOffTimeRequest(ctx context.Context, id string) (*structs.OffTimeEntry, error) {
 	obid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (db *DatabaseImpl) GetOffTimeRequest(ctx context.Context, id string) (*stru
 		return nil, err
 	}
 
-	var result structs.OffTimeRequest
+	var result structs.OffTimeEntry
 	if err := res.Decode(&result); err != nil {
 		return nil, err
 	}
@@ -29,10 +29,7 @@ func (db *DatabaseImpl) GetOffTimeRequest(ctx context.Context, id string) (*stru
 	return &result, nil
 }
 
-func (db *DatabaseImpl) CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeRequest) error {
-	req.ID = primitive.NewObjectID()
-	req.CreatedAt = time.Now()
-
+func (db *DatabaseImpl) CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeEntry) error {
 	res, err := db.offTime.InsertOne(ctx, req)
 	if err != nil {
 		return err
@@ -61,7 +58,7 @@ func (db *DatabaseImpl) DeleteOffTimeRequest(ctx context.Context, id string) err
 	return nil
 }
 
-func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string) ([]structs.OffTimeRequest, error) {
+func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string, isCredit *bool) ([]structs.OffTimeEntry, error) {
 	filter := bson.M{}
 
 	var fromFilter bson.M
@@ -98,7 +95,10 @@ func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.T
 	}
 
 	if approved != nil {
-		filter["approved"] = *approved
+		filter["approval"] = bson.M{
+			"$exists": true,
+		}
+		filter["approval.approved"] = true
 	}
 
 	if len(staff) > 0 {
@@ -107,12 +107,22 @@ func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.T
 		}
 	}
 
+	if isCredit != nil {
+		if *isCredit {
+			filter["requestType"] = structs.RequestTypeCredits
+		} else {
+			filter["duration"] = bson.M{
+				"$ne": structs.RequestTypeCredits,
+			}
+		}
+	}
+
 	res, err := db.offTime.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []structs.OffTimeRequest
+	var result []structs.OffTimeEntry
 	if err := res.All(ctx, &result); err != nil {
 		return nil, err
 	}
@@ -120,27 +130,7 @@ func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.T
 	return result, nil
 }
 
-func (db *DatabaseImpl) UpdateOffTimeRequest(ctx context.Context, upd structs.OffTimeRequestUpdate) error {
-	res, err := db.offTime.UpdateOne(ctx, bson.M{"_id": upd.ID}, bson.M{
-		"$set": upd,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if res.MatchedCount == 0 {
-		return fmt.Errorf("failed to update request: not found")
-	}
-
-	if res.ModifiedCount != 1 {
-		return fmt.Errorf("failed to update request: already approved")
-	}
-
-	return nil
-}
-
-func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, approved bool) error {
+func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, *approval structs.Approval) error {
 	obid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
@@ -148,8 +138,7 @@ func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, ap
 
 	res, err := db.offTime.UpdateOne(ctx, bson.M{"_id": obid}, bson.M{
 		"$set": bson.M{
-			"approved":   approved,
-			"approvedAt": time.Now(),
+			"approval": approval,
 		},
 	})
 
@@ -166,4 +155,54 @@ func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, ap
 	}
 
 	return nil
+}
+
+func (db *DatabaseImpl) CalculateOffTimeCredits(ctx context.Context) (map[string]structs.JSDuration, error) {
+	res, err := db.offTime.Aggregate(ctx, bson.A{
+		bson.M{
+			"$match": bson.M{
+				"$or": bson.A{
+					bson.M{
+						"approval":       bson.M{
+							"$exists": true,
+						},
+						"approval.approved": true,
+					},
+				},
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": "$staffID",
+				"durationCreditsLeft": bson.M{
+					"$sum": "$approval.actualCosts.duration",
+				},
+				"dayCreditsLeft": bson.M{
+					"$sum": "$approval.actualCosts.days",
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []struct {
+		StaffID     string             `bson:"_id"`
+		CreditsLeft structs.JSDuration `bson:"durationCreditsLeft"`
+		DayCreditsLeft float64 `bson:"dayCreditsLeft"`
+	}
+
+	if err := res.All(ctx, &entries); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]structs.JSDuration)
+
+	for _, e := range entries {
+		result[e.StaffID] = e.CreditsLeft
+	}
+
+	return result, nil
 }

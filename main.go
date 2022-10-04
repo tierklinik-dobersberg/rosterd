@@ -85,7 +85,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := srv.ListenAndServe(); err != nil {
+	if err := srv.Start(); err != nil {
 		l.Error("failed to listen", "address", srv.Address, "error", err)
 		os.Exit(1)
 	}

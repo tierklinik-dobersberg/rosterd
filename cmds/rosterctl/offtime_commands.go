@@ -32,7 +32,8 @@ func getOffTimeCommand() *cobra.Command {
 
 func getCreateOffTimeRequestCommand() *cobra.Command {
 	var (
-		req structs.OffTimeRequest
+		req               structs.OffTimeEntry
+		isVacationRequest bool
 	)
 
 	cmd := &cobra.Command{
@@ -56,6 +57,10 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 			req.From = from
 			req.To = to
 
+			if cmd.Flag("request-vacation").Changed {
+				req.IsVacationRequest = &isVacationRequest
+			}
+
 			if err := cli.CreateOffTimeRequest(cmd.Context(), req); err != nil {
 				hclog.L().Error("failed to create off-time request", "error", err)
 				os.Exit(1)
@@ -66,7 +71,7 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 	flags := cmd.Flags()
 	{
 		flags.StringVar(&req.StaffID, "staff", "", "The name of the staff")
-		flags.BoolVar(&req.IsSoftConstraint, "soft", false, "This is a soft request")
+		flags.BoolVar(&isVacationRequest, "request-vacation", false, "This is a vacation request")
 		flags.StringVar(&req.Description, "reason", "", "A descriptive reason for the off-time request")
 	}
 
@@ -220,33 +225,38 @@ func getDeleteOffTimeRequestsCommand() *cobra.Command {
 }
 
 func getApproveOffTimeRequestsCommand() *cobra.Command {
+	var comment string
 	cmd := &cobra.Command{
 		Use:   "approve [id]",
 		Short: "Approve off-time requests",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], true); err != nil {
+			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], true, comment); err != nil {
 				hclog.L().Error("failed to approved off-time request", "error", err)
 				os.Exit(1)
 			}
 		},
 	}
 
+	cmd.Flags().StringVarP(&comment, "comment", "c", "", "An optional approval/rejection comment")
+
 	return cmd
 }
 
 func getRejectOffTimeRequestsCommand() *cobra.Command {
+	var comment string
 	cmd := &cobra.Command{
 		Use:   "reject [id]",
 		Short: "Reject off-time requests",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], false); err != nil {
+			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], false, comment); err != nil {
 				hclog.L().Error("failed to reject off-time request", "error", err)
 				os.Exit(1)
 			}
 		},
 	}
+	cmd.Flags().StringVarP(&comment, "comment", "c", "", "An optional approval/rejection comment")
 
 	return cmd
 }

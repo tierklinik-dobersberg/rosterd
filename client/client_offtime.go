@@ -9,8 +9,23 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 )
 
-func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.OffTimeRequest) error {
-	res, err := cli.doReq(ctx, "v1/offtime/", "POST", req, nil, nil)
+func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.OffTimeEntry) error {
+	res, err := cli.doReq(ctx, "v1/offtime/request/", "POST", req, nil, nil)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+
+	return nil
+}
+
+func (cli *Client) AddOffTimeCredit(ctx context.Context, staff string, credit int, from time.Time, comment string) error {
+	res, err := cli.doReq(ctx, "v1/offtime/credit/"+staff, "POST", map[string]any{
+		"credit":      credit,
+		"description": comment,
+		"from":        from,
+	}, nil, nil)
+
 	if err != nil {
 		return err
 	}
@@ -20,7 +35,7 @@ func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.OffTime
 }
 
 func (cli *Client) DeleteOffTimeRequest(ctx context.Context, id string) error {
-	res, err := cli.doReq(ctx, "v1/offtime/"+id, "DELETE", nil, nil, nil)
+	res, err := cli.doReq(ctx, "v1/offtime/request/"+id, "DELETE", nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -29,15 +44,15 @@ func (cli *Client) DeleteOffTimeRequest(ctx context.Context, id string) error {
 	return nil
 }
 
-func (cli *Client) ApproveOffTimeRequest(ctx context.Context, id string, approved bool) error {
-	url := "v1/offtime/" + id + "/"
+func (cli *Client) ApproveOffTimeRequest(ctx context.Context, id string, approved bool, comment string) error {
+	url := "v1/offtime/request/" + id + "/"
 	if approved {
 		url += "approve"
 	} else {
 		url += "reject"
 	}
 
-	res, err := cli.doReq(ctx, url, "POST", nil, nil, nil)
+	res, err := cli.doReq(ctx, url, "POST", map[string]any{"comment": comment}, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -46,7 +61,7 @@ func (cli *Client) ApproveOffTimeRequest(ctx context.Context, id string, approve
 	return nil
 }
 
-func (cli *Client) FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string) ([]structs.OffTimeRequest, error) {
+func (cli *Client) FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string) ([]structs.OffTimeEntry, error) {
 	query := url.Values{}
 
 	if !from.IsZero() {
@@ -66,7 +81,7 @@ func (cli *Client) FindOffTimeRequests(ctx context.Context, from, to time.Time, 
 	}
 
 	var result struct {
-		Requests []structs.OffTimeRequest `json:"offTimeRequests"`
+		Requests []structs.OffTimeEntry `json:"offTimeRequests"`
 	}
 
 	res, err := cli.doReq(ctx, "v1/offtime/", "GET", nil, query, &result)

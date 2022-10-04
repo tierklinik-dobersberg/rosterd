@@ -63,7 +63,7 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 	}
 
 	settings := hego.TSSettings{}
-	settings.MaxIterations = 10000
+	settings.MaxIterations = 500
 	settings.Verbose = settings.MaxIterations / 10
 	settings.TabuListSize = 200
 	settings.NeighborhoodSize = 20
@@ -88,9 +88,14 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 		settings.NeighborhoodSize = int(nSize)
 	}
 
+	expectedWorkTime, err := srv.calculateMonthlyWorkTime(ctx, time.Month(month), int(year))
+	if err != nil {
+		return nil, err
+	}
+
 	cache := new(constraint.Cache)
 	idx := 0
-	generatorState := generator.NewGeneratorState(int(year), time.Month(month), requiredShifts, userSlice, func(r structs.Roster) int {
+	generatorState := generator.NewGeneratorState(int(year), time.Month(month), requiredShifts, userSlice, expectedWorkTime, func(r structs.Roster) int {
 		idx++
 		res, err := srv.analyzeRoster(ctx, r, cache, true)
 		if err != nil {
@@ -98,9 +103,9 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 			return 1000000
 		}
 
-		srv.Logger.Info("evaluated generated roster", "run", idx, "objective", res.Panalty)
+		srv.Logger.Info("evaluated generated roster", "run", idx, "objective", res.Penalty)
 
-		return res.Panalty
+		return res.Penalty
 	})
 
 	initialState := generator.NewTabuState(*generatorState)
@@ -139,6 +144,35 @@ func (srv *Server) AnalyzeRoster(ctx context.Context, query url.Values, params m
 	return srv.analyzeRoster(ctx, roster, nil, true)
 }
 
+func (srv *Server) GetDayKinds(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	from, err := time.Parse("2006-01-02", params["from"])
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	to, err := time.Parse("2006-01-02", params["to"])
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	workDays, weekEnds, holidays, err := srv.NumberOfWorkingDays(ctx, from, to)
+	if err != nil {
+		return withStatus(http.StatusInternalServerError, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	return map[string]any{
+		"workingDays":    workDays,
+		"weekendDays":    weekEnds,
+		"publicHolidays": holidays,
+	}, nil
+}
+
 func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cache *constraint.Cache, softConstraints bool) (*structs.RosterAnalysis, error) {
 	if cache == nil {
 		cache = new(constraint.Cache)
@@ -169,12 +203,20 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 	if err != nil {
 		return nil, err
 	}
+
+	// calculate the expected work time for this month based on the number of
+	// actual working days (excluding weekend and public holidays)
+	expectedWorkTime, err := srv.calculateMonthlyWorkTime(ctx, roster.Month, roster.Year)
+	if err != nil {
+		return nil, err
+	}
+
 	for name := range users {
 		workTimeOverview[name] = &structs.WorkTimeStatus{
 			TimePerWeek:           currentWorkTime[name].TimePerWeek,
 			OvertimePenaltyRatio:  currentWorkTime[name].OvertimePenaltyRatio,
 			UndertimePenaltyRatio: currentWorkTime[name].UndertimePenaltyRatio,
-			ExpectedMonthlyHours:  float64(currentWorkTime[name].TimePerWeek/time.Hour) / 7 * float64(to.Day()),
+			ExpectedWorkTime:      expectedWorkTime[name],
 		}
 	}
 
@@ -197,10 +239,7 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 		return nil
 	}
 
-	workTimes := make(map[string] /*Username*/ map[int] /*Username*/ int)
-	workWeeks := make(map[int]struct{})
-
-	// iterate all required shifts and make sure they fullfill the constraints
+	// iterate all required shifts and make sure they fullfil the constraints
 	// also, fill up the workTimes map with minutes of planned work-time per week and per user
 	for key, shifts := range requiredShifts {
 		for _, requiredShift := range shifts {
@@ -211,7 +250,7 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 					Type:        "missing-shift",
 					Description: "A shift is missing from the roster",
 					Details:     requiredShift,
-					Panelty:     constraint.MissingShiftPenalty,
+					Penalty:     constraint.MissingShiftPenalty,
 					Date:        requiredShift.From.Format("2006-01-02"),
 				})
 
@@ -224,14 +263,8 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 			}
 
 			diags = append(diags, shiftDiags...)
-			_, week := rosterShift.From.ISOWeek()
-			workWeeks[week] = struct{}{}
-
 			for _, staff := range rosterShift.Staff {
-				if workTimes[staff] == nil {
-					workTimes[staff] = make(map[int]int, 4)
-				}
-				workTimes[staff][week] += int(requiredShift.MinutesWorth)
+				workTimeOverview[staff].PlannedWorkTime += time.Duration(rosterShift.MinutesWorth) * time.Minute
 			}
 		}
 	}
@@ -255,36 +288,17 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 					"user":       user,
 					"violations": violations,
 				},
-				Panelty: sum,
+				Penalty: sum,
 			})
 		}
 	}
 
 	var penaltySum int
 
-	// finnally, calculate the work-time difference between the expect amount and the actual planned
+	// finally, calculate the work-time difference between the expect amount and the actual planned
 	// working time
 	for user := range users {
-		minutesPerWeek := int(workTimeOverview[user].TimePerWeek / time.Minute)
-
-		if workTimes[user] == nil {
-			// this may happen if the user is not planned at all.
-			workTimes[user] = make(map[int]int)
-		}
-
-		var totalMonthlyWorkTime int
-		for week := range workWeeks {
-			// TODO(ppacher): we need to consider off-time (vacation) requests here
-			// as well.
-			totalMonthlyWorkTime += workTimes[user][week]
-			workTimes[user][week] -= minutesPerWeek
-		}
-
-		workTimeOverview[user].DifferencePerWeek = workTimes[user]
-		workTimeOverview[user].PlannedMonthlyHours = float64(totalMonthlyWorkTime) / 60
-
-		diff := workTimeOverview[user].PlannedMonthlyHours - workTimeOverview[user].ExpectedMonthlyHours
-		workTimeOverview[user].DifferenceMonth = int(diff)
+		diff := float64(workTimeOverview[user].PlannedWorkTime-workTimeOverview[user].ExpectedWorkTime) / float64(time.Hour)
 
 		var worktimePenalty int
 
@@ -305,18 +319,18 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 			worktimePenalty += int(diff * ratioOvertime)
 		}
 
-		workTimeOverview[user].Panelty = worktimePenalty
+		workTimeOverview[user].Penalty = worktimePenalty
 		penaltySum += worktimePenalty
 	}
 
 	for _, diag := range diags {
-		penaltySum += diag.Panelty
+		penaltySum += diag.Penalty
 	}
 
 	return &structs.RosterAnalysis{
 		Diagnostics: diags,
 		WorkTime:    workTimeOverview,
-		Panalty:     penaltySum,
+		Penalty:     penaltySum,
 	}, nil
 }
 
@@ -327,7 +341,7 @@ func (srv *Server) validateRosterShift(ctx context.Context, softConstraints bool
 		diags = append(diags, structs.Diagnostic{
 			Type:        "missing-staff",
 			Description: "There are not enough employees assigned for this shift",
-			Panelty:     constraint.MissingStaffPenalty,
+			Penalty:     constraint.MissingStaffPenalty,
 			Date:        requiredShift.From.Format("2006-01-02"),
 			Details: map[string]any{
 				"shiftID":       requiredShift.ShiftID,
@@ -349,7 +363,8 @@ func (srv *Server) validateRosterShift(ctx context.Context, softConstraints bool
 
 		// check off-time requests as well
 		approved := true
-		offTimeRequests, err := srv.Database.FindOffTimeRequests(ctx, rosterShift.From, rosterShift.To, &approved, []string{user})
+		isCredit := false
+		offTimeRequests, err := srv.Database.FindOffTimeRequests(ctx, rosterShift.From, rosterShift.To, &approved, []string{user}, &isCredit)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +387,7 @@ func (srv *Server) validateRosterShift(ctx context.Context, softConstraints bool
 			diags = append(diags, structs.Diagnostic{
 				Type:        "constraint-violation",
 				Description: "Constraint violations detected",
-				Panelty:     penaltySum,
+				Penalty:     penaltySum,
 				Date:        requiredShift.From.Format("2006-01-02"),
 				Details: map[string]any{
 					"user":       user,
@@ -444,7 +459,8 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 
 					// check off-time requests as well
 					approved := true
-					offTimeRequests, err := srv.Database.FindOffTimeRequests(ctx, rosterShift.From, rosterShift.To, &approved, []string{u.Name})
+					isCredit := false
+					offTimeRequests, err := srv.Database.FindOffTimeRequests(ctx, rosterShift.From, rosterShift.To, &approved, []string{u.Name}, &isCredit)
 					if err != nil {
 						return nil, nil, err
 					}

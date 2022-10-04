@@ -26,7 +26,7 @@ func validateNewWorkShift(shift structs.WorkShift) error {
 	return errs.ErrorOrNil()
 }
 
-func validateNewOffTimeRequest(req structs.OffTimeRequest) error {
+func validateNewOffTimeRequest(req structs.OffTimeEntry) error {
 	errs := new(multierror.Error)
 
 	addError := func(msg string, args ...any) {
@@ -49,6 +49,11 @@ func validateNewOffTimeRequest(req structs.OffTimeRequest) error {
 
 	if req.To.Before(req.From) {
 		addError("invalid to/from values")
+	}
+
+	if req.UsedAsVacation == true {
+		// FIXME(ppacher): admin might do that.
+		addError("usedAsVacation cannot be set upon request creation")
 	}
 
 	now := time.Now()

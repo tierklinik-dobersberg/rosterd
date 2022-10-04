@@ -15,7 +15,7 @@ import (
 )
 
 func (srv *Server) CreateOffTimeRequest(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
-	var req structs.OffTimeRequest
+	var req structs.OffTimeEntry
 
 	decoder := json.NewDecoder(body)
 	if err := decoder.Decode(&req); err != nil {
@@ -41,11 +41,99 @@ func (srv *Server) CreateOffTimeRequest(ctx context.Context, query url.Values, p
 		})
 	}
 
+	actualWorkTime, workTimeStatus, err := srv.calculateWorkTimeBetween(ctx, req.From, req.To)
+	if err != nil {
+		return withStatus(http.StatusInternalServerError, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	workTimeForStaff := actualWorkTime[req.StaffID]
+	if workTimeForStaff == 0 {
+		return withStatus(http.StatusPreconditionFailed, map[string]any{
+			"error":   "No regular working time defined for staff",
+			"staffID": req.StaffID,
+		})
+	}
+
+	req.Duration = -structs.JSDuration(actualWorkTime[req.StaffID])
+
+	timePerDay := float64(workTimeStatus[req.StaffID].TimePerWeek / 5)
+	req.DurationInDays = -1 * float64(actualWorkTime[req.StaffID]) / timePerDay
+
 	if err := srv.Database.CreateOffTimeRequest(ctx, &req); err != nil {
 		return nil, err
 	}
 
 	return req, nil
+}
+
+func (srv *Server) GetOffTimeCredits(ctx context.Context, _ url.Values, _ map[string]string, _ io.Reader) (any, error) {
+	res, err := srv.Database.CalculateOffTimeCredits(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, isAdmin := srv.RequireAdmin(ctx)
+	if !isAdmin {
+		user := middleware.ClaimsFromContext(ctx)
+		return map[string]any{
+			user.Subject: res[user.Subject],
+		}, nil
+	}
+
+	return res, nil
+}
+
+func (srv *Server) AddOffTimeCredit(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, isAdmin := srv.RequireAdmin(ctx); !isAdmin {
+		return res, nil
+	}
+
+	var req struct {
+		From        time.Time          `json:"from"`
+		Credits     structs.JSDuration `json:"credits"`
+		Description string             `json:"description"`
+	}
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	if req.From.IsZero() {
+		req.From = time.Now()
+	}
+
+	currentWorkTimes, err := srv.Database.GetCurrentWorkTimes(ctx, req.From)
+	if err != nil {
+		return withStatus(http.StatusInternalServerError, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	timePerDay := float64(currentWorkTimes[params["staff"]].TimePerWeek) / 5
+
+	approved := true
+	entry := structs.OffTimeEntry{
+		ID:             primitive.NewObjectID(),
+		From:           req.From,
+		Description:    req.Description,
+		StaffID:        params["staff"],
+		CreatedAt:      time.Now(),
+		CreatedBy:      middleware.ClaimsFromContext(ctx).Subject,
+		Duration:       req.Credits,
+		DurationInDays: float64(req.Credits) / timePerDay,
+		Approved:       &approved,
+		ApprovedAt:     time.Now(),
+		UsedAsVacation: true,
+	}
+
+	if err := srv.Database.CreateOffTimeRequest(ctx, &entry); err != nil {
+		return nil, err
+	}
+
+	return withStatus(http.StatusNoContent, nil)
 }
 
 func (srv *Server) DeleteOffTimeRequest(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
@@ -134,7 +222,7 @@ func (srv *Server) FindOffTimeRequests(ctx context.Context, query url.Values, pa
 		staffFilter = query["staff"]
 	}
 
-	req, err := srv.Database.FindOffTimeRequests(ctx, fromFilter, toFilter, approvedFilter, staffFilter)
+	req, err := srv.Database.FindOffTimeRequests(ctx, fromFilter, toFilter, approvedFilter, staffFilter, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +237,18 @@ func (srv *Server) ApproveOffTimeRequest(ctx context.Context, query url.Values, 
 		return res, nil
 	}
 
-	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], true); err != nil {
+	var payload struct {
+		Comment        string `json:"comment"`
+		UsedAsVacation bool   `json:"usedAsVacation"`
+	}
+
+	if err := json.NewDecoder(body).Decode(&payload); err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], true, payload.Comment, payload.UsedAsVacation); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +260,17 @@ func (srv *Server) RejectOffTimeRequest(ctx context.Context, query url.Values, p
 		return res, nil
 	}
 
-	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], false); err != nil {
+	var payload struct {
+		Comment string `json:"comment"`
+	}
+
+	if err := json.NewDecoder(body).Decode(&payload); err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{
+			"error": err.Error(),
+		})
+	}
+
+	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], false, payload.Comment, false); err != nil {
 		return nil, err
 	}
 

@@ -6,15 +6,18 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/tierklinik-dobersberg/rosterd/database"
 	"github.com/tierklinik-dobersberg/rosterd/holiday"
 	"github.com/tierklinik-dobersberg/rosterd/identity"
-	"github.com/tierklinik-dobersberg/rosterd/middleware"
+	rosterdMiddleware "github.com/tierklinik-dobersberg/rosterd/middleware"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -68,8 +71,12 @@ func (srv *Server) Setup() error {
 	srv.echo = echo.New()
 
 	srv.echo.Use(
-		middleware.RequestLogger(srv.Logger),
-		middleware.JWTAuth("cis-session", srv.JWTSecret),
+		middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins:     []string{"*"},
+			AllowCredentials: true,
+		}),
+		rosterdMiddleware.RequestLogger(srv.Logger),
+		rosterdMiddleware.JWTAuth("cis-session", srv.JWTSecret),
 	)
 
 	v1 := srv.echo.Group("v1/")
@@ -87,15 +94,18 @@ func (srv *Server) Setup() error {
 		roster.GET("shifts", wrap(srv.GetRequiredShifts))
 		roster.POST("analyze", wrap(srv.AnalyzeRoster))
 		roster.POST("generate/:year/:month", wrap(srv.GenerateRoster))
+		roster.GET("utils/daykinds/:from/:to", wrap(srv.GetDayKinds))
 	}
 
 	offTime := v1.Group("offtime/")
 	{
 		offTime.GET("", wrap(srv.FindOffTimeRequests))
 		offTime.POST("", wrap(srv.CreateOffTimeRequest))
-		offTime.DELETE(":id", wrap(srv.DeleteOffTimeRequest))
-		offTime.POST(":id/approve", wrap(srv.ApproveOffTimeRequest))
-		offTime.POST(":id/reject", wrap(srv.RejectOffTimeRequest))
+		offTime.GET("credit", wrap(srv.GetOffTimeCredits))
+		offTime.POST("credit/:staff", wrap(srv.AddOffTimeCredit))
+		offTime.DELETE("request/:id", wrap(srv.DeleteOffTimeRequest))
+		offTime.POST("request/:id/approve", wrap(srv.ApproveOffTimeRequest))
+		offTime.POST("request/:id/reject", wrap(srv.RejectOffTimeRequest))
 	}
 
 	constraints := v1.Group("constraint/")
@@ -115,8 +125,74 @@ func (srv *Server) Setup() error {
 	return nil
 }
 
+func (srv *Server) Start() error {
+	go func() {
+		timer := time.NewTimer(time.Minute)
+
+		for range timer.C {
+			srv.autoGrantVacations()
+		}
+	}()
+
+	return srv.ListenAndServe()
+}
+
+func (srv *Server) autoGrantVacations() {
+	ctx := context.Background()
+	l := srv.Logger.Named("vacation-auto-grant").With("started", time.Now())
+
+	currentWorkTime, err := srv.Database.GetCurrentWorkTimes(ctx, time.Now())
+	if err != nil {
+		l.Error("failed to get current work times", "error", err)
+		return
+	}
+
+	now := time.Now()
+	from := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+	to := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.Local)
+
+	approved := true
+	isCredit := true
+	lastCredits, err := srv.Database.FindOffTimeRequests(ctx, from, to, &approved, nil, &isCredit)
+	if err != nil {
+		l.Error("failed to find last vacation credits", "error", err)
+		return
+	}
+
+	lcLm := make(map[string]structs.OffTimeEntry)
+	for _, credit := range lastCredits {
+		if credit.CreatedBy != "auto-grant" {
+			continue
+		}
+
+		lcLm[credit.StaffID] = credit
+	}
+
+	for user, workTime := range currentWorkTime {
+		lastCredit := lcLm[user]
+		if lastCredit.CreatedBy == "" {
+			duration := structs.JSDuration(float64(workTime.TimePerWeek) / 5 * workTime.VacationAutoGrantDays)
+
+			if err := srv.Database.CreateOffTimeRequest(ctx, &structs.OffTimeEntry{
+				ID:             primitive.NewObjectID(),
+				From:           from,
+				Description:    "Automatically granted vacation credits",
+				StaffID:        user,
+				CreatedAt:      time.Now(),
+				CreatedBy:      "auto-grant",
+				Approved:       &approved,
+				UsedAsVacation: true,
+				Duration:       duration,
+				DurationInDays: float64(duration) / (float64(workTime.TimePerWeek) / 5),
+			}); err != nil {
+				l.Error("failed to create off-time grant", "error", err, "user", user)
+			}
+		}
+	}
+}
+
 func (srv *Server) listUsers(ctx context.Context) (map[string]structs.User, error) {
-	token := middleware.JWTFromContext(ctx)
+	token := rosterdMiddleware.JWTFromContext(ctx)
 	res, err := srv.IdentityProvider.ListUsers(ctx, token)
 	if err != nil {
 		return nil, err
@@ -136,7 +212,7 @@ func wrap(fn HandlerFunc) echo.HandlerFunc {
 
 		for _, name := range c.ParamNames() {
 			params[name] = c.Param(name)
-			middleware.AddLogFields(c, "param."+name, params[name])
+			rosterdMiddleware.AddLogFields(c, "param."+name, params[name])
 		}
 
 		res, err := fn(c.Request().Context(), c.QueryParams(), params, c.Request().Body)
