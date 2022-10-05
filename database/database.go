@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -56,6 +57,7 @@ type (
 		constraints *mongo.Collection
 		worktime    *mongo.Collection
 		logger      hclog.Logger
+		debug       bool
 	}
 )
 
@@ -67,6 +69,7 @@ func NewDatabase(ctx context.Context, db *mongo.Database, logger hclog.Logger) (
 		constraints: db.Collection(ConstraintCollection),
 		worktime:    db.Collection(WorktimeCollection),
 		logger:      logger,
+		debug:       false,
 	}
 
 	if err := impl.setup(ctx); err != nil {
@@ -74,6 +77,23 @@ func NewDatabase(ctx context.Context, db *mongo.Database, logger hclog.Logger) (
 	}
 
 	return impl, nil
+}
+
+func (db *DatabaseImpl) SetDebug(v bool) {
+	db.debug = v
+}
+
+func (db *DatabaseImpl) dumpFilter(msg string, filter any) {
+	if db.debug {
+		blob, err := json.MarshalIndent(filter, "", "  ")
+		if err != nil {
+			db.logger.Warn("failed to marshal filter", "error", err.Error())
+
+			return
+		}
+
+		db.logger.Info(msg, "filter", string(blob))
+	}
 }
 
 func (db *DatabaseImpl) setup(ctx context.Context) error {

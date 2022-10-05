@@ -2,6 +2,7 @@ package framework
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"testing"
 
@@ -17,16 +18,34 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type mongoContainer struct {
-	testcontainers.Container
+type (
+	mongoContainer struct {
+		testcontainers.Container
 
-	URI    string
-	Client *mongo.Client
-}
+		URI    string
+		Client *mongo.Client
+	}
 
-type Environment struct {
-	Identitiy *MockIdentityProvider
-	Mongo     mongoContainer
+	Environment struct {
+		Identitiy *MockIdentityProvider
+		Mongo     mongoContainer
+
+		Database *mongo.Database
+	}
+)
+
+// Test flags
+var (
+	mongoURIFlag = flag.String("mongo", "", "The MongoDB server URI. Leave empty to start a new container")
+	keepDatabase = flag.Bool("keep-db", false, "Do not drop the test database. Only makes sense with -mongo")
+)
+
+func (m *mongoContainer) Terminate(ctx context.Context) error {
+	if m.Container == nil {
+		return nil
+	}
+
+	return m.Container.Terminate(ctx)
 }
 
 func (env *Environment) Teardown(ctx context.Context) error {
@@ -40,54 +59,69 @@ func (env *Environment) Teardown(ctx context.Context) error {
 		merr.Errors = append(merr.Errors, fmt.Errorf("failed to disconnect from mongo: %w", err))
 	}
 
+	if !*keepDatabase {
+		if err := env.Database.Drop(ctx); err != nil {
+			merr.Errors = append(merr.Errors, fmt.Errorf("failed to drop test database: %w", err))
+		}
+	}
+
 	return merr.ErrorOrNil()
 }
 
-func SetupEnvironment(ctx context.Context, t *testing.T) (*Environment, error) {
+func SetupEnvironment(ctx context.Context, t *testing.T) (env *Environment, err error) {
+	var (
+		uri       string
+		container testcontainers.Container
+	)
 
-	req := testcontainers.ContainerRequest{
-		Image: "mongo:latest",
-		ExposedPorts: []string{
-			"27017/tcp",
-		},
-		Env: map[string]string{
-			"MONGO_INITDB_ROOT_USERNAME": "root",
-			"MONGO_INITDB_ROOT_PASSWORD": "example",
-		},
-		WaitingFor: wait.ForExposedPort(),
+	if *mongoURIFlag == "" {
+		req := testcontainers.ContainerRequest{
+			Image: "mongo:latest",
+			ExposedPorts: []string{
+				"27017/tcp",
+			},
+			Env: map[string]string{
+				"MONGO_INITDB_ROOT_USERNAME": "root",
+				"MONGO_INITDB_ROOT_PASSWORD": "example",
+			},
+			WaitingFor: wait.ForExposedPort(),
+		}
+
+		container, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+			ContainerRequest: req,
+			Started:          true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		defer func() {
+			if err != nil {
+				container.Terminate(ctx)
+			}
+		}()
+
+		mongoIP, err := container.Host(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		mappedMongoPort, err := container.MappedPort(ctx, "27017")
+		if err != nil {
+			return nil, err
+		}
+		uri = fmt.Sprintf("mongodb://root:example@%s:%s/", mongoIP, mappedMongoPort.Port())
+	} else {
+		uri = *mongoURIFlag
 	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	mongoIP, err := container.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	mappedMongoPort, err := container.MappedPort(ctx, "27017")
-	if err != nil {
-		return nil, err
-	}
-
-	uri := fmt.Sprintf("mongodb://root:example@%s:%s/", mongoIP, mappedMongoPort.Port())
 
 	opts := options.Client().ApplyURI(uri)
 	cli, err := mongo.NewClient(opts)
 	if err != nil {
-		container.Terminate(ctx)
-
 		return nil, err
 	}
 
 	if err := cli.Connect(ctx); err != nil {
-		container.Terminate(ctx)
-
 		return nil, err
 	}
 
@@ -97,10 +131,10 @@ func SetupEnvironment(ctx context.Context, t *testing.T) (*Environment, error) {
 	logger := hclog.L()
 	db, err := database.NewDatabase(ctx, mongoDB, logger.Named("database"))
 	if err != nil {
-		container.Terminate(ctx)
-
 		return nil, err
 	}
+
+	db.SetDebug(true)
 
 	secret := "secret"
 
@@ -118,8 +152,6 @@ func SetupEnvironment(ctx context.Context, t *testing.T) (*Environment, error) {
 	}
 
 	if err := srv.Setup(); err != nil {
-		container.Terminate(ctx)
-
 		return nil, err
 	}
 
@@ -137,6 +169,7 @@ func SetupEnvironment(ctx context.Context, t *testing.T) (*Environment, error) {
 
 	return &Environment{
 		Identitiy: identityProvider,
+		Database:  mongoDB,
 		Mongo: mongoContainer{
 			Container: container,
 			URI:       uri,

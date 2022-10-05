@@ -28,7 +28,7 @@ func (mip *MockIdentityProvider) ListUsers(_ context.Context, _ string) ([]struc
 	return res, nil
 }
 
-func (mip *MockIdentityProvider) GetClient(username string, roles ...string) *client.Client {
+func (mip *MockIdentityProvider) User(username string, roles ...string) *client.Client {
 	token, _ := jwt.SignToken("HS256", mip.secret, jwt.Claims{
 		Subject:   username,
 		ExpiresAt: time.Now().Add(time.Hour).Unix(),

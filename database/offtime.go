@@ -117,6 +117,9 @@ func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.T
 		}
 	}
 
+	db.logger.Info("Finding off time requests")
+	db.dumpFilter("FindOffTimeRequests", filter)
+
 	res, err := db.offTime.Find(ctx, filter)
 	if err != nil {
 		return nil, err
