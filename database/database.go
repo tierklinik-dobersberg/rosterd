@@ -33,8 +33,7 @@ type (
 		CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeEntry) error
 		DeleteOffTimeRequest(ctx context.Context, id string) error
 		FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string, isCredit *bool) ([]structs.OffTimeEntry, error)
-		UpdateOffTimeRequest(ctx context.Context, upd structs.OffTimeRequestUpdate) error
-		ApproveOffTimeRequest(ctx context.Context, id string, approved bool, comment string, usedAsVacation bool) error
+		ApproveOffTimeRequest(ctx context.Context, id string, approval *structs.Approval) error
 		CalculateOffTimeCredits(ctx context.Context) (map[string]structs.JSDuration, error)
 	}
 

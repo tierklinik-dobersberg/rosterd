@@ -67,6 +67,10 @@ func (srv *Server) ListenAndServe() error {
 	return srv.echo.Start(srv.Address)
 }
 
+func (srv *Server) Shutdown(ctx context.Context) error {
+	return srv.echo.Shutdown(ctx)
+}
+
 func (srv *Server) Setup() error {
 	srv.echo = echo.New()
 
@@ -100,7 +104,7 @@ func (srv *Server) Setup() error {
 	offTime := v1.Group("offtime/")
 	{
 		offTime.GET("", wrap(srv.FindOffTimeRequests))
-		offTime.POST("", wrap(srv.CreateOffTimeRequest))
+		offTime.POST("request/", wrap(srv.CreateOffTimeRequest))
 		offTime.GET("credit", wrap(srv.GetOffTimeCredits))
 		offTime.POST("credit/:staff", wrap(srv.AddOffTimeCredit))
 		offTime.DELETE("request/:id", wrap(srv.DeleteOffTimeRequest))
@@ -174,16 +178,20 @@ func (srv *Server) autoGrantVacations() {
 			duration := structs.JSDuration(float64(workTime.TimePerWeek) / 5 * workTime.VacationAutoGrantDays)
 
 			if err := srv.Database.CreateOffTimeRequest(ctx, &structs.OffTimeEntry{
-				ID:             primitive.NewObjectID(),
-				From:           from,
-				Description:    "Automatically granted vacation credits",
-				StaffID:        user,
-				CreatedAt:      time.Now(),
-				CreatedBy:      "auto-grant",
-				Approved:       &approved,
-				UsedAsVacation: true,
-				Duration:       duration,
-				DurationInDays: float64(duration) / (float64(workTime.TimePerWeek) / 5),
+				ID:          primitive.NewObjectID(),
+				From:        from,
+				Description: "Automatically granted vacation credits",
+				StaffID:     user,
+				CreatedAt:   time.Now(),
+				CreatedBy:   "auto-grant",
+				RequestType: structs.RequestTypeCredits,
+				Approval: &structs.Approval{
+					Approved: approved,
+					ActualCosts: structs.OffTimeCosts{
+						Duration:     duration,
+						VacationDays: float64(duration) / (float64(workTime.TimePerWeek) / 5),
+					},
+				},
 			}); err != nil {
 				l.Error("failed to create off-time grant", "error", err, "user", user)
 			}

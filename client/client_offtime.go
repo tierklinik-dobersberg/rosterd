@@ -9,7 +9,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 )
 
-func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.OffTimeEntry) error {
+func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.CreateOffTimeRequest) error {
 	res, err := cli.doReq(ctx, "v1/offtime/request/", "POST", req, nil, nil)
 	if err != nil {
 		return err
@@ -19,11 +19,12 @@ func (cli *Client) CreateOffTimeRequest(ctx context.Context, req structs.OffTime
 	return nil
 }
 
-func (cli *Client) AddOffTimeCredit(ctx context.Context, staff string, credit int, from time.Time, comment string) error {
-	res, err := cli.doReq(ctx, "v1/offtime/credit/"+staff, "POST", map[string]any{
-		"credit":      credit,
-		"description": comment,
-		"from":        from,
+func (cli *Client) AddOffTimeCredit(ctx context.Context, staff string, credit float64, from time.Time, comment string) error {
+	res, err := cli.doReq(ctx, "v1/offtime/credit/"+staff, "POST", structs.CreateOffTimeCreditsRequest{
+		StaffID:     staff,
+		From:        from,
+		Description: comment,
+		Days:        credit,
 	}, nil, nil)
 
 	if err != nil {

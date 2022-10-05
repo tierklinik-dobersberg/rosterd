@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
@@ -21,50 +20,6 @@ func validateNewWorkShift(shift structs.WorkShift) error {
 
 	if shift.RequiredStaffCount == 0 {
 		addError("no required staff count")
-	}
-
-	return errs.ErrorOrNil()
-}
-
-func validateNewOffTimeRequest(req structs.OffTimeEntry) error {
-	errs := new(multierror.Error)
-
-	addError := func(msg string, args ...any) {
-		errs.Errors = append(errs.Errors, fmt.Errorf(msg, args...))
-	}
-
-	if req.Approved != nil {
-		// FIXME(ppacher): for auditing purposes an admin should be allowed to do
-		// that
-		addError("requests must be approved in separate process")
-	}
-
-	if req.From.IsZero() {
-		addError("missing from time")
-	}
-
-	if req.To.IsZero() {
-		addError("missing to time")
-	}
-
-	if req.To.Before(req.From) {
-		addError("invalid to/from values")
-	}
-
-	if req.UsedAsVacation == true {
-		// FIXME(ppacher): admin might do that.
-		addError("usedAsVacation cannot be set upon request creation")
-	}
-
-	now := time.Now()
-	if now.After(req.To) || now.After(req.From) {
-		// FIXME(ppacher): for auditing purposes an admin should be allowed to do
-		// that
-		addError("not allowed to create off-time requests in the past")
-	}
-
-	if req.StaffID == "" {
-		addError("missing staff identifier")
 	}
 
 	return errs.ErrorOrNil()

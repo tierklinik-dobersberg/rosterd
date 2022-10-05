@@ -32,8 +32,8 @@ func getOffTimeCommand() *cobra.Command {
 
 func getCreateOffTimeRequestCommand() *cobra.Command {
 	var (
-		req               structs.OffTimeEntry
-		isVacationRequest bool
+		req         structs.CreateOffTimeRequest
+		requestType string
 	)
 
 	cmd := &cobra.Command{
@@ -56,10 +56,7 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 
 			req.From = from
 			req.To = to
-
-			if cmd.Flag("request-vacation").Changed {
-				req.IsVacationRequest = &isVacationRequest
-			}
+			req.RequestType = structs.RequestType(requestType)
 
 			if err := cli.CreateOffTimeRequest(cmd.Context(), req); err != nil {
 				hclog.L().Error("failed to create off-time request", "error", err)
@@ -71,7 +68,7 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 	flags := cmd.Flags()
 	{
 		flags.StringVar(&req.StaffID, "staff", "", "The name of the staff")
-		flags.BoolVar(&isVacationRequest, "request-vacation", false, "This is a vacation request")
+		flags.StringVar(&requestType, "type", "auto", "Request Type")
 		flags.StringVar(&req.Description, "reason", "", "A descriptive reason for the off-time request")
 	}
 
@@ -173,8 +170,8 @@ func getListOffTimeRequestsCommand() *cobra.Command {
 
 			for _, req := range res {
 				var approved string
-				if req.Approved != nil {
-					if *req.Approved {
+				if req.Approval != nil {
+					if req.Approval.Approved {
 						approved = "✓"
 					} else {
 						approved = "𐄂"

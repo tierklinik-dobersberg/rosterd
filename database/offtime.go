@@ -130,7 +130,7 @@ func (db *DatabaseImpl) FindOffTimeRequests(ctx context.Context, from, to time.T
 	return result, nil
 }
 
-func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, *approval structs.Approval) error {
+func (db *DatabaseImpl) ApproveOffTimeRequest(ctx context.Context, id string, approval *structs.Approval) error {
 	obid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (db *DatabaseImpl) CalculateOffTimeCredits(ctx context.Context) (map[string
 			"$match": bson.M{
 				"$or": bson.A{
 					bson.M{
-						"approval":       bson.M{
+						"approval": bson.M{
 							"$exists": true,
 						},
 						"approval.approved": true,
@@ -189,9 +189,9 @@ func (db *DatabaseImpl) CalculateOffTimeCredits(ctx context.Context) (map[string
 	}
 
 	var entries []struct {
-		StaffID     string             `bson:"_id"`
-		CreditsLeft structs.JSDuration `bson:"durationCreditsLeft"`
-		DayCreditsLeft float64 `bson:"dayCreditsLeft"`
+		StaffID        string             `bson:"_id"`
+		CreditsLeft    structs.JSDuration `bson:"durationCreditsLeft"`
+		DayCreditsLeft float64            `bson:"dayCreditsLeft"`
 	}
 
 	if err := res.All(ctx, &entries); err != nil {
