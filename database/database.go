@@ -24,7 +24,6 @@ type (
 	WorkShiftDatabase interface {
 		SaveWorkShift(context.Context, *structs.WorkShift) error
 		DeleteWorkShift(context.Context, string) error
-		FindWorkShiftsForDay(context.Context, time.Weekday, bool) ([]structs.WorkShift, error)
 		ListWorkShifts(context.Context) ([]structs.WorkShift, error)
 		GetShiftsForDay(ctx context.Context, weekDay time.Weekday, isHoliday bool) ([]structs.WorkShift, error)
 	}

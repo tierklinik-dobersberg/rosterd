@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DatabaseImpl) SaveWorkShift(ctx context.Context, workShift *structs.WorkShift) error {
@@ -46,7 +47,10 @@ func (db *DatabaseImpl) GetShiftsForDay(ctx context.Context, weekDay time.Weekda
 		"onHoliday": isHoliday,
 	}
 
-	shifts, err := db.shifts.Find(ctx, filter)
+	shifts, err := db.shifts.Find(ctx, filter, options.Find().SetSort(bson.M{
+		"order": 1,
+	}))
+
 	if err != nil {
 		return nil, err
 	}
@@ -77,27 +81,10 @@ func (db *DatabaseImpl) DeleteWorkShift(ctx context.Context, id string) error {
 	return nil
 }
 
-func (db *DatabaseImpl) FindWorkShiftsForDay(ctx context.Context, day time.Weekday, isHoliday bool) ([]structs.WorkShift, error) {
-	filter := bson.M{
-		"days":      day,
-		"onHoliday": isHoliday,
-	}
-
-	res, err := db.shifts.Find(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []structs.WorkShift
-	if err := res.All(ctx, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func (db *DatabaseImpl) ListWorkShifts(ctx context.Context) ([]structs.WorkShift, error) {
-	res, err := db.shifts.Find(ctx, bson.D{})
+	res, err := db.shifts.Find(ctx, bson.D{}, options.Find().SetSort(bson.M{
+		"order": 1,
+	}))
 	if err != nil {
 		return nil, err
 	}

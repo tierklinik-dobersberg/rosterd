@@ -163,14 +163,7 @@ func (db *DatabaseImpl) CalculateOffTimeCredits(ctx context.Context) (map[string
 	res, err := db.offTime.Aggregate(ctx, bson.A{
 		bson.M{
 			"$match": bson.M{
-				"$or": bson.A{
-					bson.M{
-						"approval": bson.M{
-							"$exists": true,
-						},
-						"approval.approved": true,
-					},
-				},
+				"approval.approved": true,
 			},
 		},
 		bson.M{

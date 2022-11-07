@@ -33,7 +33,6 @@ func (ot *offTimeTestSuite) SetupSuite() {
 		TimePerWeek:           time.Hour*38 + 30*time.Minute,
 		ApplicableFrom:        startOfWork,
 		VacationAutoGrantDays: 0,
-		EmploymentStart:       startOfWork,
 	})
 
 	ot.Require().NoError(err)
@@ -43,7 +42,6 @@ func (ot *offTimeTestSuite) SetupSuite() {
 		TimePerWeek:           time.Hour * 30,
 		ApplicableFrom:        startOfWork,
 		VacationAutoGrantDays: 0,
-		EmploymentStart:       startOfWork,
 	})
 
 	ot.Require().NoError(err)

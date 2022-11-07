@@ -34,6 +34,7 @@ type (
 		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount" hcl:"requiredStaffCount"`
 		Color              string             `json:"color" bson:"color" hcl:"color"`
 		Description        string             `json:"description" bson:"description"`
+		Order              int                `json:"order" bson:"order"`
 	}
 )
 

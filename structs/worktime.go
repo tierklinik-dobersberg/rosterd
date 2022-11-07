@@ -13,8 +13,7 @@ type (
 		TimePerWeek    time.Duration      `json:"timePerWeek" bson:"timePerWeek"`
 		ApplicableFrom time.Time          `json:"applicableFrom" bson:"applicableFrom"`
 
-		VacationAutoGrantDays float64   `json:"vacationAutoGrantDays" bson:"vacationAutoGrantDays"`
-		EmploymentStart       time.Time `json:"employmentStart" bson:"employmentStart"`
+		VacationAutoGrantDays float64 `json:"vacationAutoGrantDays" bson:"vacationAutoGrantDays"`
 
 		OvertimePenaltyRatio  float64 `json:"overtimePenaltyRation" bson:"overtimePenaltyRation"`
 		UndertimePenaltyRatio float64 `json:"undertimePenaltyRation" bson:"undertimePenaltyRation"`
