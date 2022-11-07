@@ -73,7 +73,7 @@ func (srv *Server) CreateOffTimeRequest(ctx context.Context, query url.Values, p
 		return nil, err
 	}
 
-	return req, nil
+	return entry, nil
 }
 
 func (srv *Server) GetOffTimeCredits(ctx context.Context, _ url.Values, _ map[string]string, _ io.Reader) (any, error) {
@@ -245,10 +245,7 @@ func (srv *Server) ApproveOffTimeRequest(ctx context.Context, query url.Values, 
 		return res, nil
 	}
 
-	var payload struct {
-		Comment string `json:"comment"`
-	}
-
+	var payload structs.ApproveOffTimeRequestRequest
 	if err := json.NewDecoder(body).Decode(&payload); err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
@@ -262,11 +259,25 @@ func (srv *Server) ApproveOffTimeRequest(ctx context.Context, query url.Values, 
 		})
 	}
 
+	costs := req.Costs
+	if payload.DurationCosts != nil {
+		workTimePerWeek, err := srv.Database.GetCurrentWorkTimes(ctx, req.From)
+		if err != nil {
+			return withStatus(http.StatusInternalServerError, map[string]any{
+				"error": err.Error(),
+			})
+		}
+
+		timePerDay := float64(workTimePerWeek[req.StaffID].TimePerWeek) / 5
+		costs.Duration = *payload.DurationCosts
+		costs.VacationDays = float64(*payload.DurationCosts) / timePerDay
+	}
+
 	approval := structs.Approval{
 		Approved:    true,
 		Comment:     payload.Comment,
 		ApprovedAt:  time.Now(),
-		ActualCosts: req.Costs,
+		ActualCosts: costs,
 	}
 
 	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], &approval); err != nil {
@@ -281,10 +292,7 @@ func (srv *Server) RejectOffTimeRequest(ctx context.Context, query url.Values, p
 		return res, nil
 	}
 
-	var payload struct {
-		Comment string `json:"comment"`
-	}
-
+	var payload structs.RejectOffTimeRequestRequest
 	if err := json.NewDecoder(body).Decode(&payload); err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
@@ -295,6 +303,10 @@ func (srv *Server) RejectOffTimeRequest(ctx context.Context, query url.Values, p
 		Approved:   false,
 		ApprovedAt: time.Now(),
 		Comment:    payload.Comment,
+		ActualCosts: structs.OffTimeCosts{
+			VacationDays: 0,
+			Duration:     0,
+		},
 	}
 
 	if err := srv.Database.ApproveOffTimeRequest(ctx, params["id"], approval); err != nil {

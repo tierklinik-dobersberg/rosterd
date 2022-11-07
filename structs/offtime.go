@@ -139,6 +139,15 @@ type (
 		Description string    `json:"description"`
 		Days        float64   `json:"days"`
 	}
+
+	ApproveOffTimeRequestRequest struct {
+		Comment       string      `json:"comment"`
+		DurationCosts *JSDuration `json:"costs"`
+	}
+
+	RejectOffTimeRequestRequest struct {
+		Comment string `json:"comment"`
+	}
 )
 
 const (

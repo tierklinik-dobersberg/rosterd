@@ -99,7 +99,7 @@ func getCreateWorkshiftCommand() *cobra.Command {
 
 	var (
 		from         string
-		to           time.Duration
+		duration     time.Duration
 		days         []string
 		minutesWorth int
 	)
@@ -118,7 +118,7 @@ func getCreateWorkshiftCommand() *cobra.Command {
 				workShift.Days = append(workShift.Days, d)
 			}
 
-			workShift.Duration = to
+			workShift.Duration = structs.JSDuration(duration)
 
 			fromTime, err := daytime.ParseDayTime(from)
 			if err != nil {
@@ -143,7 +143,7 @@ func getCreateWorkshiftCommand() *cobra.Command {
 		flags.StringSliceVarP(&workShift.EligibleRoles, "roles", "r", nil, "List of roles eligible for this workshift")
 		flags.BoolVar(&workShift.OnHoliday, "holiday", false, "Valid on holidays")
 		flags.StringVarP(&from, "from", "f", "", "Start time")
-		flags.DurationVarP(&to, "duration", "D", 0, "Duration of the work shift")
+		flags.DurationVarP(&duration, "duration", "D", 0, "Duration of the work shift")
 		flags.StringSliceVarP(&days, "days", "d", nil, "A list of weekdays for this work shift")
 		flags.IntVarP(&minutesWorth, "worth", "w", 0, "How many minutes this work shift is worth")
 		flags.IntVarP(&workShift.RequiredStaffCount, "staff-count", "c", 0, "Number of employees required for this shift")

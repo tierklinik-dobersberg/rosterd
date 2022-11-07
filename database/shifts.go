@@ -15,7 +15,7 @@ func (db *DatabaseImpl) SaveWorkShift(ctx context.Context, workShift *structs.Wo
 	if workShift.ID.IsZero() {
 		workShift.ID = primitive.NewObjectID()
 
-		db.logger.Info("Inserting new working shift", "name", workShift.Name, "from", workShift.From, "duration", workShift.Duration.String(), "required-staff-count", workShift.RequiredStaffCount)
+		db.logger.Info("Inserting new working shift", "name", workShift.Name, "from", workShift.From, "duration", time.Duration(workShift.Duration).String(), "required-staff-count", workShift.RequiredStaffCount)
 
 		res, err := db.shifts.InsertOne(ctx, workShift)
 		if err != nil {
@@ -27,7 +27,7 @@ func (db *DatabaseImpl) SaveWorkShift(ctx context.Context, workShift *structs.Wo
 		return nil
 	}
 
-	db.logger.Info("Replacing working shift", "id", workShift.ID.Hex(), "name", workShift.Name, "from", workShift.From, "duration", workShift.Duration.String(), "required-staff-count", workShift.RequiredStaffCount)
+	db.logger.Info("Replacing working shift", "id", workShift.ID.Hex(), "name", workShift.Name, "from", workShift.From, "duration", time.Duration(workShift.Duration).String(), "required-staff-count", workShift.RequiredStaffCount)
 	res, err := db.shifts.ReplaceOne(ctx, bson.M{"_id": workShift.ID}, workShift)
 	if err != nil {
 		return fmt.Errorf("failed to replace document with id %s: %w", workShift.ID, err)

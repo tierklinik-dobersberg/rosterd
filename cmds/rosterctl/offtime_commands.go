@@ -58,9 +58,11 @@ func getCreateOffTimeRequestCommand() *cobra.Command {
 			req.To = to
 			req.RequestType = structs.RequestType(requestType)
 
-			if err := cli.CreateOffTimeRequest(cmd.Context(), req); err != nil {
+			if entry, err := cli.CreateOffTimeRequest(cmd.Context(), req); err != nil {
 				hclog.L().Error("failed to create off-time request", "error", err)
 				os.Exit(1)
+			} else {
+				hclog.L().Info("created off-time request", "id", entry.ID)
 			}
 		},
 	}

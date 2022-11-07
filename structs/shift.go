@@ -24,7 +24,7 @@ type (
 
 	WorkShift struct {
 		From               Daytime            `json:"from" bson:"from" hcl:"from"`
-		Duration           time.Duration      `json:"duration" bson:"duration" hcl:"to"`
+		Duration           JSDuration         `json:"duration" bson:"duration" hcl:"to"`
 		ID                 primitive.ObjectID `json:"id" bson:"_id"`
 		Days               []time.Weekday     `json:"days" bson:"days" hcl:"days"`
 		Name               string             `json:"name" bson:"name" hcl:",label"`
@@ -32,6 +32,8 @@ type (
 		EligibleRoles      []string           `json:"eligibleRoles" bson:"eligibleRoles,omitempty" hcl:"eligibleRoles"`
 		MinutesWorth       *int               `json:"minutesWorth,omitempty" bson:"minutesWorth,omitempty" hcl:"minutesWorth"`
 		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount" hcl:"requiredStaffCount"`
+		Color              string             `json:"color" bson:"color" hcl:"color"`
+		Description        string             `json:"description" bson:"description"`
 	}
 )
 
@@ -40,7 +42,7 @@ func (ws WorkShift) AtDay(t time.Time) (time.Time, time.Time) {
 
 	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()).Add(fromDt)
 
-	to := from.Add(ws.Duration)
+	to := from.Add(time.Duration(ws.Duration))
 
 	return from, to
 }

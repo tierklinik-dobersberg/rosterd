@@ -49,21 +49,34 @@ func (ot *offTimeTestSuite) SetupSuite() {
 	ot.Require().NoError(err)
 }
 
-func (ot *offTimeTestSuite) Test_Create_OffTime_Request() {
+func (ot *offTimeTestSuite) findRequest(id string, sl []structs.OffTimeEntry) *structs.OffTimeEntry {
+	for _, e := range sl {
+		if e.ID.Hex() == id {
+			return &e
+		}
+	}
+
+	return nil
+}
+
+func (ot *offTimeTestSuite) Test_Create_Delete_OffTime_Request() {
 	from := time.Now().Add(24 * time.Hour)
 	to := time.Now().Add(7 * 24 * time.Hour)
 
 	cli := ot.Identitiy.User("user")
-	err := cli.CreateOffTimeRequest(ot.ctx, structs.CreateOffTimeRequest{
+	entry, err := cli.CreateOffTimeRequest(ot.ctx, structs.CreateOffTimeRequest{
 		From:        from,
 		To:          to,
 		RequestType: structs.RequestTypeAuto,
 	})
 
 	ot.Assert().NoError(err)
+	ot.Require().NotNil(entry)
 
-	req, err := cli.FindOffTimeRequests(ot.ctx, time.Time{}, time.Time{}, nil, nil)
+	requests, err := cli.FindOffTimeRequests(ot.ctx, time.Time{}, time.Time{}, nil, nil)
 	ot.Require().NoError(err)
 
-	ot.Assert().Len(req, 1)
+	req := ot.findRequest(entry.ID.Hex(), requests)
+	ot.Require().NotNil(req)
+	ot.Assert().Equal(entry, req)
 }
