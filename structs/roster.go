@@ -10,6 +10,7 @@ type (
 	RosterShift struct {
 		Staff              []string           `json:"staff" bson:"staff"`
 		ShiftID            primitive.ObjectID `json:"shiftID" bson:"shiftID"`
+		ShortName          string             `json:"shortName" bson:"shortName"`
 		Name               string             `json:"name" bson:"name"`
 		IsHoliday          bool               `json:"isHoliday" bson:"isHoliday"`
 		IsWeekend          bool               `json:"isWeekend" bson:"isWeekend"`
@@ -31,7 +32,7 @@ type (
 		Year       int                `json:"year" bson:"year"`
 		Shifts     []RosterShift      `json:"shifts" bson:"shifts"`
 		Approved   *bool              `json:"approved" bson:"approved"`
-		ApprovedAt time.Time          `json:"approvedAt" bson:"approvedAt"`
+		ApprovedAt *time.Time         `json:"approvedAt" bson:"approvedAt"`
 	}
 
 	Diagnostic struct {

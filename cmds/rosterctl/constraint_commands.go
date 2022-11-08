@@ -25,22 +25,12 @@ func getConstraintCommand() *cobra.Command {
 }
 
 func getCreateConstraintCommand() *cobra.Command {
-	var staff []string
-	var roles []string
-
 	var constraint structs.Constraint
 
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new roster constraint",
 		Run: func(cmd *cobra.Command, args []string) {
-			for _, s := range staff {
-				constraint.AppliesTo = append(constraint.AppliesTo, "staff:"+s)
-			}
-			for _, r := range roles {
-				constraint.AppliesTo = append(constraint.AppliesTo, "role:"+r)
-			}
-
 			if err := cli.CreateConstraint(cmd.Context(), constraint); err != nil {
 				hclog.L().Error("failed to create constraint", "error", err)
 				os.Exit(1)
@@ -52,8 +42,8 @@ func getCreateConstraintCommand() *cobra.Command {
 	{
 		flags.StringVar(&constraint.Description, "name", "", "The name/description of the constraint")
 		flags.StringVar(&constraint.Expression, "expr", "", "The expression to evaluate the constraint")
-		flags.StringSliceVar(&roles, "role", nil, "A list of roles this constraints applies to")
-		flags.StringSliceVar(&staff, "staff", nil, "A list of staff identifiers this constraint applies to")
+		flags.StringSliceVar(&constraint.AppliesToRole, "role", nil, "A list of roles this constraints applies to")
+		flags.StringSliceVar(&constraint.AppliesToUser, "staff", nil, "A list of staff identifiers this constraint applies to")
 		flags.BoolVar(&constraint.Hard, "hard", false, "Whether or not this is a hard constraint")
 		flags.BoolVar(&constraint.Deny, "deny", false, "Whether or not this constaint evaluates to deny or allow")
 		flags.BoolVar(&constraint.RosterOnly, "roster", false, "Only evaluate constraint against the complete roster")

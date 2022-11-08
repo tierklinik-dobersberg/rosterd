@@ -104,6 +104,7 @@ func getRootCommand() *cobra.Command {
 					roster.Shifts = append(roster.Shifts, structs.RosterShift{
 						Staff:              staff,
 						ShiftID:            shift.ShiftID,
+						ShortName:          shift.ShortName,
 						Name:               shift.Name,
 						IsHoliday:          shift.IsHoliday,
 						IsWeekend:          shift.IsWeekend,

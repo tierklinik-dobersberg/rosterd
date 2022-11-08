@@ -40,19 +40,26 @@ func (db *DatabaseImpl) DeleteConstraint(ctx context.Context, id string) error {
 func (db *DatabaseImpl) FindConstraints(ctx context.Context, staffs []string, roles []string) ([]structs.Constraint, error) {
 	filter := bson.M{}
 
-	var appliesTo []string
-	for _, s := range staffs {
-		appliesTo = append(appliesTo, fmt.Sprintf("staff:%s", s))
-	}
-	for _, r := range roles {
-		appliesTo = append(appliesTo, fmt.Sprintf("role:%s", r))
+	appliesToRole := bson.M{
+		"appliesToRole": bson.M{"$in": roles},
 	}
 
-	if len(appliesTo) > 0 {
-		filter["$or"] = bson.A{
-			bson.M{"appliesTo": bson.M{"$in": appliesTo}},
-			bson.M{"appliesTo": bson.M{"$eq": nil}},
+	appliesToUser := bson.M{
+		"appliesToUser": bson.M{"$in": staffs},
+	}
+
+	switch {
+	case len(staffs) > 0 && len(roles) > 0:
+		filter = bson.M{
+			"$or": bson.A{
+				appliesToRole,
+				appliesToUser,
+			},
 		}
+	case len(staffs) > 0:
+		filter = appliesToUser
+	case len(roles) > 0:
+		filter = appliesToRole
 	}
 
 	res, err := db.constraints.Find(ctx, filter)

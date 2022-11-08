@@ -27,6 +27,7 @@ type (
 		Duration           JSDuration         `json:"duration" bson:"duration" hcl:"to"`
 		ID                 primitive.ObjectID `json:"id" bson:"_id"`
 		Days               []time.Weekday     `json:"days" bson:"days" hcl:"days"`
+		ShortName          string             `json:"shortName" bson:"shortName"`
 		Name               string             `json:"name" bson:"name" hcl:",label"`
 		OnHoliday          bool               `json:"onHoliday" bson:"onHoliday" hcl:"onHoliday"`
 		EligibleRoles      []string           `json:"eligibleRoles" bson:"eligibleRoles,omitempty" hcl:"eligibleRoles"`

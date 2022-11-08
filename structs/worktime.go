@@ -20,11 +20,11 @@ type (
 	}
 
 	WorkTimeStatus struct {
-		TimePerWeek           time.Duration `json:"timePerWeek"`
-		ExpectedWorkTime      time.Duration `json:"expectedMonthlyHours"`
-		PlannedWorkTime       time.Duration `json:"plannedMonthlyHours"`
-		Penalty               int           `json:"penalty"`
-		OvertimePenaltyRatio  float64       `json:"overtimePenaltyRation" bson:"overtimePenaltyRation"`
-		UndertimePenaltyRatio float64       `json:"undertimePenaltyRation" bson:"undertimePenaltyRation"`
+		TimePerWeek           JSDuration `json:"timePerWeek"`
+		ExpectedWorkTime      JSDuration `json:"expectedWorkTime"`
+		PlannedWorkTime       JSDuration `json:"plannedWorkTime"`
+		Penalty               int        `json:"penalty"`
+		OvertimePenaltyRatio  float64    `json:"overtimePenaltyRation" bson:"overtimePenaltyRation"`
+		UndertimePenaltyRatio float64    `json:"undertimePenaltyRation" bson:"undertimePenaltyRation"`
 	}
 )

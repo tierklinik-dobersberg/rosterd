@@ -14,6 +14,14 @@ func validateNewWorkShift(shift structs.WorkShift) error {
 		errs.Errors = append(errs.Errors, fmt.Errorf(msg, args...))
 	}
 
+	if shift.ShortName == "" {
+		addError("shortName is not defined")
+	}
+
+	if shift.Name == "" {
+		addError("name is not defined")
+	}
+
 	if len(shift.Days) == 0 {
 		addError("no days defined")
 	}

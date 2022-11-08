@@ -213,10 +213,10 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 
 	for name := range users {
 		workTimeOverview[name] = &structs.WorkTimeStatus{
-			TimePerWeek:           currentWorkTime[name].TimePerWeek,
+			TimePerWeek:           structs.JSDuration(currentWorkTime[name].TimePerWeek),
 			OvertimePenaltyRatio:  currentWorkTime[name].OvertimePenaltyRatio,
 			UndertimePenaltyRatio: currentWorkTime[name].UndertimePenaltyRatio,
-			ExpectedWorkTime:      expectedWorkTime[name],
+			ExpectedWorkTime:      structs.JSDuration(expectedWorkTime[name]),
 		}
 	}
 
@@ -264,7 +264,7 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 
 			diags = append(diags, shiftDiags...)
 			for _, staff := range rosterShift.Staff {
-				workTimeOverview[staff].PlannedWorkTime += time.Duration(rosterShift.MinutesWorth) * time.Minute
+				workTimeOverview[staff].PlannedWorkTime += structs.JSDuration(rosterShift.MinutesWorth) * structs.JSDuration(time.Minute)
 			}
 		}
 	}
@@ -440,6 +440,7 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 			rosterShift := structs.RosterShift{
 				ShiftID:            shift.ID,
 				Name:               shift.Name,
+				ShortName:          shift.ShortName,
 				IsHoliday:          isHoliday,
 				IsWeekend:          from.Weekday() == time.Saturday || from.Weekday() == time.Sunday,
 				From:               from,
