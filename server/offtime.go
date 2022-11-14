@@ -190,7 +190,7 @@ func (srv *Server) FindOffTimeRequests(ctx context.Context, query url.Values, pa
 
 	if from := query.Get("from"); from != "" {
 		var err error
-		fromFilter, err = time.Parse("2006-01-02", from)
+		fromFilter, err = time.ParseInLocation("2006-01-02", from, srv.Location)
 		if err != nil {
 			return withStatus(http.StatusBadRequest, map[string]any{
 				"error": "invalid value for 'from' filter",
@@ -200,7 +200,7 @@ func (srv *Server) FindOffTimeRequests(ctx context.Context, query url.Values, pa
 
 	if to := query.Get("to"); to != "" {
 		var err error
-		toFilter, err = time.Parse("2006-01-02", to)
+		toFilter, err = time.ParseInLocation("2006-01-02", to, srv.Location)
 		if err != nil {
 			return withStatus(http.StatusBadRequest, map[string]any{
 				"error": "invalid value for 'to' filter",

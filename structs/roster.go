@@ -12,6 +12,7 @@ type (
 		ShiftID            primitive.ObjectID `json:"shiftID" bson:"shiftID"`
 		ShortName          string             `json:"shortName" bson:"shortName"`
 		Name               string             `json:"name" bson:"name"`
+		Tags               []string           `json:"tags" bson:"tags"`
 		IsHoliday          bool               `json:"isHoliday" bson:"isHoliday"`
 		IsWeekend          bool               `json:"isWeekend" bson:"isWeekend"`
 		From               time.Time          `json:"from" bson:"from"`

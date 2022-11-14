@@ -36,6 +36,7 @@ type (
 		Color              string             `json:"color" bson:"color" hcl:"color"`
 		Description        string             `json:"description" bson:"description"`
 		Order              int                `json:"order" bson:"order"`
+		Tags               []string           `json:"tags" bson:"tags"`
 	}
 )
 

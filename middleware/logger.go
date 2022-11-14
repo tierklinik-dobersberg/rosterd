@@ -42,7 +42,6 @@ func RequestLogger(logger hclog.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			req := c.Request()
-			res := c.Response()
 
 			logger = logger.With(
 				"uri", req.URL.String(),
@@ -59,6 +58,8 @@ func RequestLogger(logger hclog.Logger) echo.MiddlewareFunc {
 			start := time.Now()
 			err := next(c)
 			stop := time.Now()
+
+			res := c.Response()
 
 			// get the updated logger from the request
 			logger = L(c.Request().Context()).With(

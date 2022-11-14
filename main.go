@@ -69,6 +69,13 @@ func main() {
 		}
 	}
 
+	// FIXME
+	location, err := time.LoadLocation("Europe/Vienna")
+	if err != nil {
+		l.Error("failed to load location data", "error", err.Error())
+		os.Exit(1)
+	}
+
 	srv := server.Server{
 		Database:         db,
 		IdentityProvider: identityProvider,
@@ -78,6 +85,7 @@ func main() {
 		Address:          cfg.Address,
 		Holidays:         holiday.NewHolidayCache(l.Named("holiday")),
 		Country:          cfg.Country,
+		Location:         location,
 	}
 
 	if err := srv.Setup(); err != nil {

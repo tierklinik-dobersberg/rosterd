@@ -32,6 +32,7 @@ type (
 			database.OffTimeDatabase
 			database.ConstraintDatabase
 			database.WorkTimeDatabase
+			database.RosterDatabase
 		}
 
 		// IdentityProvider provides access to all available identities.
@@ -58,6 +59,10 @@ type (
 		// Country is the country of legal residence for which public
 		// holidays should be loaded.
 		Country string
+
+		// Location is the location used for date/time operations that do
+		// not directly specify the location (ie when just using the date-format)
+		Location *time.Location
 
 		echo *echo.Echo
 	}
@@ -95,9 +100,19 @@ func (srv *Server) Setup() error {
 
 	roster := v1.Group("roster/")
 	{
+		// roster management
+		roster.GET(":year/:month", wrap(srv.FindRoster))
+		roster.POST(":year/:month", wrap(srv.CreateRoster))
+		roster.PUT("byid/:id", wrap(srv.UpdateRoster))
+		roster.DELETE("byid/:id", wrap(srv.DeleteRoster))
+		roster.GET("on-duty", wrap(srv.FindCurrentlyWorkingStaff))
+
+		// generate a new roster
+		roster.POST(":year/:month/generate", wrap(srv.GenerateRoster))
+
+		// utilities
 		roster.GET("shifts", wrap(srv.GetRequiredShifts))
 		roster.POST("analyze", wrap(srv.AnalyzeRoster))
-		roster.POST("generate/:year/:month", wrap(srv.GenerateRoster))
 		roster.GET("utils/daykinds/:from/:to", wrap(srv.GetDayKinds))
 	}
 
@@ -116,6 +131,7 @@ func (srv *Server) Setup() error {
 	{
 		constraints.GET("", wrap(srv.FindConstraints))
 		constraints.POST("", wrap(srv.CreateConstraint))
+		constraints.PUT(":id", wrap(srv.UpdateConstraint))
 		constraints.DELETE(":id", wrap(srv.DeleteConstraint))
 	}
 
@@ -215,7 +231,7 @@ func (srv *Server) listUsers(ctx context.Context) (map[string]structs.User, erro
 }
 
 func wrap(fn HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	result := func(c echo.Context) error {
 		params := make(map[string]string)
 
 		for _, name := range c.ParamNames() {
@@ -255,6 +271,8 @@ func wrap(fn HandlerFunc) echo.HandlerFunc {
 
 		return c.JSON(http.StatusOK, res)
 	}
+
+	return result
 }
 
 func (srv *Server) RequireAdmin(ctx context.Context) (any, bool) {

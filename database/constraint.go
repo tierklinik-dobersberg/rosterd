@@ -11,9 +11,21 @@ import (
 
 func (db *DatabaseImpl) CreateConstraint(ctx context.Context, constraint *structs.Constraint) error {
 	constraint.ID = primitive.NewObjectID()
-
 	if _, err := db.constraints.InsertOne(ctx, constraint); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (db *DatabaseImpl) UpdateConstraint(ctx context.Context, constraint *structs.Constraint) error {
+	res, err := db.constraints.ReplaceOne(ctx, bson.M{"_id": constraint.ID}, constraint)
+	if err != nil {
+		return err
+	}
+
+	if res.MatchedCount == 0 {
+		return fmt.Errorf("not found")
 	}
 
 	return nil

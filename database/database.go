@@ -10,6 +10,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -39,6 +40,7 @@ type (
 
 	ConstraintDatabase interface {
 		CreateConstraint(ctx context.Context, req *structs.Constraint) error
+		UpdateConstraint(ctx context.Context, constraint *structs.Constraint) error
 		DeleteConstraint(ctx context.Context, id string) error
 		FindConstraints(ctx context.Context, staff []string, roles []string) ([]structs.Constraint, error)
 	}
@@ -47,6 +49,15 @@ type (
 		SaveWorkTimePerWeek(ctx context.Context, wt *structs.WorkTime) error
 		WorkTimeHistoryForStaff(ctx context.Context, staff string) ([]structs.WorkTime, error)
 		GetCurrentWorkTimes(ctx context.Context, until time.Time) (map[string]structs.WorkTime, error)
+	}
+
+	RosterDatabase interface {
+		CreateRoster(ctx context.Context, roster structs.Roster) error
+		UpdateRoster(ctx context.Context, roster structs.Roster) error
+		FindRoster(ctx context.Context, month time.Month, year int) (*structs.Roster, error)
+		DeleteRoster(ctx context.Context, id string) error
+		LoadRoster(ctx context.Context, id string) (*structs.Roster, error)
+		ApproveRoster(ctx context.Context, month time.Month, year int) error
 	}
 
 	DatabaseImpl struct {
@@ -120,14 +131,10 @@ func (db *DatabaseImpl) setup(ctx context.Context) error {
 	_, err = db.rosters.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys: bson.D{
-				{Key: "shiftID", Value: 1},
+				{Key: "year", Value: 1},
+				{Key: "month", Value: 1},
 			},
-		},
-		{
-			Keys: bson.D{
-				{Key: "from", Value: 1},
-				{Key: "to", Value: 1},
-			},
+			Options: options.Index().SetUnique(true),
 		},
 	})
 	if err != nil {
@@ -155,9 +162,10 @@ func (db *DatabaseImpl) setup(ctx context.Context) error {
 }
 
 // Interfaces check
-var (
-	_ WorkShiftDatabase  = new(DatabaseImpl)
-	_ OffTimeDatabase    = new(DatabaseImpl)
-	_ ConstraintDatabase = new(DatabaseImpl)
-	_ WorkTimeDatabase   = new(DatabaseImpl)
-)
+var _ interface {
+	WorkShiftDatabase
+	OffTimeDatabase
+	ConstraintDatabase
+	WorkTimeDatabase
+	RosterDatabase
+} = new(DatabaseImpl)

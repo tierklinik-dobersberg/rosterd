@@ -18,17 +18,213 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+func (srv *Server) CreateRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, isAdmin := srv.RequireAdmin(ctx); !isAdmin {
+		return res, nil
+	}
+
+	var roster structs.Roster
+	if err := json.NewDecoder(body).Decode(&roster); err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	if err := srv.Database.CreateRoster(ctx, roster); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (srv *Server) UpdateRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, isAdmin := srv.RequireAdmin(ctx); !isAdmin {
+		return res, nil
+	}
+
+	var roster structs.Roster
+	if err := json.NewDecoder(body).Decode(&roster); err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	var (
+		rosterID = params["id"]
+		err      error
+	)
+	roster.ID, err = primitive.ObjectIDFromHex(rosterID)
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	if err := srv.Database.UpdateRoster(ctx, roster); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (srv *Server) DeleteRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, isAdmin := srv.RequireAdmin(ctx); !isAdmin {
+		return res, nil
+	}
+
+	rosterID := params["id"]
+
+	if err := srv.Database.DeleteRoster(ctx, rosterID); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (srv *Server) ApproveRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, isAdmin := srv.RequireAdmin(ctx); !isAdmin {
+		return res, nil
+	}
+
+	month, err := strconv.ParseInt(params["month"], 0, 0)
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	year, err := strconv.ParseInt(params["year"], 0, 0)
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	if err := srv.Database.ApproveRoster(ctx, time.Month(month), int(year)); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (srv *Server) FindRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	month, err := strconv.ParseInt(params["month"], 0, 0)
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	year, err := strconv.ParseInt(params["year"], 0, 0)
+	if err != nil {
+		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+	}
+
+	roster, err := srv.Database.FindRoster(ctx, time.Month(month), int(year))
+	if err != nil {
+		return nil, err
+	}
+
+	_, isAdmin := srv.RequireAdmin(ctx)
+	if roster.Approved == nil && !isAdmin {
+		return withStatus(http.StatusUnauthorized, nil)
+	}
+
+	return roster, nil
+}
+
+func (srv *Server) FindCurrentlyWorkingStaff(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	date := time.Now()
+
+	timeStr := query.Get("time")
+	if timeStr != "" {
+		var err error
+		date, err = time.Parse(time.RFC3339, timeStr)
+		if err != nil {
+			return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		}
+	}
+
+	wholeDay := false
+
+	dateStr := query.Get("date")
+	if dateStr != "" {
+		var err error
+		date, err = time.ParseInLocation("2006-01-02", dateStr, srv.Location)
+		if err != nil {
+			return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
+		}
+		wholeDay = true
+	}
+
+	roster, err := srv.Database.FindRoster(ctx, date.Month(), date.Year())
+	if err != nil {
+		return nil, err
+	}
+
+	// allow limiting the returned shifts by tags and shortName
+	tags := query["tags"]
+	shortNames := query["shortNames"]
+
+	// get all shifts that are active right now
+	var activeShifts []structs.RosterShift
+
+	for _, shift := range roster.Shifts {
+		if wholeDay {
+			srv.Logger.Info("checking shift", "dateStr", dateStr, "shift", shift.From.UTC().Format("2006-01-02"))
+		}
+
+		if (wholeDay && shift.From.UTC().Format("2006-01-02") == dateStr) || ((shift.From.Before(date) || shift.From.Equal(date)) && (shift.To.After(date) || shift.To.Equal(date))) {
+			if len(tags) > 0 || len(shortNames) > 0 {
+				isAllowed := false
+
+				for _, allowed := range shortNames {
+					if shift.ShortName == allowed {
+						isAllowed = true
+						break
+					}
+				}
+
+				// check tags
+				if !isAllowed {
+					for _, tag := range shift.Tags {
+						for _, allowed := range tags {
+							if tag == allowed {
+								isAllowed = true
+								break
+							}
+						}
+					}
+				}
+
+				if !isAllowed {
+					continue
+				}
+			}
+
+			activeShifts = append(activeShifts, shift)
+		}
+	}
+
+	// get a list of distinct users
+	usersMap := map[string]struct{}{}
+	users := []string{}
+	for _, shift := range activeShifts {
+		for _, staff := range shift.Staff {
+			if _, ok := usersMap[staff]; ok {
+				continue
+			}
+
+			usersMap[staff] = struct{}{}
+			users = append(users, staff)
+		}
+	}
+
+	return map[string]any{
+		"staff":  users,
+		"shifts": activeShifts,
+	}, nil
+}
+
 func (srv *Server) GetRequiredShifts(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
 	startTimeStr := query.Get("from")
 	toTimeStr := query.Get("to")
 	includeStaffList := query.Has("stafflist")
 
-	start, err := time.Parse("2006-01-02", startTimeStr)
+	start, err := time.ParseInLocation("2006-01-02", startTimeStr, srv.Location)
 	if err != nil {
 		return nil, err
 	}
 
-	to, err := time.Parse("2006-01-02", toTimeStr)
+	to, err := time.ParseInLocation("2006-01-02", toTimeStr, srv.Location)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +246,8 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 	}
 
 	// detect the from and to time for the roster
-	start := time.Date(int(year), time.Month(month), 1, 0, 0, 0, 0, time.Local)
-	to := time.Date(int(year), time.Month(month)+1, 0, 0, 0, 0, 0, time.Local)
+	start := time.Date(int(year), time.Month(month), 1, 0, 0, 0, 0, srv.Location)
+	to := time.Date(int(year), time.Month(month)+1, 0, 0, 0, 0, 0, srv.Location)
 
 	requiredShifts, users, err := srv.getRequiredShifts(ctx, start, to, true)
 	if err != nil {
@@ -145,14 +341,14 @@ func (srv *Server) AnalyzeRoster(ctx context.Context, query url.Values, params m
 }
 
 func (srv *Server) GetDayKinds(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
-	from, err := time.Parse("2006-01-02", params["from"])
+	from, err := time.ParseInLocation("2006-01-02", params["from"], srv.Location)
 	if err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
 		})
 	}
 
-	to, err := time.Parse("2006-01-02", params["to"])
+	to, err := time.ParseInLocation("2006-01-02", params["to"], srv.Location)
 	if err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
@@ -441,6 +637,7 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 				ShiftID:            shift.ID,
 				Name:               shift.Name,
 				ShortName:          shift.ShortName,
+				Tags:               shift.Tags,
 				IsHoliday:          isHoliday,
 				IsWeekend:          from.Weekday() == time.Saturday || from.Weekday() == time.Sunday,
 				From:               from,

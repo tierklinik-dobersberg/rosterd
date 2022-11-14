@@ -27,6 +27,23 @@ func (srv *Server) CreateConstraint(ctx context.Context, query url.Values, param
 	return withStatus(http.StatusNoContent, nil)
 }
 
+func (srv *Server) UpdateConstraint(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	if res, ok := srv.RequireAdmin(ctx); !ok {
+		return res, nil
+	}
+
+	var req structs.Constraint
+	if err := json.NewDecoder(body).Decode(&req); err != nil {
+		return nil, err
+	}
+
+	if err := srv.Database.UpdateConstraint(ctx, &req); err != nil {
+		return nil, err
+	}
+
+	return withStatus(http.StatusNoContent, nil)
+}
+
 func (srv *Server) DeleteConstraint(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
 	if res, ok := srv.RequireAdmin(ctx); !ok {
 		return res, nil
