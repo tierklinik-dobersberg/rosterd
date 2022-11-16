@@ -218,6 +218,7 @@ func (srv *Server) GetRequiredShifts(ctx context.Context, query url.Values, para
 	startTimeStr := query.Get("from")
 	toTimeStr := query.Get("to")
 	includeStaffList := query.Has("stafflist")
+	tags := query["tags"]
 
 	start, err := time.ParseInLocation("2006-01-02", startTimeStr, srv.Location)
 	if err != nil {
@@ -229,7 +230,7 @@ func (srv *Server) GetRequiredShifts(ctx context.Context, query url.Values, para
 		return nil, err
 	}
 
-	shifts, _, err := srv.getRequiredShifts(ctx, start, to, includeStaffList)
+	shifts, _, err := srv.getRequiredShifts(ctx, start, to, includeStaffList, tags)
 
 	return shifts, err
 }
@@ -249,7 +250,7 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 	start := time.Date(int(year), time.Month(month), 1, 0, 0, 0, 0, srv.Location)
 	to := time.Date(int(year), time.Month(month)+1, 0, 0, 0, 0, 0, srv.Location)
 
-	requiredShifts, users, err := srv.getRequiredShifts(ctx, start, to, true)
+	requiredShifts, users, err := srv.getRequiredShifts(ctx, start, to, true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +380,7 @@ func (srv *Server) analyzeRoster(ctx context.Context, roster structs.Roster, cac
 	to := time.Date(roster.Year, roster.Month+1, 0, 0, 0, 0, 0, time.Local)
 
 	// get a list of all required shifts but do not yet evaluate constraints
-	requiredShifts, _, err := srv.getRequiredShifts(ctx, start, to, false)
+	requiredShifts, _, err := srv.getRequiredShifts(ctx, start, to, false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +597,7 @@ func (srv *Server) validateRosterShift(ctx context.Context, softConstraints bool
 	return diags, nil
 }
 
-func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, includeStaffList bool) (map[string][]structs.RosterShiftWithStaffList, map[string]structs.User, error) {
+func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, includeStaffList bool, tags []string) (map[string][]structs.RosterShiftWithStaffList, map[string]structs.User, error) {
 	var shifts = make(map[string][]structs.RosterShiftWithStaffList)
 
 	var allUsers map[string]structs.User
@@ -614,6 +615,25 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 		}
 	}
 
+	// a small unitlity method to check a set of shift tags against
+	// the set of filtered tags.
+	// This returns true if no tag filter is set.
+	hasFilteredTag := func(setTags []string) bool {
+		if len(tags) == 0 {
+			return true
+		}
+
+		for _, t := range setTags {
+			for _, allowed := range tags {
+				if allowed == t {
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
 	for iter := start; to.After(iter); iter = iter.AddDate(0, 0, 1) {
 		isHoliday, err := srv.Holidays.IsHoliday(ctx, srv.Country, iter)
 		if err != nil {
@@ -627,6 +647,10 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 
 		rosterShifts := make([]structs.RosterShiftWithStaffList, len(shiftsPerDay))
 		for idx, shift := range shiftsPerDay {
+			if !hasFilteredTag(shift.Tags) {
+				continue
+			}
+
 			from, to := shift.AtDay(iter)
 
 			worth := float64(to.Sub(from) / time.Minute)
