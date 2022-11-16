@@ -101,7 +101,7 @@ func getRosterShiftsCommand() *cobra.Command {
 						tr = timeRange("%s - %s", shift.From.Format(format), shift.To.Format("15:04 (2006-01-02)"))
 					}
 
-					fmt.Println(" • " + shiftName(shift.Name) + ": " + tr)
+					fmt.Println(" • " + shiftName(shift.Definition.Name) + ": " + tr)
 
 					if detailed {
 						fmt.Println("     Worth: " + (time.Duration(shift.MinutesWorth) * time.Minute).String())

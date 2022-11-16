@@ -98,15 +98,13 @@ func getRootCommand() *cobra.Command {
 						staff = day.OnCall.Night
 
 					default:
-						hclog.L().Error("failed to find staff for shift %s (%s - %s)", shift.Name, shift.From, shift.To)
+						hclog.L().Error("failed to find staff for shift %s (%s - %s)", shift.Definition.Name, shift.From, shift.To)
 					}
 
 					roster.Shifts = append(roster.Shifts, structs.RosterShift{
+						Definition:         shift.Definition,
 						Staff:              staff,
-						Tags:               shift.Tags,
 						ShiftID:            shift.ShiftID,
-						ShortName:          shift.ShortName,
-						Name:               shift.Name,
 						IsHoliday:          shift.IsHoliday,
 						IsWeekend:          shift.IsWeekend,
 						From:               shift.From,

@@ -22,7 +22,7 @@ func (ctx EvalContext) HasOnSameDay(shiftName string) bool {
 
 	yearDay := ctx.From.YearDay()
 	for _, shift := range ctx.Roster.Shifts {
-		if shift.From.YearDay() == yearDay && (shift.Name == shiftName || shift.ShortName == shiftName) {
+		if shift.From.YearDay() == yearDay && (shift.Definition.Name == shiftName || shift.Definition.ShortName == shiftName) {
 			for _, s := range shift.Staff {
 				if ctx.Staff == s {
 					return true
@@ -41,7 +41,7 @@ func (ctx EvalContext) CountShiftTypes(shiftName string) int {
 
 	count := 0
 	for _, shift := range ctx.Roster.Shifts {
-		if shift.Name != shiftName && shift.ShortName != shiftName {
+		if shift.Definition.Name != shiftName && shift.Definition.ShortName != shiftName {
 			continue
 		}
 

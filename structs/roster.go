@@ -10,15 +10,14 @@ type (
 	RosterShift struct {
 		Staff              []string           `json:"staff" bson:"staff"`
 		ShiftID            primitive.ObjectID `json:"shiftID" bson:"shiftID"`
-		ShortName          string             `json:"shortName" bson:"shortName"`
-		Name               string             `json:"name" bson:"name"`
-		Tags               []string           `json:"tags" bson:"tags"`
 		IsHoliday          bool               `json:"isHoliday" bson:"isHoliday"`
 		IsWeekend          bool               `json:"isWeekend" bson:"isWeekend"`
 		From               time.Time          `json:"from" bson:"from"`
 		To                 time.Time          `json:"to" bson:"to"`
 		MinutesWorth       float64            `json:"minutesWorth" bson:"minutesWorth"`
 		RequiredStaffCount int                `json:"requiredStaffCount" bson:"requiredStaffCount"`
+
+		Definition WorkShift `json:"definition" bson:"-"`
 	}
 
 	RosterShiftWithStaffList struct {

@@ -108,7 +108,7 @@ func (srv *Server) FindRoster(ctx context.Context, query url.Values, params map[
 		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
 
-	roster, err := srv.Database.FindRoster(ctx, time.Month(month), int(year))
+	roster, err := srv.findRoster(ctx, time.Month(month), int(year))
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +116,32 @@ func (srv *Server) FindRoster(ctx context.Context, query url.Values, params map[
 	_, isAdmin := srv.RequireAdmin(ctx)
 	if roster.Approved == nil && !isAdmin {
 		return withStatus(http.StatusUnauthorized, nil)
+	}
+
+	return roster, nil
+}
+
+func (srv *Server) findRoster(ctx context.Context, month time.Month, year int) (*structs.Roster, error) {
+	roster, err := srv.Database.FindRoster(ctx, month, year)
+	if err != nil {
+		return nil, err
+	}
+
+	// get a list of all workshift definitions.
+	shifts, err := srv.Database.ListWorkShifts(ctx)
+	if err != nil {
+		return roster, err
+	}
+
+	// create a lookup map for shifts by their object ID.
+	lookupMap := make(map[string]structs.WorkShift)
+	for _, shift := range shifts {
+		lookupMap[shift.ID.Hex()] = shift
+	}
+
+	// update all roster shifts and add a reference to the shift definition
+	for idx, rosterShift := range roster.Shifts {
+		roster.Shifts[idx].Definition = lookupMap[rosterShift.ShiftID.Hex()]
 	}
 
 	return roster, nil
@@ -145,7 +171,7 @@ func (srv *Server) FindCurrentlyWorkingStaff(ctx context.Context, query url.Valu
 		wholeDay = true
 	}
 
-	roster, err := srv.Database.FindRoster(ctx, date.Month(), date.Year())
+	roster, err := srv.findRoster(ctx, date.Month(), date.Year())
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +193,7 @@ func (srv *Server) FindCurrentlyWorkingStaff(ctx context.Context, query url.Valu
 				isAllowed := false
 
 				for _, allowed := range shortNames {
-					if shift.ShortName == allowed {
+					if shift.Definition.ShortName == allowed {
 						isAllowed = true
 						break
 					}
@@ -175,7 +201,7 @@ func (srv *Server) FindCurrentlyWorkingStaff(ctx context.Context, query url.Valu
 
 				// check tags
 				if !isAllowed {
-					for _, tag := range shift.Tags {
+					for _, tag := range shift.Definition.Tags {
 						for _, allowed := range tags {
 							if tag == allowed {
 								isAllowed = true
@@ -542,7 +568,7 @@ func (srv *Server) validateRosterShift(ctx context.Context, softConstraints bool
 			Date:        requiredShift.From.Format("2006-01-02"),
 			Details: map[string]any{
 				"shiftID":       requiredShift.ShiftID,
-				"shiftName":     requiredShift.Name,
+				"shiftName":     requiredShift.Definition.Name,
 				"requiredCount": requiredShift.RequiredStaffCount,
 				"assignedStaff": rosterShift.Staff,
 				"from":          requiredShift.From,
@@ -659,15 +685,13 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 			}
 			rosterShift := structs.RosterShift{
 				ShiftID:            shift.ID,
-				Name:               shift.Name,
-				ShortName:          shift.ShortName,
-				Tags:               shift.Tags,
 				IsHoliday:          isHoliday,
 				IsWeekend:          from.Weekday() == time.Saturday || from.Weekday() == time.Sunday,
 				From:               from,
 				To:                 to,
 				MinutesWorth:       worth,
 				RequiredStaffCount: shift.RequiredStaffCount,
+				Definition:         shift,
 			}
 
 			var eligibleStaff []string
