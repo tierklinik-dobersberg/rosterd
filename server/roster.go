@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/tierklinik-dobersberg/rosterd/constraint"
 	"github.com/tierklinik-dobersberg/rosterd/generator"
+	"github.com/tierklinik-dobersberg/rosterd/middleware"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,6 +30,12 @@ func (srv *Server) CreateRoster(ctx context.Context, query url.Values, params ma
 	if err := json.NewDecoder(body).Decode(&roster); err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
+
+	claims := middleware.ClaimsFromContext(ctx)
+	t := time.Now()
+
+	roster.CreatedBy = claims.Subject
+	roster.CreatedAt = &t
 
 	if err := srv.Database.CreateRoster(ctx, roster); err != nil {
 		return nil, err
@@ -55,6 +62,9 @@ func (srv *Server) UpdateRoster(ctx context.Context, query url.Values, params ma
 	if err != nil {
 		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
+
+	t := time.Now()
+	roster.UpdatedAt = &t
 
 	if err := srv.Database.UpdateRoster(ctx, roster); err != nil {
 		return nil, err
@@ -92,11 +102,30 @@ func (srv *Server) ApproveRoster(ctx context.Context, query url.Values, params m
 		return withStatus(http.StatusBadRequest, map[string]any{"error": err.Error()})
 	}
 
-	if err := srv.Database.ApproveRoster(ctx, time.Month(month), int(year)); err != nil {
+	claims := middleware.ClaimsFromContext(ctx)
+	if err := srv.Database.ApproveRoster(ctx, claims.Subject, time.Month(month), int(year)); err != nil {
 		return nil, err
 	}
 
 	return nil, nil
+}
+
+func (srv *Server) ListRosterMeta(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
+	var approved *bool
+
+	// Non admin-users can only see approved rosters
+	_, isAdmin := srv.RequireAdmin(ctx)
+	if !isAdmin {
+		approved = new(bool)
+		*approved = true
+	}
+
+	roster, err := srv.Database.ListRosterMeta(ctx, approved)
+	if err != nil {
+		return nil, err
+	}
+
+	return roster, nil
 }
 
 func (srv *Server) FindRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {

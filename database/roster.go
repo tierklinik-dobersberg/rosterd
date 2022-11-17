@@ -8,6 +8,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DatabaseImpl) CreateRoster(ctx context.Context, roster structs.Roster) error {
@@ -48,6 +49,33 @@ func (db *DatabaseImpl) FindRoster(ctx context.Context, month time.Month, year i
 	return &roster, nil
 }
 
+func (db *DatabaseImpl) ListRosterMeta(ctx context.Context, approved *bool) ([]structs.RosterMeta, error) {
+	filter := bson.M{}
+
+	if approved != nil {
+		filter["approved"] = approved
+	}
+
+	results, err := db.rosters.Find(
+		ctx,
+		filter,
+		options.Find().SetSort(bson.D{
+			{Key: "year", Value: 1},
+			{Key: "month", Value: 1},
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var meta []structs.RosterMeta
+	if err := results.All(ctx, &meta); err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
 func (db *DatabaseImpl) DeleteRoster(ctx context.Context, id string) error {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -85,7 +113,7 @@ func (db *DatabaseImpl) LoadRoster(ctx context.Context, id string) (*structs.Ros
 	return &roster, nil
 }
 
-func (db *DatabaseImpl) ApproveRoster(ctx context.Context, month time.Month, year int) error {
+func (db *DatabaseImpl) ApproveRoster(ctx context.Context, approver string, month time.Month, year int) error {
 	result, err := db.rosters.UpdateOne(
 		ctx, bson.M{
 			"year":  year,
@@ -95,6 +123,7 @@ func (db *DatabaseImpl) ApproveRoster(ctx context.Context, month time.Month, yea
 			"$set": bson.M{
 				"approved":   true,
 				"approvedAt": time.Now(),
+				"approvedBy": approver,
 			},
 		},
 	)

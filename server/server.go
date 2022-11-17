@@ -101,6 +101,7 @@ func (srv *Server) Setup() error {
 	roster := v1.Group("roster/")
 	{
 		// roster management
+		roster.GET("", wrap(srv.ListRosterMeta))
 		roster.GET(":year/:month", wrap(srv.FindRoster))
 		roster.POST(":year/:month", wrap(srv.CreateRoster))
 		roster.PUT("byid/:id", wrap(srv.UpdateRoster))

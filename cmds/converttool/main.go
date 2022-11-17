@@ -61,8 +61,10 @@ func getRootCommand() *cobra.Command {
 			cli := client.New(rosterdURL, rosterdJWT)
 
 			roster := structs.Roster{
-				Month: time.Month(month),
-				Year:  int(year),
+				RosterMeta: structs.RosterMeta{
+					Month: time.Month(month),
+					Year:  int(year),
+				},
 			}
 
 			monthStart := time.Date(roster.Year, roster.Month, 1, 0, 0, 0, 0, time.Local)

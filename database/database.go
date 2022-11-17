@@ -55,9 +55,10 @@ type (
 		CreateRoster(ctx context.Context, roster structs.Roster) error
 		UpdateRoster(ctx context.Context, roster structs.Roster) error
 		FindRoster(ctx context.Context, month time.Month, year int) (*structs.Roster, error)
+		ListRosterMeta(ctx context.Context, approved *bool) ([]structs.RosterMeta, error)
 		DeleteRoster(ctx context.Context, id string) error
 		LoadRoster(ctx context.Context, id string) (*structs.Roster, error)
-		ApproveRoster(ctx context.Context, month time.Month, year int) error
+		ApproveRoster(ctx context.Context, approver string, month time.Month, year int) error
 	}
 
 	DatabaseImpl struct {

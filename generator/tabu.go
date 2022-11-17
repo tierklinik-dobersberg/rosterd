@@ -303,8 +303,10 @@ func (state *TabuState) Neighbor() hego.TabuState {
 
 func (state *GeneratorState) ToRoster() structs.Roster {
 	r := structs.Roster{
-		Month: state.month,
-		Year:  state.year,
+		RosterMeta: structs.RosterMeta{
+			Month: state.month,
+			Year:  state.year,
+		},
 	}
 
 	shiftLookupMap := make(map[string]*structs.RosterShiftWithStaffList)

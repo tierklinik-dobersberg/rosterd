@@ -27,12 +27,19 @@ type (
 	}
 
 	Roster struct {
+		RosterMeta `json:",inline" bson:",inline"`
+		Shifts     []RosterShift `json:"shifts" bson:"shifts"`
+	}
+
+	RosterMeta struct {
 		ID         primitive.ObjectID `json:"id" bson:"_id"`
 		Month      time.Month         `json:"month" bson:"month"`
 		Year       int                `json:"year" bson:"year"`
-		Shifts     []RosterShift      `json:"shifts" bson:"shifts"`
 		Approved   *bool              `json:"approved" bson:"approved"`
 		ApprovedAt *time.Time         `json:"approvedAt" bson:"approvedAt"`
+		CreatedBy  string             `json:"createdBy" bson:"createdBy"`
+		CreatedAt  *time.Time         `json:"createdAt" bson:"createdAt"`
+		UpdatedAt  *time.Time         `json:"updatedAt" bson:"updatedAt"`
 	}
 
 	Diagnostic struct {
