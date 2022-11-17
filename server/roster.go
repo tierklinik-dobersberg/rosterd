@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/generator"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (srv *Server) CreateRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
@@ -110,6 +112,14 @@ func (srv *Server) FindRoster(ctx context.Context, query url.Values, params map[
 
 	roster, err := srv.findRoster(ctx, time.Month(month), int(year))
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return withStatus(http.StatusNotFound, map[string]any{
+				"error": "roster not found",
+				"year":  year,
+				"month": month,
+			})
+		}
+
 		return nil, err
 	}
 
@@ -173,6 +183,14 @@ func (srv *Server) FindCurrentlyWorkingStaff(ctx context.Context, query url.Valu
 
 	roster, err := srv.findRoster(ctx, date.Month(), date.Year())
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return withStatus(http.StatusNotFound, map[string]any{
+				"error": "roster not found",
+				"year":  date.Month(),
+				"month": date.Year(),
+			})
+		}
+
 		return nil, err
 	}
 
@@ -245,6 +263,7 @@ func (srv *Server) GetRequiredShifts(ctx context.Context, query url.Values, para
 	toTimeStr := query.Get("to")
 	includeStaffList := query.Has("stafflist")
 	tags := query["tags"]
+	includeRoster := query.Has("include-roster")
 
 	start, err := time.ParseInLocation("2006-01-02", startTimeStr, srv.Location)
 	if err != nil {
@@ -256,9 +275,32 @@ func (srv *Server) GetRequiredShifts(ctx context.Context, query url.Values, para
 		return nil, err
 	}
 
-	shifts, _, err := srv.getRequiredShifts(ctx, start, to, includeStaffList, tags)
+	shiftsPerDay, _, err := srv.getRequiredShifts(ctx, start, to, includeStaffList, tags)
 
-	return shifts, err
+	if includeRoster {
+		roster, err := srv.findRoster(ctx, start.Month(), start.Year())
+		if err != nil {
+			return nil, err
+		}
+
+		rosterShiftsPerDay := make(map[string][]structs.RosterShift)
+		for _, shift := range roster.Shifts {
+			key := shift.From.Format("2006-01-02")
+			rosterShiftsPerDay[key] = append(rosterShiftsPerDay[key], shift)
+		}
+
+		for date := range shiftsPerDay {
+			for idx, shift := range shiftsPerDay[date] {
+				for _, rosterShift := range rosterShiftsPerDay[date] {
+					if rosterShift.ShiftID == shift.ShiftID {
+						shiftsPerDay[date][idx].Staff = rosterShift.Staff
+					}
+				}
+			}
+		}
+	}
+
+	return shiftsPerDay, err
 }
 
 func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params map[string]string, body io.Reader) (any, error) {
@@ -288,8 +330,8 @@ func (srv *Server) GenerateRoster(ctx context.Context, query url.Values, params 
 	settings := hego.TSSettings{}
 	settings.MaxIterations = 500
 	settings.Verbose = settings.MaxIterations / 10
-	settings.TabuListSize = 200
-	settings.NeighborhoodSize = 20
+	settings.TabuListSize = 20
+	settings.NeighborhoodSize = 10
 
 	if val := query.Get("max-iterations"); val != "" {
 		maxIter, err := strconv.ParseInt(val, 0, 0)
@@ -660,7 +702,7 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 		return false
 	}
 
-	for iter := start; to.After(iter); iter = iter.AddDate(0, 0, 1) {
+	for iter := start; to.After(iter) || to.Equal(iter); iter = iter.AddDate(0, 0, 1) {
 		isHoliday, err := srv.Holidays.IsHoliday(ctx, srv.Country, iter)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed loading holidays for %s: %w", iter, err)
@@ -671,8 +713,8 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 			return nil, nil, fmt.Errorf("failed loading shiftss for %s: %w", iter, err)
 		}
 
-		rosterShifts := make([]structs.RosterShiftWithStaffList, len(shiftsPerDay))
-		for idx, shift := range shiftsPerDay {
+		rosterShifts := make([]structs.RosterShiftWithStaffList, 0, len(shiftsPerDay))
+		for _, shift := range shiftsPerDay {
 			if !hasFilteredTag(shift.Tags) {
 				continue
 			}
@@ -727,11 +769,11 @@ func (srv *Server) getRequiredShifts(ctx context.Context, start, to time.Time, i
 				}
 			}
 
-			rosterShifts[idx] = structs.RosterShiftWithStaffList{
+			rosterShifts = append(rosterShifts, structs.RosterShiftWithStaffList{
 				RosterShift:   rosterShift,
 				EligibleStaff: eligibleStaff,
 				Violations:    violationPerUser,
-			}
+			})
 		}
 		shifts[iter.Format("2006-01-02")] = rosterShifts
 	}
