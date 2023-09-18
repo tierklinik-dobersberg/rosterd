@@ -1,0 +1,5 @@
+go.work
+go.work.sum
+ui/node_modules
+ui/.angular
+ui/.vscode

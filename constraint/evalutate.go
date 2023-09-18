@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/PaesslerAG/gval"
-	"github.com/hashicorp/go-hclog"
+	"github.com/sirupsen/logrus"
+	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/rosterd/database"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 )
@@ -19,19 +21,28 @@ type Cache struct {
 	constraints map[string][]structs.Constraint
 }
 
-func EvaluateForStaff(ctx context.Context, includeSoft bool, log hclog.Logger, db database.ConstraintDatabase, staff string, roles []string, rosterShift structs.RosterShift, roster *structs.Roster, rosterOnly bool) ([]structs.ConstraintViolation, error) {
+func EvaluateForStaff(ctx context.Context, includeSoft bool, log *logrus.Entry, db database.ConstraintDatabase, staff string, roles []*idmv1.Role, rosterShift structs.RosterShift, roster *structs.Roster, rosterOnly bool) ([]structs.ConstraintViolation, error) {
 	return new(Cache).EvaluateForStaff(ctx, includeSoft, log, db, staff, roles, rosterShift, roster, rosterOnly)
 }
 
-func (cache *Cache) EvaluateForStaff(ctx context.Context, includeSoft bool, log hclog.Logger, db database.ConstraintDatabase, staff string, roles []string, rosterShift structs.RosterShift, roster *structs.Roster, rosterOnly bool) ([]structs.ConstraintViolation, error) {
-	key := fmt.Sprintf("%s-%s", staff, strings.Join(roles, ","))
+func (cache *Cache) EvaluateForStaff(ctx context.Context, includeSoft bool, log *logrus.Entry, db database.ConstraintDatabase, staff string, roles []*idmv1.Role, rosterShift structs.RosterShift, roster *structs.Roster, rosterOnly bool) ([]structs.ConstraintViolation, error) {
+	roleIds := make([]string, len(roles))
+	for idx, role := range roles {
+		roleIds[idx] = role.Id
+	}
+
+	key := fmt.Sprintf("%s-%s", staff, strings.Join(roleIds, ","))
 
 	constraints, ok := cache.constraints[key]
 	if !ok {
 		var err error
 
-		log.Info("loading constraints for user", "user", staff, "roles", roles)
-		constraints, err = db.FindConstraints(ctx, []string{staff}, roles)
+		log.WithFields(logrus.Fields{
+			"user":  staff,
+			"roles": roles,
+		}).Infof("loading constraints for user")
+
+		constraints, err = db.FindConstraints(ctx, []string{staff}, roleIds)
 		if err != nil {
 			return nil, err
 		}
@@ -88,4 +99,26 @@ func (cache *Cache) EvaluateForStaff(ctx context.Context, includeSoft bool, log 
 	}
 
 	return violations, nil
+}
+
+func EvaluateForStaff2(ctx context.Context, cache *Cache, includeSoft bool, log *logrus.Entry, db database.ConstraintDatabase, staff string, roles []*idmv1.Role, rosterShift structs.RosterShift, roster *structs.Roster, rosterOnly bool) ([]*rosterv1.ConstraintViolation, error) {
+	result, err := cache.EvaluateForStaff(ctx, includeSoft, log, db, staff, roles, rosterShift, roster, rosterOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	protoResult := make([]*rosterv1.ConstraintViolation, len(result))
+	for idx, v := range result {
+		protoResult[idx] = &rosterv1.ConstraintViolation{
+			Hard: v.Hard,
+			Kind: &rosterv1.ConstraintViolation_Evaluation{
+				Evaluation: &rosterv1.ConstraintEvaluationViolation{
+					Id:          v.ID.Hex(),
+					Description: v.Name,
+				},
+			},
+		}
+	}
+
+	return protoResult, nil
 }

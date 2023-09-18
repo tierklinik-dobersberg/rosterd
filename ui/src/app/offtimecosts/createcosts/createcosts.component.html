@@ -1,0 +1,44 @@
+<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-subtle border-tertiary" (ngSubmit)="save()">
+  <h1 class="text-lg">Abwesenheit eintragen</h1>
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Mitarbeiter</label>
+    <nz-select name="requestor" [(ngModel)]="model.userId" [nzOptionHeightPx]="48">
+      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!" [nzLabel]="user | displayName">
+        <span class="flex flex-row items-center justify-start gap-2 text-left">
+          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+          </nz-avatar>
+          {{ user | displayName }}
+        </span>
+      </nz-option>
+    </nz-select>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="comment" [(ngModel)]="model.comment">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Zeit</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="costs" [ngModel]="model.costs | duration:'default-hours':'s'" (ngModelChange)="updateCosts($event)">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Datum</label>
+    <nz-date-picker [nzShowTime]="false" name="date" [(ngModel)]="model.date"></nz-date-picker>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Art</label>
+    <nz-radio-group [(ngModel)]="model.type" name="type">
+      <label nz-radio-button nzValue="vacation">Urlaub</label>
+      <label nz-radio-button nzValue="timeOff">Zeitausgleich</label>
+    </nz-radio-group>
+  </div>
+
+  <div *ngIf="model.costs > 0" class="p-4 text-white rounded bg-opacity-70 bg-alert-red">
+    <p>Dieser Eintrag fügt {{ model.costs | duration:'default-hours':'s'}} an {{ model.type === 'vacation' ? 'Urlaubsguthaben' : 'ZA-Guthaben' }} hinzu. Bitte überprüfe ob "Zeit" ein negativer Wert sein sollte.</p>
+  </div>
+
+  <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
+</form>

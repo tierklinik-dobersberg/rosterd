@@ -1,171 +1,310 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"os"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
+	"github.com/bufbuild/connect-go"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func getRosterCommand() *cobra.Command {
+func RosterCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "roster [command]",
-		Short: "Manage duty rosters",
+		Use: "roster",
 	}
 
 	cmd.AddCommand(
-		getRosterShiftsCommand(),
-		getGenerateRosterCommand(),
+		AnalyzeWorkTimeCommand(root),
+		RequiredShiftsCommmand(root),
+		WorkingStaffCommand(root),
+		RosterTypeCommand(root),
 	)
 
 	return cmd
 }
 
-func getRosterShiftsCommand() *cobra.Command {
+func DeleteRosterTypeCommand(root *cli.Root) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "delete",
+		Args:    cobra.ExactArgs(1),
+		Aliases: []string{"rm"},
+		Run: func(cmd *cobra.Command, args []string) {
+			_, err := root.Roster().DeleteRosterType(context.Background(), connect.NewRequest(&rosterv1.DeleteRosterTypeRequest{
+				UniqueName: args[0],
+			}))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		},
+	}
+
+	return cmd
+}
+
+func CreateRosterTypeCommand(root *cli.Root) *cobra.Command {
 	var (
-		evalConstraints bool
-		detailed        bool
+		shiftTags  []string
+		onCallTags []string
 	)
 
 	cmd := &cobra.Command{
-		Use:   "shifts ( [month] | [from] [to] )",
-		Args:  cobra.MinimumNArgs(1),
-		Short: "Get an empty duty roster for period of time",
+		Use:     "create",
+		Aliases: []string{"save", "update"},
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			var (
-				from time.Time
-				to   time.Time
-			)
-
-			if len(args) == 1 {
-				monthIdx, err := strconv.ParseInt(args[0], 0, 0)
-				if err != nil {
-					hclog.L().Error("failed to parse month", "error", err)
-					os.Exit(1)
-				}
-
-				now := time.Now()
-
-				from = time.Date(now.Year(), time.Month(monthIdx), 1, 0, 0, 0, 0, time.Local)
-				to = time.Date(now.Year(), time.Month(monthIdx)+1, 0, 0, 0, 0, 0, time.Local)
-			} else {
-				var err error
-				from, err = time.Parse("2006-01-02", args[0])
-				if err != nil {
-					hclog.L().Error("failed to parse from time", "error", err)
-					os.Exit(1)
-				}
-
-				to, err = time.Parse("2006-01-02", args[1])
-				if err != nil {
-					hclog.L().Error("failed to parse to time", "error", err)
-					os.Exit(1)
-				}
-			}
-
-			result, err := cli.GetRequiredShifts(cmd.Context(), from, to, evalConstraints)
+			res, err := root.Roster().CreateRosterType(context.Background(), connect.NewRequest(&rosterv1.CreateRosterTypeRequest{
+				RosterType: &rosterv1.RosterType{
+					UniqueName: args[0],
+					ShiftTags:  shiftTags,
+					OnCallTags: onCallTags,
+				},
+			}))
 			if err != nil {
-				hclog.L().Error("failed to retrieve empty roster", "error", err, "from", from.Format("2006-01-02"), "to", to.Format("2006-01-02"))
-				os.Exit(1)
+				logrus.Fatal(err)
 			}
 
-			dayHeader := text.Colors{text.Bold, text.Underline}.Sprint
-			shiftName := text.Colors{text.FgGreen, text.Bold}.Sprint
-			timeRange := text.Colors{text.Italic}.Sprintf
+			root.Print(res.Msg)
+		},
+	}
 
-			var keys = make([]string, 0, len(result))
-			for key := range result {
-				keys = append(keys, key)
+	cmd.Flags().StringSliceVar(&shiftTags, "shift-tag", nil, "A list of shift tags for this roster type")
+	cmd.Flags().StringSliceVar(&onCallTags, "on-call-tag", nil, "A list of on-call shift tags for this roster type")
+
+	return cmd
+}
+
+func RosterTypeCommand(root *cli.Root) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "types",
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			res, err := root.Roster().ListRosterTypes(context.Background(), connect.NewRequest(&rosterv1.ListRosterTypesRequest{}))
+			if err != nil {
+				logrus.Fatal(err)
 			}
 
-			sort.Strings(keys)
+			root.Print(res.Msg)
+		},
+	}
 
-			for _, key := range keys {
-				shifts := result[key]
-				d, _ := time.Parse("2006-01-02", key)
+	cmd.AddCommand(
+		CreateRosterTypeCommand(root),
+		DeleteRosterTypeCommand(root),
+	)
 
-				fmt.Println(dayHeader(d.Format("2006-01-02")+":") + " " + timeRange(d.Format("(Monday)")))
-				for _, shift := range shifts {
+	return cmd
+}
 
-					format := "15:04"
+func AnalyzeWorkTimeCommand(root *cli.Root) *cobra.Command {
+	var (
+		from   string
+		to     string
+		users  []string
+		fields []string
+		pretty bool
+	)
 
-					tr := timeRange("%s - %s", shift.From.Format(format), shift.To.Format(format))
-					if shift.From.YearDay() != shift.To.YearDay() {
-						tr = timeRange("%s - %s", shift.From.Format(format), shift.To.Format("15:04 (2006-01-02)"))
-					}
+	cmd := &cobra.Command{
+		Use: "work-times",
+		Run: func(cmd *cobra.Command, args []string) {
+			req := &rosterv1.AnalyzeWorkTimeRequest{
+				From: from,
+				To:   to,
+				Users: &rosterv1.UsersToAnalyze{
+					UserIds:  users,
+					AllUsers: len(users) == 0,
+				},
+				// ReadMask: fieldmaskpb.FieldMask{
+				// 	Paths: fields,
+				// },
+			}
 
-					fmt.Println(" • " + shiftName(shift.Definition.Name) + ": " + tr)
+			res, err := root.Roster().AnalyzeWorkTime(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
 
-					if detailed {
-						fmt.Println("     Worth: " + (time.Duration(shift.MinutesWorth) * time.Minute).String())
-					}
+			if !pretty {
+				root.Print(res.Msg)
+				return
+			}
 
-					if evalConstraints {
-						fmt.Println("       Staff: " + timeRange(strings.Join(shift.EligibleStaff, ", ")))
+			users := getUserMap(root)
 
-						if detailed {
-							if len(shift.Violations) > 0 {
-								fmt.Println("       Constraints:")
-								for user, violations := range shift.Violations {
-									fmt.Println("       • " + user)
-									for _, v := range violations {
-										fmt.Println("           • " + v.Type + ": " + v.Name)
-									}
-								}
-							}
-						}
-					}
+			for _, user := range res.Msg.Results {
+				displayName := users[user.UserId].User.DisplayName
+				if displayName == "" {
+					displayName = users[user.UserId].User.Username
 				}
-				fmt.Println()
+
+				timeResultColor := text.BgYellow
+				timeResultKey := "Overtime: "
+				if user.ExpectedTime.AsDuration() > user.PlannedTime.AsDuration() {
+					timeResultColor = text.BgRed
+					timeResultKey = "Undertime: "
+				}
+
+				fmt.Printf(
+					"User %s\nID: %s\nExpected: %s\nPlanned: %s\n%s\n\n%s\n",
+					text.Colors{text.Bold, text.Underline, text.FgGreen}.Sprint(displayName),
+					user.UserId,
+					text.Colors{text.Bold, text.Underline, text.FgWhite}.Sprint(shortDur(user.ExpectedTime)),
+					text.Colors{text.Bold, text.Underline, text.FgWhite}.Sprint(shortDur(user.PlannedTime)),
+					fmt.Sprintf("%s%s", timeResultKey, text.Colors{timeResultColor, text.FgBlack, text.Bold}.Sprintf(" %s ", user.ExpectedTime.AsDuration()-user.PlannedTime.AsDuration())),
+					text.Underline.Sprint("Steps:"),
+				)
+
+				tbw := getTbWriter()
+				tbw.AppendHeader(table.Row{
+					"WT",
+					"KW",
+					"Working Days",
+					"Expected Time",
+					"Planned",
+				})
+				tbw.AppendRow(table.Row{"", "", "", "", ""})
+
+				sumDays := 0
+				for _, step := range user.Steps {
+					idx := shortDur(step.WorkTimePerWeek)
+
+					weekSum := 0
+					for _, week := range step.Weeks {
+						tbw.AppendRow(table.Row{
+							idx,
+							fmt.Sprintf("%d KW%02d", week.Year, week.Week),
+							week.WorkingDays,
+							shortDur(week.ExpectedWork),
+							shortDur(week.Planned),
+						})
+						weekSum += int(week.WorkingDays)
+					}
+
+					sumRow := text.Colors{text.FgYellow}.Sprintf
+					tbw.AppendRow(table.Row{
+						sumRow("Sum"),
+						"",
+						sumRow("%d", weekSum),
+						sumRow(shortDur(step.ExpectedWorkTime)),
+						sumRow(shortDur(step.Planned)),
+					})
+
+					tbw.AppendRow(table.Row{"", "", "", "", ""})
+
+					sumDays += weekSum
+				}
+
+				tbw.AppendRow(table.Row{
+					text.Underline.Sprint("Total"),
+					"",
+					text.Underline.Sprintf("%d", sumDays),
+					text.Underline.Sprint(shortDur(user.ExpectedTime)),
+					text.Underline.Sprint(shortDur(user.PlannedTime)),
+				})
+
+				tbw.Render()
 			}
 		},
 	}
 
-	flags := cmd.Flags()
+	f := cmd.Flags()
 	{
-		flags.BoolVar(&evalConstraints, "eval", false, "Evaluate constraints and include possible staff")
-		flags.BoolVar(&detailed, "detail", false, "Show detailed information. Only applicable with --eval")
+		f.StringVar(&from, "from", "", "")
+		f.StringVar(&to, "to", "", "")
+		f.StringSliceVar(&users, "users", nil, "")
+		f.StringSliceVar(&fields, "field", nil, "")
+		f.BoolVar(&pretty, "pretty", false, "")
 	}
 
 	return cmd
 }
 
-func getGenerateRosterCommand() *cobra.Command {
+func RequiredShiftsCommmand(root *cli.Root) *cobra.Command {
+	var (
+		from string
+		to   string
+	)
 	cmd := &cobra.Command{
-		Use:  "generate [year] [month]",
-		Args: cobra.ExactArgs(2),
+		Use: "plan",
 		Run: func(cmd *cobra.Command, args []string) {
-			year, err := strconv.ParseInt(args[0], 0, 0)
+			res, err := root.Roster().GetRequiredShifts(context.Background(), connect.NewRequest(&rosterv1.GetRequiredShiftsRequest{
+				From: from,
+				To:   to,
+			}))
 			if err != nil {
-				hclog.L().Error("failed to parse year", "year", args[0])
-				os.Exit(1)
+				logrus.Fatal(err)
 			}
 
-			month, err := strconv.ParseInt(args[1], 0, 0)
-			if err != nil {
-				hclog.L().Error("failed to parse month", "month", args[1])
-				os.Exit(1)
-			}
-
-			res, err := cli.GenerateRoster(cmd.Context(), int(year), time.Month(month))
-			if err != nil {
-				hclog.L().Error("failed to generate roster", "error", err)
-				os.Exit(1)
-			}
-
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "    ")
-
-			enc.Encode(res)
+			root.Print(res.Msg)
 		},
 	}
 
+	f := cmd.Flags()
+	f.StringVar(&from, "from", "", "")
+	f.StringVar(&to, "to", "", "")
+
 	return cmd
+}
+
+func WorkingStaffCommand(root *cli.Root) *cobra.Command {
+	var (
+		t        string
+		typeName string
+		onCall   bool
+	)
+
+	cmd := &cobra.Command{
+		Use: "working-staff",
+		Run: func(cmd *cobra.Command, args []string) {
+			req := &rosterv1.GetWorkingStaffRequest{
+				RosterTypeName: typeName,
+				OnCall: onCall,
+			}
+
+			if t != "" {
+				time, err := time.Parse(time.RFC3339, t)
+				if err != nil {
+					logrus.Fatalf("invalid value for --time")
+				}
+
+				req.Time = timestamppb.New(time)
+			} else {
+				req.Time = timestamppb.New(time.Now())
+			}
+
+			res, err := root.Roster().GetWorkingStaff(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	cmd.Flags().StringVar(&t, "time", "", "")
+	cmd.Flags().StringVar(&typeName, "roster-type", "", "The name of the roster type")
+	cmd.Flags().BoolVar(&onCall, "on-call", false, "Only return staff assigned to on-call shifts.")
+
+	return cmd
+}
+
+func shortDur(dpb *durationpb.Duration) string {
+	d := dpb.AsDuration()
+	s := d.String()
+	if strings.HasSuffix(s, "m0s") {
+		s = s[:len(s)-2]
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = s[:len(s)-2]
+	}
+	return s
 }

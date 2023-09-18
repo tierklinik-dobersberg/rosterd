@@ -2,152 +2,282 @@ package main
 
 import (
 	"context"
-	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
-	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/bufbuild/connect-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/tierklinik-dobersberg/cis/pkg/daytime"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-func getWorkShiftCommand() *cobra.Command {
+func WorkShiftCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "workshift [command]",
-		Short: "Manage workshift definitions",
+		Use:     "work-shift",
+		Aliases: []string{"shift", "workshift"},
+		Run: func(cmd *cobra.Command, args []string) {
+			res, err := root.WorkShift().ListWorkShifts(context.Background(), connect.NewRequest(&rosterv1.ListWorkShiftsRequest{}))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
 	}
 
 	cmd.AddCommand(
-		getCreateWorkshiftCommand(),
-		getListWorkshiftCommand(),
-		getDeleteWorkShiftCommand(),
+		CreateWorkShiftCommand(root),
+		DeleteWorkShiftCommand(root),
+		UpdateWorkShiftCommand(root),
 	)
 
 	return cmd
 }
 
-func getListWorkshiftCommand() *cobra.Command {
+func DeleteWorkShiftCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List and search for working shifts",
+		Use:  "delete",
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			shifts, err := cli.ListWorkShifts(cmd.Context())
+			res, err := root.WorkShift().DeleteWorkShift(context.Background(), connect.NewRequest(&rosterv1.DeleteWorkShiftRequest{
+				Id: args[0],
+			}))
 			if err != nil {
-				hclog.L().Error("failed to retrieve work shift list", "error", err)
-				os.Exit(1)
+				logrus.Fatal(err)
 			}
 
-			tb := getTbWriter()
-			tb.AppendHeader(table.Row{
-				"Name",
-				"From",
-				"Duration",
-				"Worth",
-				"Count",
-				"Days",
-				"Holiday",
-				"ID",
-			})
-
-			for _, s := range shifts {
-				tb.AppendRow(table.Row{
-					s.Name,
-					s.From,
-					s.Duration,
-					s.MinutesWorth,
-					s.RequiredStaffCount,
-					s.Days,
-					s.OnHoliday,
-					s.ID.Hex(),
-				})
-			}
-
-			tb.Render()
+			root.Print(res.Msg)
 		},
 	}
 
 	return cmd
 }
 
-func getDeleteWorkShiftCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Args:  cobra.MinimumNArgs(1),
-		Use:   "delete <id>",
-		Short: "Delete a workshift definition by id",
-		Run: func(cmd *cobra.Command, args []string) {
-			hasError := false
-			for _, id := range args {
-				err := cli.DeleteWorkShift(cmd.Context(), id)
-				if err != nil {
-					hclog.L().Error("failed to delete work shift", "id", id, "error", err)
-					hasError = true
-				}
-			}
-			if hasError {
-				os.Exit(1)
-			}
-		},
-	}
-
-	return cmd
-}
-
-func getCreateWorkshiftCommand() *cobra.Command {
-	var workShift structs.WorkShift
-
+func CreateWorkShiftCommand(root *cli.Root) *cobra.Command {
 	var (
-		from         string
-		duration     time.Duration
-		days         []string
-		minutesWorth int
+		from          string
+		duration      time.Duration
+		days          []string
+		name          string
+		displayName   string
+		onHoliday     bool
+		roles         []string
+		worth         int
+		requiredCount int
+		color         string
+		description   string
+		order         int
+		tags          []string
 	)
 
 	cmd := &cobra.Command{
-		Use:   "create [name]",
-		Short: "Create a new workshift",
+		Use: "create",
 		Run: func(cmd *cobra.Command, args []string) {
-			// get a list of week days for this shift
-			for _, day := range days {
-				d, ok := parseDay(day)
-				if !ok {
-					hclog.L().Error("invalid day", "day", day)
-					os.Exit(1)
-				}
-				workShift.Days = append(workShift.Days, d)
+			parts := strings.SplitN(from, ":", 2)
+			if len(parts) != 2 {
+				logrus.Fatal("invalid value for --from. Expected format is HH:MM")
 			}
 
-			workShift.Duration = structs.JSDuration(duration)
-
-			fromTime, err := daytime.ParseDayTime(from)
+			hour, err := strconv.ParseInt(strings.TrimPrefix(parts[0], "0"), 10, 0)
 			if err != nil {
-				hclog.L().Error("invalid 'from' time", "error", err)
-				os.Exit(1)
-			}
-			workShift.From = structs.Daytime(fromTime.AsDuration())
-
-			if minutesWorth != 0 {
-				workShift.MinutesWorth = &minutesWorth
+				logrus.Fatalf("invalid value for --from: hour: %s", err)
 			}
 
-			if err := cli.CreateWorkShift(context.Background(), workShift); err != nil {
-				hclog.L().Error("failed to create work shift", "error", err)
-				os.Exit(1)
+			mins, err := strconv.ParseInt(strings.TrimPrefix(parts[1], "0"), 10, 0)
+			if err != nil {
+				logrus.Fatalf("invalid value for --from: minutes: %s", err)
 			}
+
+			parsedDays, ok := parseDays(days)
+			if !ok {
+				logrus.Fatalf("invalid value for --days")
+			}
+
+			req := &rosterv1.CreateWorkShiftRequest{
+				From: &rosterv1.Daytime{
+					Hour:   hour,
+					Minute: mins,
+				},
+				Duration:           durationpb.New(duration),
+				Days:               parsedDays,
+				Name:               name,
+				DisplayName:        displayName,
+				OnHoliday:          onHoliday,
+				EligibleRoleIds:    roles,
+				RequiredStaffCount: int64(requiredCount),
+				Color:              color,
+				Description:        description,
+				Order:              int64(order),
+				Tags:               tags,
+			}
+
+			if cmd.Flag("worth").Changed {
+				req.TimeWorth = durationpb.New(time.Duration(worth) * time.Minute)
+			}
+
+			res, err := root.WorkShift().CreateWorkShift(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
 		},
 	}
 
-	flags := cmd.Flags()
+	f := cmd.Flags()
 	{
-		flags.StringSliceVarP(&workShift.EligibleRoles, "roles", "r", nil, "List of roles eligible for this workshift")
-		flags.BoolVar(&workShift.OnHoliday, "holiday", false, "Valid on holidays")
-		flags.StringVarP(&from, "from", "f", "", "Start time")
-		flags.DurationVarP(&duration, "duration", "D", 0, "Duration of the work shift")
-		flags.StringSliceVarP(&days, "days", "d", nil, "A list of weekdays for this work shift")
-		flags.IntVarP(&minutesWorth, "worth", "w", 0, "How many minutes this work shift is worth")
-		flags.IntVarP(&workShift.RequiredStaffCount, "staff-count", "c", 0, "Number of employees required for this shift")
-		flags.StringVarP(&workShift.Name, "name", "n", "", "Descriptive name for this work shift")
+		f.StringVar(&from, "from", "", "")
+		f.DurationVar(&duration, "duration", 0, "")
+		f.StringSliceVar(&days, "days", nil, "")
+		f.StringVar(&name, "name", "", "")
+		f.StringVar(&displayName, "display-name", "", "")
+		f.BoolVar(&onHoliday, "holiday", false, "")
+		f.StringSliceVar(&roles, "roles", nil, "2")
+		f.IntVar(&worth, "worth", 0, "")
+		f.IntVar(&requiredCount, "count", 0, "")
+		f.StringVar(&color, "color", "", "")
+		f.StringVar(&description, "description", "", "")
+		f.IntVar(&order, "order", 0, "")
+		f.StringSliceVar(&tags, "tag", nil, "")
+	}
+
+	return cmd
+}
+
+func UpdateWorkShiftCommand(root *cli.Root) *cobra.Command {
+	var (
+		replaceWorkShift bool
+		from             string
+		duration         time.Duration
+		days             []string
+		name             string
+		displayName      string
+		onHoliday        bool
+		roles            []string
+		worth            int
+		requiredCount    int
+		color            string
+		description      string
+		order            int
+		tags             []string
+		deleteTimeWorth  bool
+	)
+
+	cmd := &cobra.Command{
+		Use:  "update",
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			var dtFrom *rosterv1.Daytime
+			if cmd.Flag("from").Changed {
+				parts := strings.SplitN(from, ":", 2)
+				if len(parts) != 2 {
+					logrus.Fatal("invalid value for --from. Expected format is HH:MM")
+				}
+
+				hour, err := strconv.ParseInt(strings.TrimPrefix(parts[0], "0"), 10, 0)
+				if err != nil {
+					logrus.Fatalf("invalid value for --from: hour: %s", err)
+				}
+
+				mins, err := strconv.ParseInt(strings.TrimPrefix(parts[1], "0"), 10, 0)
+				if err != nil {
+					logrus.Fatalf("invalid value for --from: minutes: %s", err)
+				}
+
+				dtFrom = &rosterv1.Daytime{
+					Hour:   hour,
+					Minute: mins,
+				}
+			}
+
+			var parsedDays []int32
+			if cmd.Flag("days").Changed {
+				var ok bool
+				parsedDays, ok = parseDays(days)
+				if !ok {
+					logrus.Fatalf("invalid value for --days")
+				}
+			}
+
+			req := &rosterv1.UpdateWorkShiftRequest{
+				Id: args[0],
+				Update: &rosterv1.WorkShiftUpdate{
+					From:               dtFrom,
+					Duration:           durationpb.New(duration),
+					Days:               parsedDays,
+					Name:               name,
+					DisplayName:        displayName,
+					OnHoliday:          onHoliday,
+					EligibleRoleIds:    roles,
+					RequiredStaffCount: int64(requiredCount),
+					Color:              color,
+					Description:        description,
+					Order:              int64(order),
+					Tags:               tags,
+				},
+				UpdateInPlace: !replaceWorkShift,
+				WriteMask:     &fieldmaskpb.FieldMask{Paths: make([]string, 0)},
+			}
+
+			if cmd.Flag("worth").Changed {
+				req.Update.TimeWorth = durationpb.New(time.Duration(worth) * time.Minute)
+			}
+			if deleteTimeWorth {
+				req.Update.TimeWorth = nil
+			}
+
+			updateSet := [][]string{
+				{"from", "from"},
+				{"duration", "duration"},
+				{"days", "days"},
+				{"display-name", "display_name"},
+				{"holiday", "on_holiday"},
+				{"name", "name"},
+				{"roles", "eligible_role_ids"},
+				{"worth", "time_worth"},
+				{"delete-worth", "time_worth"},
+				{"color", "color"},
+				{"count", "required_staff_count"},
+				{"description", "description"},
+				{"order", "order"},
+				{"tag", "tags"},
+			}
+			for _, s := range updateSet {
+				if cmd.Flag(s[0]).Changed {
+					req.WriteMask.Paths = append(req.WriteMask.Paths, s[1])
+				}
+			}
+
+			res, err := root.WorkShift().UpdateWorkShift(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.BoolVar(&deleteTimeWorth, "delete-worth", false, "")
+		f.BoolVar(&replaceWorkShift, "replace", true, "")
+		f.StringVar(&from, "from", "", "")
+		f.DurationVar(&duration, "duration", 0, "")
+		f.StringSliceVar(&days, "days", nil, "")
+		f.StringVar(&name, "name", "", "")
+		f.StringVar(&displayName, "display-name", "", "")
+		f.BoolVar(&onHoliday, "holiday", false, "")
+		f.StringSliceVar(&roles, "roles", nil, "2")
+		f.IntVar(&worth, "worth", 0, "")
+		f.IntVar(&requiredCount, "count", 0, "")
+		f.StringVar(&color, "color", "", "")
+		f.StringVar(&description, "description", "", "")
+		f.IntVar(&order, "order", 0, "")
+		f.StringSliceVar(&tags, "tag", nil, "")
 	}
 
 	return cmd
@@ -172,4 +302,18 @@ func parseDay(day string) (time.Weekday, bool) {
 	d, ok := days[strings.ToLower(day[0:2])]
 
 	return d, ok
+}
+
+func parseDays(days []string) ([]int32, bool) {
+	result := make([]int32, len(days))
+	for idx, day := range days {
+		parsed, ok := parseDay(day)
+		if !ok {
+			return nil, false
+		}
+
+		result[idx] = int32(parsed)
+	}
+
+	return result, true
 }

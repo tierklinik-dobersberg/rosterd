@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type (
@@ -13,28 +15,16 @@ type (
 	// OffTimeCosts describes the vacation costs of an off-time
 	// request.
 	OffTimeCosts struct {
-		// VacationDays is the number of vacation days that are required
-		// to fullfil the off-time request. Note that the actual number
-		// time-costs of a off-time requests depends on the number of
-		// VacationDays and the current regular working time (time/week).
-		//
-		// The Duration field holds exactly that costs but needs to be
-		// recalculated whenever the regular working hours change. See
-		// Duration for more information.
-		VacationDays float64 `json:"vacationDays" bson:"vacationDays"`
-
-		// Duration is the duration of vacation time that is required
-		// for the off-time request.
-		// This is calculated by the number of required VacationDays
-		// multiplied with the number of regular working hours per work-day.
-		//
-		// 		(VacationDays * WorkTime.TimePerWeek / 5)
-		//
-		// If the regular working hours (per week) of a employee
-		// is changed Duration must be re-calculated for all OffTimeEntries
-		// of type "vacation", "time-off" or "auto" that are still in the
-		// future and have not actually been consumed by the employee.
-		Duration JSDuration `json:"duration" bson:"duration"`
+		ID         primitive.ObjectID `bson:"_id"`
+		UserID     string             `bson:"userId"`
+		OfftimeID  primitive.ObjectID `bson:"offtimeId"`
+		RosterID   primitive.ObjectID `bson:"rosterId"`
+		CreatedAt  time.Time          `bson:"createdAt"`
+		CreatorId  string             `bson:"creatorId"`
+		Costs      time.Duration      `bson:"costs"`
+		IsVacation bool               `bson:"isVacation"`
+		Date       time.Time          `bson:"date"`
+		Comment    string             `bson:"comment"`
 	}
 
 	// Approval holds approval information for an off-time request.
@@ -48,15 +38,12 @@ type (
 		// my management.
 		ApprovedAt time.Time `json:"approvedAt" bson:"approvedAt"`
 
+		// ApproverID holds the ID of the user that approved the request.
+		ApproverID string `json:"approverId" bson:"approverId"`
+
 		// Comment is an optional comment that may be set by management to
 		// justify approval or rejection of an off-time request.
 		Comment string `json:"comment" bson:"comment"`
-
-		// ActualCosts is set to the actual costs of the off-time requests.
-		// While this is often equal to the Costs field of an OffTimeEntry
-		// it allows management to approve an off-time request but split the
-		// required costs between vacation and time-off.
-		ActualCosts OffTimeCosts `json:"actualCosts" bson:"actionCosts"`
 	}
 
 	// RequestType describes the type of an off-time request.
@@ -73,9 +60,6 @@ type (
 	//
 	// - auto: The employee doesn't really care if it's vacation or compensatory time-off and it's
 	//         up to the management to decide.
-	//
-	// - credits: This is only every set by the auto-grant feature or by management and is used to
-	//            grant additional vacation days to an employee.
 	RequestType string
 
 	OffTimeEntry struct {
@@ -93,11 +77,11 @@ type (
 		// Description may holds an optional description about the off-time request.
 		Description string `json:"description" bson:"description"`
 
-		// StaffID is the identifier of the employee for which this off-time request
+		// RequestorId is the identifier of the employee for which this off-time request
 		// is. Note that employees can only ever request off-time for themselves but
 		// management may create off-time requests on behave of an employee for auditing
 		// and history-keeping purposes.
-		StaffID string `json:"staffID" bson:"staffID"`
+		RequestorId string `json:"requestorId" bson:"requestorId"`
 
 		// RequestType is the request type of this off-time request. See RequestType for
 		// available types and their meaning.
@@ -106,14 +90,11 @@ type (
 		// CreatedAt holds the time at which the request has been created.
 		CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 
-		// CreatedBy holds the name of the user that created this request.
+		// CreatorId holds the name of the user that created this request.
 		// Normally this is the same as staffID but may be set to the name of
 		// a management user if the off-time request has been created on behave
 		// of another user.
-		CreatedBy string `json:"createdBy" bson:"createdBy"`
-
-		// Cost are the time and vacation costs for this request.
-		Costs OffTimeCosts `json:"costs" bson:"costs"`
+		CreatorId string `json:"creatorId" bson:"creatorId"`
 
 		// Approval holds information about the approval of this request.
 		// If Approval is still nil this request has neither been approved
@@ -121,40 +102,12 @@ type (
 		// vacation credit calculations.
 		Approval *Approval `json:"approval" bson:"approval"`
 	}
-
-	// CreateOffTimeRequest describes the JSON payload sent when creating a new
-	// off-time request. Fields have the exact same meaning as their OffTimeEntry
-	// counterparts.
-	CreateOffTimeRequest struct {
-		From        time.Time   `json:"from"`
-		To          time.Time   `json:"to"`
-		StaffID     string      `json:"staff"`
-		Description string      `json:"description"`
-		RequestType RequestType `json:"requestType"`
-	}
-
-	CreateOffTimeCreditsRequest struct {
-		StaffID     string    `json:"staff"`
-		From        time.Time `json:"from"`
-		Description string    `json:"description"`
-		Days        float64   `json:"days"`
-	}
-
-	ApproveOffTimeRequestRequest struct {
-		Comment       string      `json:"comment"`
-		DurationCosts *JSDuration `json:"costs"`
-	}
-
-	RejectOffTimeRequestRequest struct {
-		Comment string `json:"comment"`
-	}
 )
 
 const (
 	RequestTypeAuto     = RequestType("auto")
 	RequestTypeVacation = RequestType("vacation")
 	RequestTypeTimeOff  = RequestType("time-off")
-	RequestTypeCredits  = RequestType("credits")
 )
 
 func (d JSDuration) MarshalJSON() ([]byte, error) {
@@ -171,4 +124,46 @@ func (d *JSDuration) UnmarshalJSON(blob []byte) error {
 	*d = JSDuration(f * time.Millisecond)
 
 	return nil
+}
+
+func (requestType RequestType) ToProto() rosterv1.OffTimeType {
+	switch requestType {
+	case RequestTypeTimeOff:
+		return rosterv1.OffTimeType_OFF_TIME_TYPE_TIME_OFF
+	case RequestTypeVacation:
+		return rosterv1.OffTimeType_OFF_TIME_TYPE_VACATION
+	case RequestTypeAuto:
+		fallthrough
+	default:
+		return rosterv1.OffTimeType_OFF_TIME_TYPE_UNSPECIFIED
+	}
+}
+
+func (approval *Approval) ToProto() *rosterv1.OffTimeApproval {
+	if approval == nil {
+		return nil
+	}
+
+	return &rosterv1.OffTimeApproval{
+		Approved:   approval.Approved,
+		ApprovedAt: timestamppb.New(approval.ApprovedAt),
+		ApproverId: approval.ApproverID,
+		Comment:    approval.Comment,
+	}
+}
+
+func (entry OffTimeEntry) ToProto() *rosterv1.OffTimeEntry {
+	protoEntry := &rosterv1.OffTimeEntry{
+		Id:          entry.ID.Hex(),
+		From:        timestamppb.New(entry.From),
+		Description: entry.Description,
+		Type:        entry.RequestType.ToProto(),
+		CreatedAt:   timestamppb.New(entry.CreatedAt),
+		Approval:    entry.Approval.ToProto(),
+		RequestorId: entry.RequestorId,
+		To:          timestamppb.New(entry.To),
+		CreatorId:   entry.CreatorId,
+	}
+
+	return protoEntry
 }

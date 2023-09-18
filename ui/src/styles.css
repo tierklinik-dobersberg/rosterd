@@ -1,0 +1,10 @@
+/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind utilities;
+@tailwind variants;
+@tailwind components;
+
+@layer base {
+  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap");
+}
+

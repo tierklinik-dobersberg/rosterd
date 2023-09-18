@@ -1,0 +1,36 @@
+<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-subtle border-tertiary" (ngSubmit)="save()">
+  <h1 class="text-lg">Urlaubsantrag {{ model.id ? 'bearbeiten' : 'erstellen' }}</h1>
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Antragsteller</label>
+    <nz-select name="requestor" [(ngModel)]="model.requestorId" [nzOptionHeightPx]="48" [attr.readonly]="!!model.id">
+      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!" [nzLabel]="user | displayName">
+        <span class="flex flex-row items-center justify-start gap-2 text-left">
+          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+          </nz-avatar>
+          {{ user | displayName }}
+        </span>
+      </nz-option>
+    </nz-select>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="comment" [(ngModel)]="model.comment">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Zeitraum</label>
+    <nz-range-picker [nzShowTime]="true" name="daterange" [ngModel]="[model.from, model.to]" (ngModelChange)="model.from = $event[0]; model.to = $event[1]"></nz-range-picker>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Art</label>
+    <nz-radio-group [(ngModel)]="model.type" name="type">
+      <label nz-radio-button nzValue="auto">Automatisch</label>
+      <label nz-radio-button nzValue="vacation">Urlaub</label>
+      <label nz-radio-button nzValue="timeoff">Zeitausgleich</label>
+    </nz-radio-group>
+  </div>
+
+    <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
+</form>

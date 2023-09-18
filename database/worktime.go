@@ -18,9 +18,9 @@ func (db *DatabaseImpl) SaveWorkTimePerWeek(ctx context.Context, wt *structs.Wor
 	return err
 }
 
-func (db *DatabaseImpl) WorkTimeHistoryForStaff(ctx context.Context, staff string) ([]structs.WorkTime, error) {
+func (db *DatabaseImpl) WorkTimeHistoryForStaff(ctx context.Context, userID string) ([]structs.WorkTime, error) {
 	filter := bson.M{
-		"staff": staff,
+		"userID": userID,
 	}
 
 	res, err := db.worktime.Find(ctx, filter, options.Find().SetSort(bson.D{
@@ -60,12 +60,18 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 		// Next, group them by staff id
 		bson.M{
 			"$group": bson.M{
-				"_id": "$staff",
+				"_id": "$userID",
+				"workTimeID": bson.M{
+					"$last": "$_id",
+				},
 				"timePerWeek": bson.M{
 					"$last": "$timePerWeek",
 				},
 				"applicableFrom": bson.M{
 					"$last": "$applicableFrom",
+				},
+				"vacationWeeksPerYear": bson.M{
+					"$last": "$vacationWeeksPerYear",
 				},
 			},
 		},
@@ -76,9 +82,11 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 	}
 
 	var result []struct {
-		Staff          string        `bson:"_id"`
-		TimePerWeek    time.Duration `bson:"timePerWeek"`
-		ApplicableFrom time.Time     `bson:"applicableFrom"`
+		Staff                string             `bson:"_id"`
+		TimePerWeek          time.Duration      `bson:"timePerWeek"`
+		ApplicableFrom       time.Time          `bson:"applicableFrom"`
+		VacationWeeksPerYear float32            `bson:"vacationWeeksPerYear"`
+		WorkTimeID           primitive.ObjectID `bson:"workTimeID"`
 	}
 
 	if err := res.All(ctx, &result); err != nil {
@@ -88,9 +96,11 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 	var m = make(map[string]structs.WorkTime)
 	for _, r := range result {
 		m[r.Staff] = structs.WorkTime{
-			Staff:          r.Staff,
-			TimePerWeek:    r.TimePerWeek,
-			ApplicableFrom: r.ApplicableFrom,
+			ID:                   r.WorkTimeID,
+			UserID:               r.Staff,
+			TimePerWeek:          r.TimePerWeek,
+			ApplicableFrom:       r.ApplicableFrom,
+			VacationWeeksPerYear: r.VacationWeeksPerYear,
 		}
 	}
 

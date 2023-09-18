@@ -1,261 +1,337 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"os"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
+	"github.com/bufbuild/connect-go"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func getOffTimeCommand() *cobra.Command {
+func OffTimeCommand(root *cli.Root) *cobra.Command {
+	var (
+		from    string
+		to      string
+		userIds []string
+		fields  []string
+	)
+
 	cmd := &cobra.Command{
 		Use:     "offtime [command]",
 		Aliases: []string{"vacation", "off", "vac"},
 		Short:   "Manage off-time requests",
-	}
-
-	cmd.AddCommand(
-		getCreateOffTimeRequestCommand(),
-		getListOffTimeRequestsCommand(),
-		getApproveOffTimeRequestsCommand(),
-		getRejectOffTimeRequestsCommand(),
-		getDeleteOffTimeRequestsCommand(),
-	)
-
-	return cmd
-}
-
-func getCreateOffTimeRequestCommand() *cobra.Command {
-	var (
-		req         structs.CreateOffTimeRequest
-		requestType string
-	)
-
-	cmd := &cobra.Command{
-		Use:     "create [from] [to]",
-		Aliases: []string{"request", "req"},
-		Short:   "Create a new off-time request",
-		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			from, err := time.Parse("2006-01-02", args[0])
-			if err != nil {
-				hclog.L().Error("invalid from time", "error", err)
-				os.Exit(1)
+			req := &rosterv1.FindOffTimeRequestsRequest{
+				UserIds: userIds,
+				ReadMask: &fieldmaskpb.FieldMask{
+					Paths: fields,
+				},
 			}
 
-			to, err := time.Parse("2006-01-02", args[1])
-			if err != nil {
-				hclog.L().Error("invalid to time", "error", err)
-				os.Exit(1)
-			}
-
-			req.From = from
-			req.To = to
-			req.RequestType = structs.RequestType(requestType)
-
-			if entry, err := cli.CreateOffTimeRequest(cmd.Context(), req); err != nil {
-				hclog.L().Error("failed to create off-time request", "error", err)
-				os.Exit(1)
-			} else {
-				hclog.L().Info("created off-time request", "id", entry.ID)
-			}
-		},
-	}
-
-	flags := cmd.Flags()
-	{
-		flags.StringVar(&req.StaffID, "staff", "", "The name of the staff")
-		flags.StringVar(&requestType, "type", "auto", "Request Type")
-		flags.StringVar(&req.Description, "reason", "", "A descriptive reason for the off-time request")
-	}
-
-	return cmd
-}
-
-func getListOffTimeRequestsCommand() *cobra.Command {
-	var (
-		from       string
-		to         string
-		approved   bool
-		staff      []string
-		long       bool
-		jsonOutput bool
-	)
-
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List off-time requests",
-		Run: func(cmd *cobra.Command, args []string) {
-			var (
-				fromTime       time.Time
-				toTime         time.Time
-				approvedFilter *bool
-			)
 			if from != "" {
-				var err error
-				fromTime, err = time.Parse("2006-01-02", from)
-				if err != nil {
-					hclog.L().Error("invalid from time", "error", err)
-					os.Exit(1)
-				}
+				req.From = parseFormats(from, "2006-01-02", time.RFC3339)
 			}
 
 			if to != "" {
-				var err error
-				toTime, err = time.Parse("2006-01-02", to)
-				if err != nil {
-					hclog.L().Error("invalid to time", "error", err)
-					os.Exit(1)
-				}
+				req.To = parseFormats(to, "2006-01-02", time.RFC3339)
 			}
 
-			if cmd.Flag("approved").Changed {
-				approvedFilter = &approved
-			}
-
-			res, err := cli.FindOffTimeRequests(cmd.Context(), fromTime, toTime, approvedFilter, staff)
+			res, err := root.OffTime().FindOffTimeRequests(context.Background(), connect.NewRequest(req))
 			if err != nil {
-				hclog.L().Error("failed to fetch off-time requests", "error", err)
-				os.Exit(1)
+				logrus.Fatalf("failed to find off-time request: %s", err)
 			}
 
-			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "    ")
-				enc.Encode(res)
-
-				return
-			}
-
-			t := table.NewWriter()
-			t.SetOutputMirror(os.Stdout)
-
-			t.SetStyle((table.StyleRounded))
-			t.Style().Color.Header = text.Colors{text.FgHiWhite, text.Bold}
-			t.Style().Options.DrawBorder = false
-			t.Style().Options.SeparateColumns = false
-			t.Style().Options.SeparateHeader = false
-			t.Style().Options.SeparateRows = false
-
-			t.SetColumnConfigs([]table.ColumnConfig{
-				{
-					Name: "Approved",
-					Transformer: func(val any) string {
-						v := val.(string)
-						if v == "✓" {
-							return text.Colors{text.FgGreen, text.Bold}.Sprint("✓")
-						} else if v == "𐄂" {
-							return text.Colors{text.FgRed, text.Bold}.Sprint("𐄂")
-						}
-
-						return ""
-					},
-					Align:  text.AlignCenter,
-					Hidden: !long,
-				},
-			})
-
-			t.AppendHeader(table.Row{
-				"ID",
-				"From",
-				"To",
-				"Duration",
-				"Staff",
-				"Approved",
-				"Description",
-			})
-
-			for _, req := range res {
-				var approved string
-				if req.Approval != nil {
-					if req.Approval.Approved {
-						approved = "✓"
-					} else {
-						approved = "𐄂"
-					}
-				}
-				t.AppendRow(table.Row{
-					req.ID.Hex(),
-					req.From.Format("2006-01-02"),
-					req.To.Format("2006-01-02"),
-					req.To.Sub(req.From).String(),
-					req.StaffID,
-					approved,
-					req.Description,
-				})
-			}
-
-			t.Render()
+			root.Print(res.Msg)
 		},
 	}
 
-	flags := cmd.Flags()
+	f := cmd.Flags()
 	{
-		flags.BoolVarP(&long, "long", "l", false, "Display long output")
-		flags.BoolVar(&approved, "approved", false, "Only search for approved or rejected requests")
-		flags.StringVar(&from, "from", "", "Only search for off-time requests after this date")
-		flags.StringVar(&to, "to", "", "Only search for off-time requests before this date")
-		flags.StringSliceVar(&staff, "staff", nil, "Only search for off-time requests of the give staff")
-		flags.BoolVar(&jsonOutput, "json", false, "Display result in JSON")
+		f.StringVar(&from, "from", "", "")
+		f.StringVar(&to, "to", "", "")
+		f.StringSliceVar(&userIds, "for-user", nil, "A list of user IDs")
+		f.StringSliceVar(&fields, "fields", nil, "Specify a read_mask for the request")
+	}
+
+	cmd.AddCommand(
+		CreateOffTimeRequestCommand(root),
+		ApproveOrRejectCommand(root),
+		DeleteOffTimeRequestCommand(root),
+		AddOffTimeCostsCommand(root),
+		GetOffTimeCostsCommand(root),
+		DeleteOffTimeCostsCommand(root),
+	)
+
+	return cmd
+}
+
+func AddOffTimeCostsCommand(root *cli.Root) *cobra.Command {
+	var (
+		offtimeId  string
+		rosterId   string
+		duration   time.Duration
+		isVacation bool
+		userId     string
+		date       string
+		credit     bool
+	)
+
+	cmd := &cobra.Command{
+		Use: "add-costs",
+		Run: func(cmd *cobra.Command, args []string) {
+			var protoDate *timestamppb.Timestamp
+
+			if date != "" {
+				protoDate = parseFormats(date, "2006-01-02", time.RFC3339)
+			}
+
+			if !credit && duration < 0 {
+				duration = duration * -1
+			}
+
+			costs := &rosterv1.OffTimeCosts{
+				OfftimeId:  offtimeId,
+				RosterId:   rosterId,
+				Costs:      durationpb.New(duration),
+				IsVacation: isVacation,
+				UserId:     userId,
+				Date:       protoDate,
+			}
+
+			req := &rosterv1.AddOffTimeCostsRequest{
+				AddCosts: []*rosterv1.OffTimeCosts{costs},
+			}
+
+			res, err := root.OffTime().AddOffTimeCosts(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatalf("failed to add costs: %s", err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.StringVar(&offtimeId, "offtime-entry", "", "The ID of the Offtime entry this costs belong to")
+		f.StringVar(&rosterId, "roster", "", "The ID of the roster this costs belong to")
+		f.StringVar(&userId, "user", "", "The ID of the user")
+		f.DurationVar(&duration, "costs", 0, "The actual costs")
+		f.BoolVar(&isVacation, "vacation", true, "Whether or not the costs count as vacation or time-off. Default: vacation")
+		f.BoolVar(&credit, "credit", false, "Add positive costs (increasing vacation/time-off).")
+		f.StringVar(&date, "date", "", "The effective date for the costs.")
 	}
 
 	return cmd
 }
 
-func getDeleteOffTimeRequestsCommand() *cobra.Command {
+func GetOffTimeCostsCommand(root *cli.Root) *cobra.Command {
+	var (
+		userIds  []string
+		allUsers bool
+		paths    []string
+	)
+
 	cmd := &cobra.Command{
-		Use:   "delete [id]",
-		Short: "Delete off-time requests",
-		Args:  cobra.ExactArgs(1),
+		Use: "get-costs",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.DeleteOffTimeRequest(cmd.Context(), args[0]); err != nil {
-				hclog.L().Error("failed to approved off-time request", "error", err)
-				os.Exit(1)
+			req := &rosterv1.GetOffTimeCostsRequest{
+				ReadMask: &fieldmaskpb.FieldMask{
+					Paths: paths,
+				},
 			}
+
+			if cmd.Flag("user").Changed || allUsers {
+				req.ForUsers = &rosterv1.CostsForUsers{
+					UserIds: userIds,
+				}
+			}
+
+			res, err := root.OffTime().GetOffTimeCosts(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.StringSliceVar(&userIds, "user", nil, "A list of user IDs to query")
+		f.BoolVar(&allUsers, "all-users", false, "Query all users")
+		f.StringSliceVar(&paths, "fields", nil, "Which fields to return in the response")
+	}
+
+	return cmd
+}
+
+func DeleteOffTimeCostsCommand(root *cli.Root) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "delete-costs",
+		Args: cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			res, err := root.OffTime().DeleteOffTimeCosts(context.Background(), connect.NewRequest(&rosterv1.DeleteOffTimeCostsRequest{
+				Ids: args,
+			}))
+			if err != nil {
+				logrus.Fatalf("failed to delete off-time request: %s", err)
+			}
+
+			root.Print(res.Msg)
 		},
 	}
 
 	return cmd
 }
 
-func getApproveOffTimeRequestsCommand() *cobra.Command {
-	var comment string
+func DeleteOffTimeRequestCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "approve [id]",
-		Short: "Approve off-time requests",
-		Args:  cobra.ExactArgs(1),
+		Use:  "delete",
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], true, comment); err != nil {
-				hclog.L().Error("failed to approved off-time request", "error", err)
-				os.Exit(1)
+			res, err := root.OffTime().DeleteOffTimeRequest(context.Background(), connect.NewRequest(&rosterv1.DeleteOffTimeRequestRequest{
+				Id: args,
+			}))
+			if err != nil {
+				logrus.Fatalf("failed to delete off-time request: %s", err)
 			}
+
+			root.Print(res.Msg)
 		},
 	}
-
-	cmd.Flags().StringVarP(&comment, "comment", "c", "", "An optional approval/rejection comment")
 
 	return cmd
 }
 
-func getRejectOffTimeRequestsCommand() *cobra.Command {
-	var comment string
+func CreateOffTimeRequestCommand(root *cli.Root) *cobra.Command {
+	var (
+		from        string
+		to          string
+		description string
+		requestor   string
+		reqType     string
+	)
 	cmd := &cobra.Command{
-		Use:   "reject [id]",
-		Short: "Reject off-time requests",
-		Args:  cobra.ExactArgs(1),
+		Use: "create",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.ApproveOffTimeRequest(cmd.Context(), args[0], false, comment); err != nil {
-				hclog.L().Error("failed to reject off-time request", "error", err)
-				os.Exit(1)
+			var protoType rosterv1.OffTimeType
+			switch reqType {
+			case "auto":
+				protoType = rosterv1.OffTimeType_OFF_TIME_TYPE_UNSPECIFIED
+			case "time-off":
+				protoType = rosterv1.OffTimeType_OFF_TIME_TYPE_TIME_OFF
+			case "vacation":
+				protoType = rosterv1.OffTimeType_OFF_TIME_TYPE_VACATION
+			default:
+				logrus.Fatalf("invalid value for --type: %q", reqType)
 			}
+
+			req := &rosterv1.CreateOffTimeRequestRequest{
+				From:        parseFormats(from, "2006-01-02", time.RFC3339),
+				To:          parseFormats(to, "2006-01-02", time.RFC3339),
+				Description: description,
+				RequestorId: requestor,
+				RequestType: protoType,
+			}
+
+			res, err := root.OffTime().CreateOffTimeRequest(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatalf("failed to create off-time request: %s", err)
+			}
+
+			root.Print(res.Msg)
 		},
 	}
-	cmd.Flags().StringVarP(&comment, "comment", "c", "", "An optional approval/rejection comment")
+
+	f := cmd.Flags()
+	{
+		f.StringVar(&from, "from", "", "The date at which the off-time should start. Either YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+		f.StringVar(&to, "to", "", "The date at which the off-time should end. Either YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS")
+		f.StringVar(&description, "description", "", "An optional description for management")
+		f.StringVar(&requestor, "request-for", "", "The ID of the user for which the off-time request should be created.")
+		f.StringVar(&reqType, "type", "auto", "The type of the request")
+	}
+	return cmd
+}
+
+func ApproveOrRejectCommand(root *cli.Root) *cobra.Command {
+	var (
+		approve bool
+		comment string
+	)
+	cmd := &cobra.Command{
+		Use:     "approve-reject",
+		Aliases: []string{"approve", "reject"},
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			if !cmd.Flag("approve").Changed {
+				approve = cmd.CalledAs() == "approve"
+			}
+
+			req := &rosterv1.ApproveOrRejectRequest{
+				Id:      args[0],
+				Comment: comment,
+			}
+
+			if approve {
+				req.Type = rosterv1.ApprovalRequestType_APPROVAL_REQUEST_TYPE_APPROVED
+			} else {
+				req.Type = rosterv1.ApprovalRequestType_APPROVAL_REQUEST_TYPE_REJECTED
+			}
+
+			res, err := root.OffTime().ApproveOrReject(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatalf("failed to approve/reject: %s", err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.BoolVar(&approve, "approve", true, "Approve or reject the request")
+		f.StringVar(&comment, "comment", "", "An optional comment")
+	}
 
 	return cmd
+}
+
+func parseFormats(val string, formats ...string) *timestamppb.Timestamp {
+	for _, f := range formats {
+		t, err := time.ParseInLocation(f, val, time.Local)
+		if err == nil {
+			return timestamppb.New(t)
+		}
+	}
+
+	logrus.Fatalf("%s does not match any supported time format", val)
+
+	// can never be reached
+	return nil
+}
+
+func getTbWriter() table.Writer {
+
+	tb := table.NewWriter()
+	tb.SetOutputMirror(os.Stdout)
+
+	tb.SetStyle((table.StyleRounded))
+	tb.Style().Color.Header = text.Colors{text.FgHiWhite, text.Bold}
+	tb.Style().Options.DrawBorder = false
+	tb.Style().Options.SeparateColumns = false
+	tb.Style().Options.SeparateHeader = false
+	tb.Style().Options.SeparateRows = false
+
+	return tb
 }

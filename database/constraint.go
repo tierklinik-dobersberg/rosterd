@@ -31,6 +31,25 @@ func (db *DatabaseImpl) UpdateConstraint(ctx context.Context, constraint *struct
 	return nil
 }
 
+func (db *DatabaseImpl) GetConstraintByID(ctx context.Context, id string) (*structs.Constraint, error) {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	res := db.constraints.FindOne(ctx, bson.M{"_id": oid})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+
+	var model structs.Constraint
+	if err := res.Decode(&model); err != nil {
+		return nil, err
+	}
+
+	return &model, nil
+}
+
 func (db *DatabaseImpl) DeleteConstraint(ctx context.Context, id string) error {
 	obid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {

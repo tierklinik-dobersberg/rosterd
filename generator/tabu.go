@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ccssmnn/hego"
+	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 )
 
@@ -17,7 +18,7 @@ type ShiftAssignment struct {
 type GeneratorState struct {
 	schedule          map[string]map[string]structs.RosterShiftWithStaffList
 	staffAssignments  map[string][]ShiftAssignment
-	Users             []structs.User
+	Users             []*idmv1.Profile
 	expectedWorkTimes map[string]time.Duration
 	plannedWorkTimes  map[string]time.Duration
 	getObjective      func(structs.Roster) int
@@ -29,7 +30,7 @@ type TabuState struct {
 	GeneratorState
 }
 
-func NewGeneratorState(year int, month time.Month, requiredShifts map[string][]structs.RosterShiftWithStaffList, users []structs.User, expectedWorkTimes map[string]time.Duration, getObjective func(structs.Roster) int) *GeneratorState {
+func NewGeneratorState(year int, month time.Month, requiredShifts map[string][]structs.RosterShiftWithStaffList, users []*idmv1.Profile, expectedWorkTimes map[string]time.Duration, getObjective func(structs.Roster) int) *GeneratorState {
 	state := &GeneratorState{
 		schedule:          make(map[string]map[string]structs.RosterShiftWithStaffList),
 		staffAssignments:  make(map[string][]ShiftAssignment),
@@ -92,7 +93,7 @@ func NewGeneratorState(year int, month time.Month, requiredShifts map[string][]s
 
 	log.Printf("assigned %d staff members and planned %s out of required %s", count, totalPlanned.String(), timeRequired.String())
 	for _, user := range state.Users {
-		log.Printf("%s: expected %s diff-planned: %s", user.Name, state.expectedWorkTimes[user.Name].String(), state.diffWorkTime(user.Name))
+		log.Printf("%s: expected %s diff-planned: %s", user.User.Id, state.expectedWorkTimes[user.User.Id].String(), state.diffWorkTime(user.User.Id))
 	}
 
 	return state
@@ -140,12 +141,12 @@ func (state *TabuState) Equal(other hego.TabuState) bool {
 	o := other.(*TabuState)
 
 	for _, user := range state.Users {
-		if len(state.staffAssignments[user.Name]) != len(o.staffAssignments[user.Name]) {
+		if len(state.staffAssignments[user.User.Id]) != len(o.staffAssignments[user.User.Id]) {
 			return false
 		}
 
-		for _, shift := range state.staffAssignments[user.Name] {
-			if !shiftInSlice(shift, o.staffAssignments[user.Name]) {
+		for _, shift := range state.staffAssignments[user.User.Id] {
+			if !shiftInSlice(shift, o.staffAssignments[user.User.Id]) {
 				return false
 			}
 		}
@@ -172,7 +173,7 @@ func (state *GeneratorState) swapShift() *GeneratorState {
 		}
 
 		// the the randomly choosen user names
-		ua, ub = state.Users[na].Name, state.Users[nb].Name
+		ua, ub = state.Users[na].User.Id, state.Users[nb].User.Id
 
 		// get some random shift index for both users
 		sha = rand.Intn(len(state.staffAssignments[ua]))
@@ -253,7 +254,7 @@ func (state *GeneratorState) transferShift() *GeneratorState {
 			continue
 		}
 
-		sourceStaff, destinationStaff = state.Users[source].Name, state.Users[destination].Name
+		sourceStaff, destinationStaff = state.Users[source].User.Id, state.Users[destination].User.Id
 
 		if len(state.staffAssignments[destinationStaff]) > len(state.staffAssignments[sourceStaff]) {
 			sourceStaff, destinationStaff = destinationStaff, sourceStaff

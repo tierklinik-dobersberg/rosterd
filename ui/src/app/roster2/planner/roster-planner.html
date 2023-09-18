@@ -1,0 +1,68 @@
+<div class="relative flex flex-row h-full overflow-hidden">
+  <div class="flex flex-col items-center flex-shrink-0 w-24 gap-2 bg-white border-r shadow-sm border-subtle" *ngIf="!readonly">
+    <div class="flex flex-col items-center flex-grow w-full overflow-auto">
+      <ng-container *ngFor="let user of profiles">
+        <ng-container *ngIf="user.user?.id as userId">
+          <div (click)="setSelectedUser(userId)" [nz-tooltip]="user | displayName" nzTooltipPlacement="right"
+            [ngClass]="{'bg-secondary-dark shadow-inner bg-opacity-40': selectedUser === userId}"
+            class="relative flex flex-col items-center w-full gap-1 p-2 transition-colors duration-200 ease-out border-b cursor-pointer border-subtle group hover:bg-secondary hover:bg-opacity-25">
+            <nz-avatar [nzSize]="48" nzIcon="user" [nzSrc]="user.user!.avatar"
+              class="transition-shadow duration-200 ease-in-out rounded-full group-hover:ring-2"
+              [ngClass]="{
+                'ring-2 ring-alert-red': (workTimeByUser[userId]?.expectedTime?.seconds || 0) < (workTimeByUser[userId]?.plannedTime?.seconds || 0),
+                'ring-2': selectedUser === userId
+              }">
+            </nz-avatar>
+            <span class="text-xs whitespace-nowrap font-lato text-secondary" *ngIf="workTimeByUser[userId] as work">
+              <span class="text-alert-red"
+                [class.!text-alert-green-dark]="work.expectedTime!.seconds > work.plannedTime!.seconds ">{{ work.plannedTime | duration:'default-hours' }}</span>/{{ work.expectedTime | duration:'default-hours'}}
+            </span>
+
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+              class="absolute hidden w-4 h-4 top-1 right-1 text-color-primary text-opacity-light hover:text-color-primary group-hover:block"
+              tkdDebounceEvent="mouseenter" tkdDebounceStopEvent="mouseleave" tkdDebounceEventTime="500"
+              (tkdOnEvent)="highlightUserShifts = userId" (mouseleave)="highlightUserShifts = null">
+              <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+              <path fill-rule="evenodd"
+                d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                clip-rule="evenodd" />
+            </svg>
+          </div>
+        </ng-container>
+      </ng-container>
+
+      <!--
+        <nz-badge *ngIf="diagCount > 0" [nzCount]="diagCount" nzSize="small" class="mt-3">
+          <button class="tkd-icon-btn tkd-danger" (click)="showRosterDiagnostics = true" nz-tooltip="Probleme & Warnungen">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+          </button>
+        </nz-badge>
+      -->
+    </div>
+    <div>
+      <!--
+      <button class="tkd-icon-btn tkd-primary tkd-outline" (click)="generate()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
+    -->
+    </div>
+  </div>
+
+  <nz-calendar [nzDisabledDate]="dateDisabled" [nzValue]="selectedDate" nzMode="month" [nzFullscreen]="true"
+    (nzPanelChange)="onPanelChange($event)" (nzSelectChange)="onDateSelected($event)" class="flex-grow overflow-auto">
+    <div *nzDateFullCell="let date">
+      <ng-container *ngIf="(date|date:'YYYY-MM-dd') as key">
+        <tkd-roster-planner-day [requiredShifts]="shifts[key]" (rosterShiftChange)="setRosterShifts(date, $event)"
+          [offTimeRequest]="offTimeEntries" [workTimeStatus]="workTimeByUser" [rosterDate]="selectedDate" [date]="date"
+          [holiday]="publicHolidays[key]" [profiles]="profiles" [selectedUser]="selectedUser"
+          [plannedShifts]="plannedShifts[key]" [readonly]="readonly"
+          [highlightUserShifts]="highlightUserShifts"></tkd-roster-planner-day>
+      </ng-container>
+    </div>
+  </nz-calendar>
+
+</div>

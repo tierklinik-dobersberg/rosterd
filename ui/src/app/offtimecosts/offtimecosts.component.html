@@ -1,0 +1,87 @@
+<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
+  Abwesenheiten
+
+  <div class="space-x-2">
+    <nz-select name="requestor" [(ngModel)]="filterByUser" [nzOptionHeightPx]="48" [nzMode]="'multiple'" class="w-96" nzPlaceHolder="Nach Mitarbeiter filtern">
+      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!" [nzLabel]="user | displayName">
+        <span class="flex flex-row items-center justify-start w-full gap-2 text-left">
+          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+          </nz-avatar>
+          {{ user | displayName }}
+        </span>
+      </nz-option>
+    </nz-select>
+
+    <nz-range-picker [(ngModel)]="timeRange" [nzAllowClear]="true" (ngModelChange)="filterCosts()"></nz-range-picker>
+    <nz-radio-group [(ngModel)]="filterType" (ngModelChange)="filterCosts()">
+      <label nz-radio-button nzValue="all">Alle</label>
+      <label nz-radio-button nzValue="vacation">Urlaub</label>
+      <label nz-radio-button nzValue="za">ZA</label>
+    </nz-radio-group>
+  </div>
+
+  <button class="tkd-btn tkd-primary" [routerLink]="['create']">Neuer Eintrag</button>
+</h2>
+
+<table class="w-full border border-collapse rounded table-auto border-subtle">
+  <thead>
+    <tr class="rounded-t bg-subtle">
+      <th class="px-2 py-4 font-normal text-left font-lato">Mitarbeiter</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Datum</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Zeit</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Typ</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Grund</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Bemerkung</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Erstellt am</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Erstellt von</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <ng-container *ngFor="let u of costs; trackBy: trackUserCosts">
+      <tr *ngFor="let c of u.costs; trackBy: trackCosts"
+        class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+        <td class="p-2 text-left font-inter">
+          <span class="flex flex-row items-center justify-start gap-2 text-left"
+            *ngIf="(u.userId| toUser:profiles) as user">
+            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+            </nz-avatar>
+            {{ user | displayName }}
+          </span>
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ c.date?.toDate() | date:'mediumDate'}}
+        </td>
+        <td class="p-2 text-left font-inter" [ngClass]="{'text-alert-red': c.costs!.seconds < 0, 'text-alert-green': c.costs!.seconds > 0}">
+          {{c.costs!.seconds > 0 ? '+' : ''}}{{ c.costs | duration:'default-hours'}}
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ c.isVacation ? 'Urlaub' : 'ZA' }}
+        </td>
+        <td class="p-2 text-left font-inter">
+          <ng-container [ngSwitch]="c.rosterId ? 'roster' : (c.offtimeId ? 'offtime' : '')">
+            <a *ngSwitchCase="'roster'">Dienstplan</a>
+            <a *ngSwitchCase="'offtime'">Urlaubsantrag</a>
+            <a *ngSwitchDefault class="text-secondary">N/A</a>
+          </ng-container>
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ c.comment }}
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ c.createdAt?.toDate() | date:'mediumDate' }}
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ c.creatorId | toUser:profiles | displayName }}
+        </td>
+        <td>
+          <button *ngIf="!c.rosterId && !c.offtimeId" class="tkd-btn tkd-danger tkd-outline" (click)="delete(c.id)">Löschen</button>
+        </td>
+      </tr>
+    </ng-container>
+  </tbody>
+</table>
+
+<ng-template #naTemplate>
+  <span class="text-secondary">N/A</span>
+</ng-template>

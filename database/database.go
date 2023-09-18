@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
+	"github.com/sirupsen/logrus"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,8 +17,11 @@ const (
 	ShiftCollection          = "rosterd-shifts"
 	RosterCollection         = "rosterd-rosters"
 	OffTimeRequestCollection = "rosterd-offtime"
+	OffTimeCostsCollection   = "rosterd-offtime-costs"
 	ConstraintCollection     = "rosterd-constraints"
 	WorktimeCollection       = "rosterd-worktime"
+	DutyRosterCollection     = "rosterd-dutyrosters"
+	RosterTypeCollection     = "rosterd-rostertypes"
 )
 
 type (
@@ -30,25 +33,29 @@ type (
 	}
 
 	OffTimeDatabase interface {
-		GetOffTimeRequest(ctx context.Context, id string) (*structs.OffTimeEntry, error)
+		GetOffTimeRequest(ctx context.Context, ids ...string) ([]structs.OffTimeEntry, error)
 		CreateOffTimeRequest(ctx context.Context, req *structs.OffTimeEntry) error
-		DeleteOffTimeRequest(ctx context.Context, id string) error
-		FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, staff []string, isCredit *bool) ([]structs.OffTimeEntry, error)
+		DeleteOffTimeRequest(ctx context.Context, id ...string) error
+		FindOffTimeRequests(ctx context.Context, from, to time.Time, approved *bool, userIds []string) ([]structs.OffTimeEntry, error)
 		ApproveOffTimeRequest(ctx context.Context, id string, approval *structs.Approval) error
-		CalculateOffTimeCredits(ctx context.Context) (map[string]structs.JSDuration, error)
+		AddOffTimeCost(ctx context.Context, cost *structs.OffTimeCosts) error
+		GetOffTimeCosts(ctx context.Context, user_ids ...string) ([]structs.OffTimeCosts, error)
+		DeleteOffTimeCosts(ctx context.Context, ids ...string) error
+		// CalculateOffTimeCredits(ctx context.Context) (map[string]time.Duration, error)
 	}
 
 	ConstraintDatabase interface {
 		CreateConstraint(ctx context.Context, req *structs.Constraint) error
 		UpdateConstraint(ctx context.Context, constraint *structs.Constraint) error
 		DeleteConstraint(ctx context.Context, id string) error
-		FindConstraints(ctx context.Context, staff []string, roles []string) ([]structs.Constraint, error)
+		FindConstraints(ctx context.Context, staff []string, roleIds []string) ([]structs.Constraint, error)
 	}
 
 	WorkTimeDatabase interface {
 		SaveWorkTimePerWeek(ctx context.Context, wt *structs.WorkTime) error
 		WorkTimeHistoryForStaff(ctx context.Context, staff string) ([]structs.WorkTime, error)
 		GetCurrentWorkTimes(ctx context.Context, until time.Time) (map[string]structs.WorkTime, error)
+		DeleteWorkTime(ctx context.Context, ids ...string) error
 	}
 
 	RosterDatabase interface {
@@ -61,26 +68,40 @@ type (
 		ApproveRoster(ctx context.Context, approver string, month time.Month, year int) error
 	}
 
+	DutyRosterDatabase interface {
+		SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster) error
+		DeleteDutyRoster(ctx context.Context, rosterID string) error
+		ApproveDutyRoster(ctx context.Context, rosterID, approver string) error
+		DutyRosterByID(ctx context.Context, id string) (structs.DutyRoster, error)
+		DutyRostersByTime(ctx context.Context, time time.Time) ([]structs.DutyRoster, error)
+	}
+
 	DatabaseImpl struct {
-		shifts      *mongo.Collection
-		rosters     *mongo.Collection
-		offTime     *mongo.Collection
-		constraints *mongo.Collection
-		worktime    *mongo.Collection
-		logger      hclog.Logger
-		debug       bool
+		shifts          *mongo.Collection
+		rosters         *mongo.Collection
+		offTime         *mongo.Collection
+		offTimeCosts    *mongo.Collection
+		constraints     *mongo.Collection
+		worktime        *mongo.Collection
+		dutyRosters     *mongo.Collection
+		dutyRosterTypes *mongo.Collection
+		logger          *logrus.Entry
+		debug           bool
 	}
 )
 
-func NewDatabase(ctx context.Context, db *mongo.Database, logger hclog.Logger) (*DatabaseImpl, error) {
+func NewDatabase(ctx context.Context, db *mongo.Database, logger *logrus.Entry) (*DatabaseImpl, error) {
 	impl := &DatabaseImpl{
-		shifts:      db.Collection(ShiftCollection),
-		rosters:     db.Collection(RosterCollection),
-		offTime:     db.Collection(OffTimeRequestCollection),
-		constraints: db.Collection(ConstraintCollection),
-		worktime:    db.Collection(WorktimeCollection),
-		logger:      logger,
-		debug:       false,
+		shifts:          db.Collection(ShiftCollection),
+		rosters:         db.Collection(RosterCollection),
+		offTime:         db.Collection(OffTimeRequestCollection),
+		offTimeCosts:    db.Collection(OffTimeCostsCollection),
+		constraints:     db.Collection(ConstraintCollection),
+		worktime:        db.Collection(WorktimeCollection),
+		dutyRosters:     db.Collection(DutyRosterCollection),
+		dutyRosterTypes: db.Collection(RosterTypeCollection),
+		logger:          logger,
+		debug:           false,
 	}
 
 	if err := impl.setup(ctx); err != nil {
@@ -151,12 +172,24 @@ func (db *DatabaseImpl) setup(ctx context.Context) error {
 		},
 		{
 			Keys: bson.D{
-				{Key: "staffID", Value: 1},
+				{Key: "requestorId", Value: 1},
 			},
 		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create offtime indexes: %w", err)
+	}
+
+	_, err = db.dutyRosterTypes.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "unique_name", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create roster-type indexes: %w", err)
 	}
 
 	return nil

@@ -1,0 +1,89 @@
+
+<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
+  Dienstplan vom {{ roster?.from }} - {{ roster?.to }} freigeben
+</h2>
+
+<table class="w-full border border-collapse rounded table-fixed border-subtle">
+  <thead>
+    <tr class="bg-subtle">
+      <th class="px-2 py-4 font-normal text-left font-lato">Mitarbeiter</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Soll-Zeit</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Ist-Zeit</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Zeit-Differenz</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Urlaubszeit</th>
+      <th class="px-2 py-4 font-normal text-left font-lato">Zeitausgleich</th>
+    </tr>
+  </thead>
+  <tbody>
+    <ng-container *ngFor="let wt of timeAnalysis">
+      <tr class="{{ !offTimePerUser[wt.userId]?.length ? 'border-b border-subtle' : '' }} hover:bg-subtle hover:bg-opacity-50">
+
+        <td class="p-2 text-left font-inter">
+            <span *ngIf="(wt.userId | toUser:profiles) as user" class="flex flex-row items-center justify-start gap-2 text-left">
+                <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar"
+                  class="rounded-full shadow ring-1">
+                </nz-avatar>
+                {{ user | displayName }}
+            </span>
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ wt.expectedTime | duration:'default-hours' }}
+        </td>
+        <td class="p-2 text-left font-inter">
+          {{ wt.plannedTime | duration:'default-hours'}}
+        </td>
+        <ng-container *ngIf="num(wt.plannedTime!.seconds - wt.expectedTime!.seconds) as diff">
+          <td class="p-2 text-left font-inter">
+            <span [ngClass]="{'text-alert-red': diff < 0, 'text-alert-green': diff > 0}">
+              {{ diff > 0 ? '+' : '' }}{{ diff | duration:'default-hours' }}
+              <span class="text-xs text-secondary">( {{ (diff + (userSplit[wt.userId][0] + userSplit[wt.userId][1])) | duration:'default-hours':'s' }} )</span>
+            </span>
+          </td>
+          <td class="p-2 text-left font-inter">
+            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="vacation" [ngModel]="userSplit[wt.userId][0] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 0, $event)">
+            <span class="text-secondary" *ngIf="diff > 0">N/A</span>
+          </td>
+          <td class="p-2 text-left font-inter">
+            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="timeoff" [ngModel]="userSplit[wt.userId][1] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 1, $event)">
+            <span class="text-secondary" *ngIf="diff > 0">N/A</span>
+          </td>
+        </ng-container>
+      </tr>
+      <tr *ngIf="offTimePerUser[wt.userId]?.length" class="border-b border-subtle">
+        <td class="p-2"></td>
+        <td colspan="5">
+          <table class="w-full rounded table-fixed bg-secondary bg-opacity-5">
+            <thead>
+              <tr class="bg-sublte">
+                <th class="p-2 text-xs text-left uppercase font-lato text-secondary bg-sublte">Urlaubsantrag</th>
+                <th class="p-2 text-xs text-left uppercase font-lato text-secondary bg-sublte">Von - Bis</th>
+                <th class="p-2 text-xs text-left uppercase font-lato text-secondary bg-sublte">Status</th>
+                <th class="p-2 text-xs text-left uppercase font-lato text-secondary bg-sublte">Erstellt am</th>
+                <th class="p-2 text-xs text-left uppercase font-lato text-secondary bg-sublte"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let oft of offTimePerUser[wt.userId]"  class="hover:bg-subtle hover:bg-opacity-50">
+                <td class="p-2 text-left font-lato">{{ oft.description }}</td>
+                <td class="p-2 text-left font-lato">{{ oft.from?.toDate() | date:'shortDate' }} - {{ oft.to?.toDate() | date:'shortDate' }}</td>
+                <td class="p-2 text-left font-lato" *ngIf="!!oft.approval">
+                  {{ oft.approval.approved ? 'Bestätigt' : 'Abgelehnt'}}
+                </td>
+                <td class="p-2 text-left text-secondary font-lato" *ngIf="!oft.approval">
+                  N/A
+                </td>
+                <td class="p-2 text-left font-lato">{{ oft.createdAt!.toDate() | date:'shortDate' }}</td>
+                <td class="p-2 text-left font-lato"></td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </ng-container>
+  </tbody>
+</table>
+
+<div class="flex flex-row items-center justify-end gap-4 mt-4">
+  <button type="submit" class="tkd-btn tkd-secondary tkd-outline" routerLink="/roster/">Abbrechen</button>
+  <button type="submit" class="tkd-btn tkd-primary" (click)="approve()">Freigeben</button>
+</div>

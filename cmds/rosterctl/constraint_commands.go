@@ -1,113 +1,147 @@
 package main
 
 import (
-	"encoding/json"
-	"os"
+	"context"
 
-	"github.com/hashicorp/go-hclog"
+	"github.com/bufbuild/connect-go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-func getConstraintCommand() *cobra.Command {
+func ConstraintCommand(root *cli.Root) *cobra.Command {
+	var (
+		userIds []string
+		roleIds []string
+	)
+
 	cmd := &cobra.Command{
-		Use:   "constraint",
-		Short: "Manage roster constraints",
+		Use: "constraint",
+		Run: func(cmd *cobra.Command, args []string) {
+			req := &rosterv1.FindConstraintsRequest{
+				UserIds: userIds,
+				RoleIds: roleIds,
+			}
+
+			res, err := root.Constraints().FindConstraints(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
 	}
 
+	cmd.Flags().StringSliceVar(&userIds, "user", nil, "")
+	cmd.Flags().StringSliceVar(&roleIds, "role", nil, "")
+
 	cmd.AddCommand(
-		getCreateConstraintCommand(),
-		getDeleteConstraintCommand(),
-		getFindConstraintCommand(),
+		CreateConstraintCommand(root),
+		UpdateConstraintCommand(root),
+		DeleteConstraintCommand(root),
 	)
 
 	return cmd
 }
 
-func getCreateConstraintCommand() *cobra.Command {
-	var constraint structs.Constraint
-
+func CreateConstraintCommand(root *cli.Root) *cobra.Command {
+	req := &rosterv1.CreateConstraintRequest{}
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a new roster constraint",
+		Use: "create",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cli.CreateConstraint(cmd.Context(), constraint); err != nil {
-				hclog.L().Error("failed to create constraint", "error", err)
-				os.Exit(1)
+			res, err := root.Constraints().CreateConstraint(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
 			}
+
+			root.Print(res.Msg)
 		},
 	}
 
-	flags := cmd.Flags()
+	f := cmd.Flags()
 	{
-		flags.StringVar(&constraint.Description, "name", "", "The name/description of the constraint")
-		flags.StringVar(&constraint.Expression, "expr", "", "The expression to evaluate the constraint")
-		flags.StringSliceVar(&constraint.AppliesToRole, "role", nil, "A list of roles this constraints applies to")
-		flags.StringSliceVar(&constraint.AppliesToUser, "staff", nil, "A list of staff identifiers this constraint applies to")
-		flags.BoolVar(&constraint.Hard, "hard", false, "Whether or not this is a hard constraint")
-		flags.BoolVar(&constraint.Deny, "deny", false, "Whether or not this constaint evaluates to deny or allow")
-		flags.BoolVar(&constraint.RosterOnly, "roster", false, "Only evaluate constraint against the complete roster")
-		flags.IntVar(&constraint.Penalty, "penalty", 0, "A penalty when the constraint is violated")
+		f.StringVar(&req.Description, "description", "", "")
+		f.StringSliceVar(&req.RoleIds, "role", nil, "")
+		f.StringSliceVar(&req.UserIds, "user", nil, "")
+		f.StringVar(&req.Expression, "expr", "", "")
+		f.BoolVar(&req.Deny, "deny", false, "")
+		f.BoolVar(&req.Hard, "hard", false, "")
+		f.BoolVar(&req.RosterOnly, "roster-only", false, "")
+		f.Float32Var(&req.Penalty, "penalty", 0, "")
 	}
 
 	return cmd
 }
 
-func getDeleteConstraintCommand() *cobra.Command {
+func UpdateConstraintCommand(root *cli.Root) *cobra.Command {
+	req := &rosterv1.UpdateConstraintRequest{
+		WriteMask: &fieldmaskpb.FieldMask{},
+	}
 	cmd := &cobra.Command{
-		Use:   "delete [id]",
-		Short: "Delete a roster constraint by id",
-		Args:  cobra.MinimumNArgs(1),
+		Use:  "create",
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			hasError := false
-			for _, id := range args {
-				if err := cli.DeleteConstraint(cmd.Context(), id); err != nil {
-					hclog.L().Error("failed to delete constraint", "id", id, "error", err)
-					hasError = true
+			req.Id = args[0]
+
+			flags := [][]string{
+				{"description", "description"},
+				{"role", "role_ids"},
+				{"user", "user_ids"},
+				{"expr", "expression"},
+				{"hard", "hard"},
+				{"deny", "deny"},
+				{"roster_only", "roster_only"},
+			}
+
+			for _, f := range flags {
+				if cmd.Flag(f[0]).Changed {
+					req.WriteMask.Paths = append(req.WriteMask.Paths, f[1])
 				}
 			}
 
-			if hasError {
-				os.Exit(1)
+			res, err := root.Constraints().UpdateConstraint(context.Background(), connect.NewRequest(req))
+			if err != nil {
+				logrus.Fatal(err)
 			}
+
+			root.Print(res.Msg)
 		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.StringVar(&req.Description, "description", "", "")
+		f.StringSliceVar(&req.RoleIds, "role", nil, "")
+		f.StringSliceVar(&req.UserIds, "user", nil, "")
+		f.StringVar(&req.Expression, "expr", "", "")
+		f.BoolVar(&req.Deny, "deny", false, "")
+		f.BoolVar(&req.Hard, "hard", false, "")
+		f.BoolVar(&req.RosterOnly, "roster-only", false, "")
+		f.Float32Var(&req.Penalty, "penalty", 0, "")
 	}
 
 	return cmd
+
 }
 
-func getFindConstraintCommand() *cobra.Command {
-	var (
-		staffFilter []string
-		roleFilter  []string
-		jsonOutput  bool
-	)
-
+func DeleteConstraintCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "Find and list roster constraints",
+		Use:     "delete",
+		Aliases: []string{"del", "rm", "remove"},
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			res, err := cli.FindConstraints(cmd.Context(), staffFilter, roleFilter)
+			res, err := root.Constraints().DeleteConstraint(context.Background(), connect.NewRequest(&rosterv1.DeleteConstraintRequest{
+				Id: args[0],
+			}))
+
 			if err != nil {
-				hclog.L().Error("failed to search for constraints", "error", err)
-				os.Exit(1)
+				logrus.Fatal(err)
 			}
 
-			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "    ")
-				enc.Encode(res)
-
-				return
-			}
+			root.Print(res.Msg)
 		},
-	}
-
-	flags := cmd.Flags()
-	{
-		flags.StringSliceVar(&staffFilter, "staff", nil, "Only display constraints that apply to the given staffs")
-		flags.StringSliceVar(&roleFilter, "role", nil, "Only display constraints that apply to the given roles")
-		flags.BoolVar(&jsonOutput, "json", false, "Display result in JSON")
 	}
 
 	return cmd

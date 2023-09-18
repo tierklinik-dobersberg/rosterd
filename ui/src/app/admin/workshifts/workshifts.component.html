@@ -1,0 +1,90 @@
+<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-subtle border-tertiary" (ngSubmit)="save()">
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Name</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="name" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.name">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="description" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.description">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Farbe</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="color" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.color">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Anzeige-Name</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="displayName" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.displayName">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Startzeit</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="from" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.from">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Dauer</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="duration" [ngModel]="workShift.duration | duration" (ngModelChange)="workShift.duration = parseDuration($event).toProto(); handleChanges()">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Wert</label>
+    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="timeWorth" [ngModel]="workShift.timeWorth | duration" (ngModelChange)="workShift.timeWorth = parseDuration($event).toProto(); handleChanges()">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Anzahl Mitarbeiter</label>
+    <input type="number" class="w-full p-1 text-sm border text-normal border-tertiary" name="staffCount" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.requiredStaffCount">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Reihenfolge</label>
+    <input type="number" class="w-full p-1 text-sm border text-normal border-tertiary" name="order" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.order">
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Type</label>
+    <nz-radio-group name="onHoliday" [(ngModel)]="workShift.onHoliday">
+      <label nz-radio-button [nzValue]="true">Feiertag</label>
+      <label nz-radio-button [nzValue]="false">Regulär</label>
+    </nz-radio-group>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Rollen</label>
+    <nz-select name="roles" [(ngModel)]="workShift.eligibleRoleIds" nzMode="multiple">
+      <nz-option *ngFor="let role of roles" [nzValue]="role.id" [nzLabel]="role.name"></nz-option>
+    </nz-select>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Wochentage</label>
+    <nz-select name="roles" [(ngModel)]="workShift.days" nzMode="multiple">
+      <nz-option [nzValue]="0" nzLabel="Sonntag"></nz-option>
+      <nz-option [nzValue]="1" nzLabel="Montag"></nz-option>
+      <nz-option [nzValue]="2" nzLabel="Dienstag"></nz-option>
+      <nz-option [nzValue]="3" nzLabel="Mittwoch"></nz-option>
+      <nz-option [nzValue]="4" nzLabel="Donnerstag"></nz-option>
+      <nz-option [nzValue]="5" nzLabel="Freitag"></nz-option>
+      <nz-option [nzValue]="6" nzLabel="Samstag"></nz-option>
+    </nz-select>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Tags</label>
+    <nz-select name="tags" [(ngModel)]="workShift.tags" nzMode="tags"></nz-select>
+  </div>
+
+  <div class="flex flex-col">
+    <label class="text-xs leading-3 uppercase text-secondary">Überschreiben</label>
+    <label nz-checkbox name="updateInPlace" [(ngModel)]="updateInPlace">Arbeitsschicht überschreiben <span class="text-secondary">(Vorsicht!)</span></label>
+  </div>
+
+  <div class="flex flex-row items-stretch w-full gap-2">
+    <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
+    <button class="w-full tkd-btn tkd-outline tkd-danger" type="button" (click)="delete()" *ngIf="!!workShift.id">Löschen</button>
+  </div>
+</form>

@@ -45,6 +45,12 @@ func (db *DatabaseImpl) GetShiftsForDay(ctx context.Context, weekDay time.Weekda
 	filter := bson.M{
 		"days":      weekDay,
 		"onHoliday": isHoliday,
+		"$or": bson.A{
+			bson.M{"deleted": false},
+			bson.M{"deleted": bson.M{
+				"$exists": false,
+			}},
+		},
 	}
 
 	shifts, err := db.shifts.Find(ctx, filter, options.Find().SetSort(bson.M{
@@ -69,12 +75,16 @@ func (db *DatabaseImpl) DeleteWorkShift(ctx context.Context, id string) error {
 		return err
 	}
 
-	res, err := db.shifts.DeleteOne(ctx, bson.M{"_id": objId})
+	res, err := db.shifts.UpdateOne(ctx, bson.M{"_id": objId}, bson.M{
+		"$set": bson.M{
+			"deleted": true,
+		},
+	})
 	if err != nil {
 		return err
 	}
 
-	if res.DeletedCount != 1 {
+	if res.ModifiedCount != 1 {
 		return mongo.ErrNoDocuments
 	}
 

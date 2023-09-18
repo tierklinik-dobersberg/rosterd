@@ -2,66 +2,51 @@ package main
 
 import (
 	"context"
-	"os"
 
-	"github.com/hashicorp/go-hclog"
-	"github.com/sethvargo/go-envconfig"
-	"github.com/spf13/cobra"
-	"github.com/tierklinik-dobersberg/rosterd/client"
+	"github.com/bufbuild/connect-go"
+	"github.com/sirupsen/logrus"
+	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
 )
 
-var (
-	config struct {
-		Server string `env:"ROSTERD_URL"`
-		JWT    string `env:"ROSTERD_JWT"`
+func getRootCommand(root *cli.Root) {
+	root.BaseURLS = cli.BaseURLS{
+		Idm:      "https://account.dobersberg.dev",
+		Calendar: "https://calendar.dobersberg.dev",
+		Roster:   "https://roster.dobersberg.dev",
 	}
 
-	cli *client.Client
-)
-
-func getRootCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "rosterctl [command]",
-		Short: "Manage rosters, off-time requests and work-shifts",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if err := envconfig.Process(context.Background(), &config); err != nil {
-				hclog.L().Error("failed to process environment variables", "error", err)
-				os.Exit(1)
-			}
-
-			if config.Server == "" {
-				hclog.L().Error("Either --server or ROSTERD_URL environment variable must be set")
-				os.Exit(1)
-			}
-
-			if config.JWT == "" {
-				hclog.L().Error("ROSTERD_JWT environment variable must be set")
-				os.Exit(1)
-			}
-
-			cli = client.New(config.Server, config.JWT)
-		},
-	}
-
-	flags := cmd.PersistentFlags()
-	{
-		flags.StringVarP(&config.Server, "server", "s", "http://localhost:8080", "The address of the rosterd server")
-	}
-
-	cmd.AddCommand(
-		getWorkShiftCommand(),
-		getRosterCommand(),
-		getOffTimeCommand(),
-		getConstraintCommand(),
-		getWorkTimeCommand(),
+	root.AddCommand(
+		WorkTimeCommand(root),
+		OffTimeCommand(root),
+		WorkShiftCommand(root),
+		RosterCommand(root),
+		ConstraintCommand(root),
 	)
-
-	return cmd
 }
 
 func main() {
-	if err := getRootCommand().Execute(); err != nil {
-		hclog.L().Error(err.Error())
-		os.Exit(1)
+	cmd := cli.New("rosterctl")
+
+	getRootCommand(cmd)
+
+	if err := cmd.Execute(); err != nil {
+		logrus.Fatal(err.Error())
 	}
+}
+
+func getUserMap(root *cli.Root) map[string]*idmv1.Profile {
+	res, err := root.Users().ListUsers(context.Background(), connect.NewRequest(&idmv1.ListUsersRequest{}))
+
+	if err != nil {
+		logrus.Fatalf("failed to fetch users: %s", err)
+	}
+
+	m := make(map[string]*idmv1.Profile)
+
+	for _, u := range res.Msg.Users {
+		m[u.User.Id] = u
+	}
+
+	return m
 }

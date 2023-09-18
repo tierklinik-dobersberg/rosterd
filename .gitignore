@@ -1,0 +1,7 @@
+go.work
+go.work.sum
+/rosterd
+
+mails/build_local
+mails/dist
+mails/node_modules

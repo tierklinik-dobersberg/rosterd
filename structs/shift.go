@@ -3,10 +3,13 @@ package structs
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
+	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/cis/pkg/daytime"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type (
@@ -37,6 +40,7 @@ type (
 		Description        string             `json:"description" bson:"description"`
 		Order              int                `json:"order" bson:"order"`
 		Tags               []string           `json:"tags" bson:"tags"`
+		Deleted            bool               `bson:"deleted"`
 	}
 )
 
@@ -75,4 +79,53 @@ func (dt *Daytime) UnmarshalJSON(blob []byte) error {
 	*dt = Daytime(res.AsDuration())
 
 	return nil
+}
+
+func (shift WorkShift) ToProto() *rosterv1.WorkShift {
+	protoShift := &rosterv1.WorkShift{
+		Id:                 shift.ID.Hex(),
+		From:               shift.From.ToProto(),
+		Duration:           durationpb.New(time.Duration(shift.Duration)),
+		Name:               shift.Name,
+		DisplayName:        shift.ShortName,
+		OnHoliday:          shift.OnHoliday,
+		EligibleRoleIds:    shift.EligibleRoles,
+		RequiredStaffCount: int64(shift.RequiredStaffCount),
+		Color:              shift.Color,
+		Description:        shift.Description,
+		Order:              int64(shift.Order),
+		Tags:               shift.Tags,
+	}
+
+	protoShift.Days = make([]int32, len(shift.Days))
+	for idx, day := range shift.Days {
+		protoShift.Days[idx] = int32(day)
+	}
+
+	if shift.MinutesWorth != nil {
+		protoShift.TimeWorth = durationpb.New((time.Duration(*shift.MinutesWorth) * time.Minute))
+	}
+
+	return protoShift
+}
+
+func (dt Daytime) ToProto() *rosterv1.Daytime {
+	duration := float64(time.Duration(dt))
+
+	hours := math.Floor(duration / float64(time.Hour))
+	minutes := math.Floor(float64((duration - (hours * float64(time.Hour))) / float64(time.Minute)))
+
+	return &rosterv1.Daytime{
+		Hour:   int64(hours),
+		Minute: int64(minutes),
+	}
+}
+
+func (dt *Daytime) FromProto(protoDayTime *rosterv1.Daytime) {
+	hour := protoDayTime.Hour
+	minute := protoDayTime.Minute
+
+	duration := time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute
+
+	*dt = Daytime(duration)
 }

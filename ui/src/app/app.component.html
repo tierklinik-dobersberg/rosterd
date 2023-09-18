@@ -1,0 +1,21 @@
+<header class="relative flex flex-row items-center justify-start gap-4 px-6 mb-2 bg-white border-b shadow border-subtle">
+  <img routerLink="/roster/" src="/assets/logo.png" class="w-10 h-10 cursor-pointer">
+  <h1 routerLink="/roster/" class="text-lg font-light cursor-pointer font-inter">Dienstplan / Urlaubs Verwaltung</h1>
+
+  <nav class="flex flex-row items-stretch justify-start flex-grow h-full gap-2 ml-8 font-light text-inter" *ngIf="isAdmin | async">
+    <a class="px-6 py-4 transition duration-200 ease-in-out border-t-2 border-b-2 border-transparent" role="navigation" routerLink="/roster" [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Dienstpläne</a>
+    <a class="px-6 py-4 transition duration-200 ease-in-out border-t-2 border-b-2 border-transparent" role="navigation" routerLink="/offtimes" [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Urlaubsanträge</a>
+    <a class="px-6 py-4 transition duration-200 ease-in-out border-t-2 border-b-2 border-transparent" role="navigation" routerLink="/costs" [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Abwesenheiten</a>
+    <a class="px-6 py-4 transition duration-200 ease-in-out border-t-2 border-b-2 border-transparent" role="navigation" routerLink="/worktimes" [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Arbeitszeiten</a>
+    <a class="px-6 py-4 transition duration-200 ease-in-out border-t-2 border-b-2 border-transparent" role="navigation" routerLink="/admin/" [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Administration</a>
+  </nav>
+
+  <span *ngIf="(profile | async) as user" class="flex flex-row items-center justify-center gap-2 font-light font-inter">
+    <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+    </nz-avatar>
+  </span>
+</header>
+
+<div class="p-2">
+  <router-outlet></router-outlet>
+</div>
