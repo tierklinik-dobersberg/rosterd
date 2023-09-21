@@ -51,9 +51,9 @@ function makeProvider(token: InjectionToken<any>, type: any, ep: string): Provid
 }
 
 const environment = {
-  accountService: "https://account.dobersberg.dev",
-  calendarService: "https://calendar.dobersberg.dev",
-  rosterService: "https://roster.dobersberg.dev"
+  accountService: "https://account.dobersberg.vet",
+  calendarService: "https://calendar.dobersberg.vet",
+  rosterService: "https://roster.dobersberg.vet"
 }
 
 export const connectProviders: Provider[] = [
