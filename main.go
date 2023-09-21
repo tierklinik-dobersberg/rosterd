@@ -135,7 +135,7 @@ func prepareConnectServer(p *config.Providers) *http.Server {
 	// Get a static file handler.
 	// This will either return a handler for the embed.FS, a local directory using http.Dir
 	// or a reverse proxy to some other service.
-	staticFilesHandler, err := getStaticFilesHandler("http://rosterduidev:5000/")
+	staticFilesHandler, err := getStaticFilesHandler("")
 	if err != nil {
 		logrus.Fatal(err)
 	}
