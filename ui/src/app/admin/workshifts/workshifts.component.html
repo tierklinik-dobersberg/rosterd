@@ -62,7 +62,7 @@
 
   <div class="flex flex-col">
     <label class="text-xs leading-3 uppercase text-secondary">Wochentage</label>
-    <nz-select name="roles" [(ngModel)]="workShift.days" nzMode="multiple">
+    <nz-select name="days" [(ngModel)]="workShift.days" nzMode="multiple">
       <nz-option [nzValue]="0" nzLabel="Sonntag"></nz-option>
       <nz-option [nzValue]="1" nzLabel="Montag"></nz-option>
       <nz-option [nzValue]="2" nzLabel="Dienstag"></nz-option>
