@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +33,7 @@ func WorkShiftCommand(root *cli.Root) *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		ImportWorkShiftCommand(root),
 		CreateWorkShiftCommand(root),
 		DeleteWorkShiftCommand(root),
 		UpdateWorkShiftCommand(root),
@@ -51,6 +55,68 @@ func DeleteWorkShiftCommand(root *cli.Root) *cobra.Command {
 			}
 
 			root.Print(res.Msg)
+		},
+	}
+
+	return cmd
+}
+
+func ImportWorkShiftCommand(root *cli.Root) *cobra.Command {
+
+	cmd := &cobra.Command{
+		Use:  "import",
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			filePath := args[0]
+			var reader io.Reader
+
+			if filePath == "-" {
+				reader = os.Stdin
+			} else {
+				f, err := os.Open(filePath)
+				if err != nil {
+					logrus.Fatal(err)
+				}
+
+				defer f.Close()
+
+				reader = f
+			}
+
+			content, err := io.ReadAll(reader)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			var shifts *rosterv1.ListWorkShiftsResponse
+			if err := json.Unmarshal(content, &shifts); err != nil {
+				logrus.Fatal(err)
+			}
+
+			cli := root.WorkShift()
+			for _, shift := range shifts.WorkShifts {
+				res, err := cli.CreateWorkShift(context.Background(), connect.NewRequest(&rosterv1.CreateWorkShiftRequest{
+					From:               shift.From,
+					Duration:           shift.Duration,
+					Days:               shift.Days,
+					Name:               shift.Name,
+					DisplayName:        shift.DisplayName,
+					OnHoliday:          shift.OnHoliday,
+					EligibleRoleIds:    shift.EligibleRoleIds,
+					TimeWorth:          shift.TimeWorth,
+					RequiredStaffCount: shift.RequiredStaffCount,
+					Color:              shift.Color,
+					Description:        shift.Description,
+					Order:              shift.Order,
+					Tags:               shift.Tags,
+				}))
+
+				if err != nil {
+					logrus.Errorf("failed to import shift %s: %s", shift.Name, err)
+				} else {
+					logrus.Infof("successfully imported shift %s: %s", shift.Name, res.Msg.WorkShift.Id)
+				}
+			}
 		},
 	}
 
