@@ -7,12 +7,6 @@ import (
 )
 
 func getRootCommand(root *cli.Root) {
-	root.BaseURLS = cli.BaseURLS{
-		Idm:      "https://account.dobersberg.dev",
-		Calendar: "https://calendar.dobersberg.dev",
-		Roster:   "https://roster.dobersberg.dev",
-	}
-
 	root.AddCommand(
 		cmds.WorkTimeCommand(root),
 		cmds.OffTimeCommand(root),

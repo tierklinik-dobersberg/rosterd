@@ -5,3 +5,4 @@ go.work.sum
 mails/build_local
 mails/dist
 mails/node_modules
+/rosterctl
