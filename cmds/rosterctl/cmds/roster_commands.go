@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"context"
@@ -267,7 +267,7 @@ func WorkingStaffCommand(root *cli.Root) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			req := &rosterv1.GetWorkingStaffRequest{
 				RosterTypeName: typeName,
-				OnCall: onCall,
+				OnCall:         onCall,
 			}
 
 			if t != "" {
