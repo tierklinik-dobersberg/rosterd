@@ -4,6 +4,7 @@ import { Code, ConnectError, Interceptor, PromiseClient, Transport, createPromis
 import { createConnectTransport } from "@bufbuild/connect-web";
 import { AuthService, CalendarService, ConstraintService, HolidayService, OffTimeService, RoleService, RosterService, UserService, WorkShiftService, WorkTimeService } from "@tkd/apis";
 import { NzMessageService } from "ng-zorro-antd/message";
+import { environment } from "src/environments/environment";
 
 export type AuthServiceClient = PromiseClient<typeof AuthService>;
 export type UserServiceClient = PromiseClient<typeof UserService>;
@@ -48,12 +49,6 @@ function makeProvider(token: InjectionToken<any>, type: any, ep: string): Provid
     provide: token,
     useFactory: serviceClientFactory(type, ep),
   }
-}
-
-const environment = {
-  accountService: "https://account.dobersberg.vet",
-  calendarService: "https://calendar.dobersberg.vet",
-  rosterService: "https://roster.dobersberg.vet"
 }
 
 export const connectProviders: Provider[] = [

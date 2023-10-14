@@ -1,6 +1,7 @@
 
 # Build the frontend
 FROM node:16 as uibuild
+ARG CONFIGURATION="production"
 
 WORKDIR /app/ui
 
@@ -10,7 +11,7 @@ RUN npm install
 RUN npx browserslist@latest --update-db
 
 COPY ./ui .
-RUN npm run build
+RUN npm run build -- --configuration $CONFIGURATION
 
 # Build the frontend
 FROM node:16 as mailbuild
