@@ -143,11 +143,7 @@ func prepareConnectServer(p *config.Providers) *http.Server {
 	mux.Handle("/", staticFilesHandler)
 
 	cfg := cors.Config{
-		AllowedOrigins: []string{
-			"http://*.dobersberg.dev",
-			"https://*.dobersberg.dev",
-			"http://localhost:5000",
-		},
+		AllowedOrigins:   p.Config.AllowedOrigins,
 		AllowCredentials: true,
 	}
 

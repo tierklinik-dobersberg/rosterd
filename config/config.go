@@ -24,19 +24,18 @@ type (
 		Country string `env:"COUNTRY,default=AT"`
 		// CalendarServiceURL holds the URL of the calendar service.
 		CalendarService string `env:"CALENDAR_SERVICE_URL,default=http://ciscal:8080"`
-
 		// PublicURL is the public URL to rosterd
 		PublicURL string `env:"PUBLIC_URL"`
-
 		// PreviewRosterURL should be set to the format string accepting year and month
 		// (in this order) to build a public link to access a readonly version of the roster.
 		// If left empty, this defaults to {{ PublicURL }}/roster/view/%s
 		PreviewRosterURL string `env:"PREVIEW_ROSTER_URL"`
-
 		// TemplatesDir might be set to a directory path containing mail and SMS template
 		// files. If set, any files in TemplateDir will overwrite the embedded templates
 		// of the final rosterd binary.
 		TemplatesDir string `env:"TEMPLATES_PATH"`
+		// AllowedOrigins configures the allowed CORS domains.
+		AllowedOrigins []string `env:"ALLOWED_ORIGINS"`
 	}
 )
 
