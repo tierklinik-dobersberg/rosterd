@@ -7,6 +7,7 @@ import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
 import { AUTH_SERVICE } from './connect_clients';
 import { TkdRoster2Module } from './roster2/roster2.module';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 
 @Component({
   selector: 'app-root',
@@ -18,6 +19,7 @@ import { TkdRoster2Module } from './roster2/roster2.module';
     TkdRoster2Module,
     RouterModule,
     NzMessageModule,
+    NzIconModule,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
