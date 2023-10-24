@@ -54,7 +54,7 @@ func main() {
 	}
 
 	if err := bootstrapRosterManagerRole(p); err != nil {
-		logrus.Fatal(p)
+		logrus.Fatalf("failed to bootstrap roster_manager role: %s", err)
 	}
 
 	/*
@@ -91,7 +91,7 @@ func bootstrapRosterManagerRole(p *config.Providers) error {
 			}))
 
 			if err != nil {
-				return fmt.Errorf("failed to bootstrap roster_manager role: %w", err)
+				return fmt.Errorf("failed to create role: %w", err)
 			}
 
 			// TODO(ppacher): automatically add all idm_superusers to the roster_manager role.
@@ -102,7 +102,7 @@ func bootstrapRosterManagerRole(p *config.Providers) error {
 
 			logrus.Infof("created roster_manager role: id=%q", createRoleRes.Msg.Role.Id)
 		} else {
-			return fmt.Errorf("failed to get roster_manager role: %w", err)
+			return fmt.Errorf("failed to get role: %w", err)
 		}
 	} else {
 		logrus.Infof("found roster_manager role in IDM: id=%q", getRoleRes.Msg.GetRole().GetId())
