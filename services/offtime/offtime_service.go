@@ -12,6 +12,8 @@ import (
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/auth"
+	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/database"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
@@ -55,15 +57,14 @@ func (svc *Service) GetOffTimeEntry(ctx context.Context, req *connect.Request[ro
 }
 
 func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Request[rosterv1.CreateOffTimeRequestRequest]) (*connect.Response[rosterv1.CreateOffTimeRequestResponse], error) {
-	// fetch all roles of the current user.
-	roles, err := svc.fetchRoles(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch roles: %w", err)
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
 	}
 
 	// figure out for which user we want to create the offtime request
-	if req.Msg.RequestorId == "" || !hasRole("roster_manager", roles) {
-		req.Msg.RequestorId = req.Header().Get("X-Remote-User-ID")
+	if req.Msg.RequestorId == "" || !remoteUser.Admin {
+		req.Msg.RequestorId = remoteUser.ID
 	}
 
 	if req.Msg.RequestorId == "" {
@@ -85,7 +86,7 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 		Description: req.Msg.Description,
 		RequestorId: req.Msg.RequestorId,
 		CreatedAt:   time.Now(),
-		CreatorId:   req.Header().Get("X-Remote-User-ID"),
+		CreatorId:   remoteUser.ID,
 		RequestType: requestTypeFromProto(req.Msg.RequestType),
 	}
 
@@ -99,23 +100,19 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 }
 
 func (svc *Service) DeleteOffTimeRequest(ctx context.Context, req *connect.Request[rosterv1.DeleteOffTimeRequestRequest]) (*connect.Response[rosterv1.DeleteOffTimeRequestResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	models, err := svc.Datastore.GetOffTimeRequest(ctx, req.Msg.Id...)
 	if err != nil {
 		return nil, err
 	}
 
-	lm := make(map[string]structs.OffTimeEntry)
-	for _, m := range models {
-		lm[m.ID.Hex()] = m
-	}
+	lm := data.IndexSlice(models, func(m structs.OffTimeEntry) string { return m.ID.Hex() })
 
-	currentUserId := req.Header().Get("X-Remote-User-ID")
-	roles, err := svc.fetchRoles(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	isAdmin := hasRole("roster_manager", roles)
+	currentUserId := remoteUser.ID
 
 	for _, id := range req.Msg.Id {
 		model, ok := lm[id]
@@ -128,11 +125,11 @@ func (svc *Service) DeleteOffTimeRequest(ctx context.Context, req *connect.Reque
 		}
 
 		now := time.Now()
-		if (now.After(model.To) || now.After(model.From)) && !isAdmin {
+		if (now.After(model.To) || now.After(model.From)) && !remoteUser.Admin {
 			return nil, fmt.Errorf("id: %s off-time entry is already in the past", id)
 		}
 
-		if !isAdmin && model.RequestorId != currentUserId {
+		if !remoteUser.Admin && model.RequestorId != currentUserId {
 			return nil, fmt.Errorf("id: %s: you are not allowed to delete this entry", id)
 		}
 	}
@@ -185,14 +182,9 @@ func (svc *Service) FindOffTimeRequests(ctx context.Context, req *connect.Reques
 }
 
 func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[rosterv1.ApproveOrRejectRequest]) (*connect.Response[rosterv1.ApproveOrRejectResponse], error) {
-	roles, err := svc.fetchRoles(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	isAdmin := hasRole("roster_manager", roles)
-	if !isAdmin {
-		return nil, connect.NewError(connect.CodeAborted, fmt.Errorf("you're not allowed to perform this operation"))
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
 	}
 
 	models, err := svc.Datastore.GetOffTimeRequest(ctx, req.Msg.Id)
@@ -206,7 +198,7 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 	approval := structs.Approval{
 		Approved:   req.Msg.Type == rosterv1.ApprovalRequestType_APPROVAL_REQUEST_TYPE_APPROVED,
 		ApprovedAt: time.Now(),
-		ApproverID: req.Header().Get("X-Remote-User-ID"),
+		ApproverID: remoteUser.ID,
 		Comment:    req.Msg.Comment,
 	}
 
@@ -223,7 +215,7 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 		return nil, fmt.Errorf("failed to find approved request")
 	}
 
-	if err := svc.sendApprovalNotice(ctx, req.Header().Get("X-Remote-User-ID"), models[0]); err != nil {
+	if err := svc.sendApprovalNotice(ctx, remoteUser.ID, models[0]); err != nil {
 		return nil, fmt.Errorf("failed to send approval notice: %w", err)
 	}
 
@@ -233,10 +225,15 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 }
 
 func (svc *Service) AddOffTimeCosts(ctx context.Context, req *connect.Request[rosterv1.AddOffTimeCostsRequest]) (*connect.Response[rosterv1.AddOffTimeCostsResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	for _, costs := range req.Msg.AddCosts {
 		model := structs.OffTimeCosts{
 			CreatedAt:  time.Now(),
-			CreatorId:  req.Header().Get("X-Remote-User-ID"),
+			CreatorId:  remoteUser.ID,
 			Costs:      costs.Costs.AsDuration(),
 			IsVacation: costs.IsVacation,
 			UserID:     costs.UserId,
@@ -310,17 +307,15 @@ func (svc *Service) AddOffTimeCosts(ctx context.Context, req *connect.Request[ro
 }
 
 func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[rosterv1.GetOffTimeCostsRequest]) (*connect.Response[rosterv1.GetOffTimeCostsResponse], error) {
-	roles, err := svc.fetchRoles(ctx, req)
-	if err != nil {
-		return nil, err
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
 	}
-
-	isAdmin := hasRole("roster_manager", roles)
 
 	// determine for which Users we want to load costs
 	var userIds []string
 	if req.Msg.ForUsers != nil {
-		if !isAdmin {
+		if !remoteUser.Admin {
 			return nil, connect.NewError(connect.CodeAborted, fmt.Errorf("you're not allowed to perform this operation"))
 		}
 
@@ -333,7 +328,7 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 			}
 		}
 	} else {
-		userIds = []string{req.Header().Get("X-Remote-User-ID")}
+		userIds = []string{remoteUser.ID}
 	}
 
 	costs, err := svc.Datastore.GetOffTimeCosts(ctx, userIds...)
@@ -463,36 +458,6 @@ func requestTypeFromProto(rtype rosterv1.OffTimeType) structs.RequestType {
 	default:
 		return structs.RequestTypeAuto
 	}
-}
-
-func hasRole(roleName string, roles []*idmv1.Role) bool {
-	for _, r := range roles {
-		if r.Name == roleName {
-			return true
-		}
-	}
-	return false
-}
-
-func (svc *Service) fetchRoles(ctx context.Context, req connect.AnyRequest) ([]*idmv1.Role, error) {
-	roleIds := req.Header().Values("X-Remote-Role")
-
-	roles := make([]*idmv1.Role, len(roleIds))
-	for idx, roleId := range roleIds {
-		res, err := svc.Roles.GetRole(ctx, connect.NewRequest(&idmv1.GetRoleRequest{
-			Search: &idmv1.GetRoleRequest_Id{
-				Id: roleId,
-			},
-		}))
-
-		if err != nil {
-			return nil, err
-		}
-
-		roles[idx] = res.Msg.Role
-	}
-
-	return roles, nil
 }
 
 func (svc *Service) verifyUsersExists(ctx context.Context, userId string) error {

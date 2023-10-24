@@ -9,6 +9,7 @@ import (
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"golang.org/x/exp/slices"
@@ -28,6 +29,11 @@ func NewConstraintService(p *config.Providers) *ConstraintService {
 }
 
 func (svc *ConstraintService) CreateConstraint(ctx context.Context, req *connect.Request[rosterv1.CreateConstraintRequest]) (*connect.Response[rosterv1.CreateConstraintResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	model := structs.Constraint{
 		Description:   req.Msg.Description,
 		Expression:    req.Msg.Expression,
@@ -38,9 +44,9 @@ func (svc *ConstraintService) CreateConstraint(ctx context.Context, req *connect
 		Deny:          req.Msg.Deny,
 		RosterOnly:    req.Msg.RosterOnly,
 		CreatedAt:     time.Now(),
-		CreatorId:     req.Header().Get("X-Remote-User-ID"),
+		CreatorId:     remoteUser.ID,
 		UpdatedAt:     time.Now(),
-		LastUpdatedBy: req.Header().Get("X-Remote-User-ID"),
+		LastUpdatedBy: remoteUser.ID,
 	}
 
 	if err := svc.validateModel(ctx, &model); err != nil {
@@ -57,13 +63,18 @@ func (svc *ConstraintService) CreateConstraint(ctx context.Context, req *connect
 }
 
 func (svc *ConstraintService) UpdateConstraint(ctx context.Context, req *connect.Request[rosterv1.UpdateConstraintRequest]) (*connect.Response[rosterv1.UpdateConstraintResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	model, err := svc.Datastore.GetConstraintByID(ctx, req.Msg.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	model.UpdatedAt = time.Now()
-	model.LastUpdatedBy = req.Header().Get("X-Remote-User-ID")
+	model.LastUpdatedBy = remoteUser.ID
 
 	paths := []string{
 		"description",

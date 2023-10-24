@@ -10,9 +10,9 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mennanov/fmutils"
-	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
@@ -178,27 +178,16 @@ func (svc *Service) DeleteWorkTime(ctx context.Context, req *connect.Request[ros
 	return connect.NewResponse(new(rosterv1.DeleteWorkTimeResponse)), nil
 }
 
-func hasRole(roleName string, roles []*idmv1.Role) bool {
-	for _, r := range roles {
-		if r.Name == roleName {
-			return true
-		}
-	}
-	return false
-}
-
 func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Request[rosterv1.GetVacationCreditsLeftRequest]) (*connect.Response[rosterv1.GetVacationCreditsLeftResponse], error) {
-	currentUserRoles, err := svc.FetchAuthUserRoles(ctx, req)
-	if err != nil {
-		return nil, err
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
 	}
-
-	isAdmin := hasRole("roster_manager", currentUserRoles)
 
 	// determine for which users we want to load costs
 	var userIds []string
 	if req.Msg.ForUsers != nil {
-		if !isAdmin {
+		if !remoteUser.Admin {
 			return nil, connect.NewError(connect.CodeAborted, fmt.Errorf("you're not allowed to perform this operation"))
 		}
 
@@ -211,7 +200,7 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 			}
 		}
 	} else {
-		userIds = []string{req.Header().Get("X-Remote-User-ID")}
+		userIds = []string{remoteUser.ID}
 	}
 
 	costs, err := svc.Datastore.GetOffTimeCosts(ctx, userIds...)

@@ -19,6 +19,8 @@ type (
 		DatabaseName string `env:"DATABASE_NAME,required"`
 		// Address holds the listen address of the HTTP server.
 		Address string `env:"ADDRESS,default=:8080"`
+		// AdminAddress holds the address of the unauthenticated admin endpoint.
+		AdminAddress string `env:"ADMIN_ADDRESS,default=:8081"`
 		// Country is the two-letter country code of legal residence used
 		// for public holiday detection.
 		Country string `env:"COUNTRY,default=AT"`
@@ -36,6 +38,8 @@ type (
 		TemplatesDir string `env:"TEMPLATES_PATH"`
 		// AllowedOrigins configures the allowed CORS domains.
 		AllowedOrigins []string `env:"ALLOWED_ORIGINS"`
+		// RosterManagerRoleID holds the ID of the roster_manager role
+		RosterManagerRoleID string `env:"ROSTER_MANAGER_ROLE_ID,default=roster_manager"`
 	}
 )
 

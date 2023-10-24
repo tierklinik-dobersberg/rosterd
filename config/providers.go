@@ -98,27 +98,6 @@ func (p *Providers) FetchAllUserIds(ctx context.Context) ([]string, error) {
 	return userIds, nil
 }
 
-func (p *Providers) FetchAuthUserRoles(ctx context.Context, req connect.AnyRequest) ([]*idmv1.Role, error) {
-	roleIds := req.Header().Values("X-Remote-Role")
-
-	roles := make([]*idmv1.Role, len(roleIds))
-	for idx, roleId := range roleIds {
-		res, err := p.Roles.GetRole(ctx, connect.NewRequest(&idmv1.GetRoleRequest{
-			Search: &idmv1.GetRoleRequest_Id{
-				Id: roleId,
-			},
-		}))
-
-		if err != nil {
-			return nil, err
-		}
-
-		roles[idx] = res.Msg.Role
-	}
-
-	return roles, nil
-}
-
 func (p *Providers) VerifyUserExists(ctx context.Context, id string) error {
 	_, err := p.Users.GetUser(ctx, connect.NewRequest(&idmv1.GetUserRequest{
 		Search: &idmv1.GetUserRequest_Id{

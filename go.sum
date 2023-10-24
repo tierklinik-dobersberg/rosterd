@@ -1227,6 +1227,14 @@ github.com/tierklinik-dobersberg/apis v0.0.0-20231002082922-d0606d16b819 h1:Vpg6
 github.com/tierklinik-dobersberg/apis v0.0.0-20231002082922-d0606d16b819/go.mod h1:Ul4j//driEaVCiAedWdusxLx8KNnu6zqw3DRWVXgpdQ=
 github.com/tierklinik-dobersberg/apis v0.0.0-20231002090432-3c00d4568ef1 h1:PPYOVDimrrSse8Eg81KS69P2lQJY0MFz0SkbL0S9qRo=
 github.com/tierklinik-dobersberg/apis v0.0.0-20231002090432-3c00d4568ef1/go.mod h1:UxfBUf+0aIjeNnKcc+wP+4BBZJkCFvwhS+icM4+M81U=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024073023-46ac9e9190e1 h1:rw7qU4DvjXSmHzlzvp8ctO6eVvpego71EA1qokUk7NI=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024073023-46ac9e9190e1/go.mod h1:UxfBUf+0aIjeNnKcc+wP+4BBZJkCFvwhS+icM4+M81U=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024075617-b5230d549997 h1:v8BTQJCi+aiXeU012GOmoxT+yxkFAhyPav1UICDu51w=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024075617-b5230d549997/go.mod h1:UxfBUf+0aIjeNnKcc+wP+4BBZJkCFvwhS+icM4+M81U=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024080815-9800e0dc7b28 h1:7NOD95sPk2bGfwUd5MbmmGiMovhuVVXCxPTYKGQwcys=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024080815-9800e0dc7b28/go.mod h1:UxfBUf+0aIjeNnKcc+wP+4BBZJkCFvwhS+icM4+M81U=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024081328-529e8c93c041 h1:XArEgeqE4KC2vcx7dcJBziwAipWcGR6KMqvVImMf/yk=
+github.com/tierklinik-dobersberg/apis v0.0.0-20231024081328-529e8c93c041/go.mod h1:UxfBUf+0aIjeNnKcc+wP+4BBZJkCFvwhS+icM4+M81U=
 github.com/tierklinik-dobersberg/cis v0.0.0-20221117114909-db8d495a4502 h1:NGwJZ6HPTjOhP+hHULdcoNgayybTdzV+2nzFQcnaeVE=
 github.com/tierklinik-dobersberg/cis v0.0.0-20221117114909-db8d495a4502/go.mod h1:o+Od7FimjdMun8KtG3VNNb+wuhawkPE5yGOmx53Wgx4=
 github.com/tierklinik-dobersberg/go-dbf v0.1.0/go.mod h1:D8nutiFua4yNMPs0c+efws/L2Vl34yspIzOFSNOtxVg=

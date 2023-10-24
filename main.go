@@ -3,18 +3,20 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
+	"fmt"
 	"io/fs"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/sirupsen/logrus"
+	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/cors"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/apis/pkg/privacy"
@@ -25,6 +27,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/services/roster"
 	"github.com/tierklinik-dobersberg/rosterd/services/workshift"
 	"github.com/tierklinik-dobersberg/rosterd/services/worktime"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 //go:embed ui/dist/ui
@@ -35,8 +38,6 @@ var mailTemplates embed.FS
 
 func main() {
 	ctx := context.Background()
-
-	rand.Seed(time.Now().UnixNano())
 
 	l := logrus.StandardLogger()
 
@@ -52,6 +53,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := bootstrapRosterManagerRole(p); err != nil {
+		logrus.Fatal(p)
+	}
+
 	/*
 		location, err := time.LoadLocation("Europe/Vienna")
 		if err != nil {
@@ -60,11 +65,54 @@ func main() {
 		}
 	*/
 
-	connectSrv := prepareConnectServer(p)
+	publicServer, adminServer := prepareConnectServer(p)
 
-	if err := apisrv.Serve(context.Background(), connectSrv); err != nil {
+	if err := apisrv.Serve(context.Background(), publicServer, adminServer); err != nil {
 		logrus.Fatalf("failed to serve: %s", err)
 	}
+}
+
+func bootstrapRosterManagerRole(p *config.Providers) error {
+	// make sure there's a roster_manager role available
+	getRoleRes, err := p.Roles.GetRole(context.Background(), connect.NewRequest(&idmv1.GetRoleRequest{
+		Search: &idmv1.GetRoleRequest_Name{
+			Name: "roster_manager",
+		},
+	}))
+
+	if err != nil {
+		var cerr *connect.Error
+
+		if errors.As(err, &cerr) && cerr.Code() == connect.CodeNotFound {
+			createRoleRes, err := p.Roles.CreateRole(context.Background(), connect.NewRequest(&idmv1.CreateRoleRequest{
+				Name:             "roster_manager",
+				Description:      "Administration role for rosters",
+				DeleteProtection: true,
+			}))
+
+			if err != nil {
+				return fmt.Errorf("failed to bootstrap roster_manager role: %w", err)
+			}
+
+			// TODO(ppacher): automatically add all idm_superusers to the roster_manager role.
+
+			if p.Config.RosterManagerRoleID == "" {
+				p.Config.RosterManagerRoleID = createRoleRes.Msg.Role.Id
+			}
+
+			logrus.Infof("created roster_manager role: id=%q", createRoleRes.Msg.Role.Id)
+		} else {
+			return fmt.Errorf("failed to get roster_manager role: %w", err)
+		}
+	} else {
+		logrus.Infof("found roster_manager role in IDM: id=%q", getRoleRes.Msg.GetRole().GetId())
+
+		if p.Config.RosterManagerRoleID == "" {
+			p.Config.RosterManagerRoleID = getRoleRes.Msg.Role.Id
+		}
+	}
+
+	return nil
 }
 
 func getStaticFilesHandler(path string) (http.Handler, error) {
@@ -95,19 +143,40 @@ func getStaticFilesHandler(path string) (http.Handler, error) {
 	return spa.ServeSPA(http.Dir(path), "index.html"), nil
 }
 
-func prepareConnectServer(p *config.Providers) *http.Server {
-	privacyInterceptor := privacy.NewFilterInterceptor(privacy.SubjectResolverFunc(func(ctx context.Context, ar connect.AnyRequest) (string, []string, error) {
-		userId := ar.Header().Get("X-Remote-User-ID")
-		roles := ar.Header().Values("X-Remote-Role")
+var serverContextKey = struct{ S string }{S: "serverContextKey"}
 
-		return userId, roles, nil
+func prepareConnectServer(p *config.Providers) (public, admin *http.Server) {
+	privacyInterceptor := privacy.NewFilterInterceptor(privacy.SubjectResolverFunc(func(ctx context.Context, ar connect.AnyRequest) (string, []string, error) {
+		remoteUser := auth.From(ctx)
+
+		if remoteUser == nil {
+			return "", nil, nil
+		}
+
+		return remoteUser.ID, remoteUser.RoleIDs, nil
 	}))
 
 	logInterceptor := log.NewLoggingInterceptor()
 
+	authInterceptor := auth.NewAuthAnnotationInterceptor(protoregistry.GlobalFiles, auth.NewIDMRoleResolver(p.Roles), func(ctx context.Context, req connect.AnyRequest) (auth.RemoteUser, error) {
+		serverKey, _ := ctx.Value(serverContextKey).(string)
+
+		if serverKey == "admin" {
+			return auth.RemoteUser{
+				ID:          "service-account",
+				DisplayName: req.Peer().Addr,
+				RoleIDs:     []string{p.Config.RosterManagerRoleID},
+				Admin:       true,
+			}, nil
+		}
+
+		return auth.RemoteHeaderExtractor(ctx, req)
+	})
+
 	interceptors := connect.WithInterceptors(
-		logInterceptor,
+		authInterceptor,
 		privacyInterceptor,
+		logInterceptor,
 	)
 
 	mux := http.NewServeMux()
@@ -117,7 +186,7 @@ func prepareConnectServer(p *config.Providers) *http.Server {
 	mux.Handle(path, handler)
 
 	workShiftService := workshift.New(p)
-	path, handler = rosterv1connect.NewWorkShiftServiceHandler(workShiftService)
+	path, handler = rosterv1connect.NewWorkShiftServiceHandler(workShiftService, interceptors)
 	mux.Handle(path, handler)
 
 	offTimeService := offtime.New(p)
@@ -125,11 +194,11 @@ func prepareConnectServer(p *config.Providers) *http.Server {
 	mux.Handle(path, handler)
 
 	rosterService := roster.NewRosterService(p)
-	path, handler = rosterv1connect.NewRosterServiceHandler(rosterService)
+	path, handler = rosterv1connect.NewRosterServiceHandler(rosterService, interceptors)
 	mux.Handle(path, handler)
 
 	constraintService := roster.NewConstraintService(p)
-	path, handler = rosterv1connect.NewConstraintServiceHandler(constraintService)
+	path, handler = rosterv1connect.NewConstraintServiceHandler(constraintService, interceptors)
 	mux.Handle(path, handler)
 
 	// Get a static file handler.
@@ -147,5 +216,16 @@ func prepareConnectServer(p *config.Providers) *http.Server {
 		AllowCredentials: true,
 	}
 
-	return apisrv.Create(p.Config.Address, cors.Wrap(cfg, mux))
+	wrapWithKey := func(key string, next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(context.WithValue(r.Context(), serverContextKey, key))
+
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	public = apisrv.Create(p.Config.Address, cors.Wrap(cfg, wrapWithKey("public", mux)))
+	admin = apisrv.Create(p.Config.AdminAddress, wrapWithKey("admin", mux))
+
+	return public, admin
 }

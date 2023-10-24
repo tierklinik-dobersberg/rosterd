@@ -20,11 +20,14 @@ import (
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/auth"
+	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/constraint"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -88,6 +91,11 @@ func (svc *RosterService) ListRosterTypes(ctx context.Context, req *connect.Requ
 }
 
 func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[rosterv1.SaveRosterRequest]) (*connect.Response[rosterv1.SaveRosterResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	var roster structs.DutyRoster
 
 	if req.Msg.Id != "" {
@@ -102,7 +110,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 			From:           req.Msg.From,
 			To:             req.Msg.To,
 			CreatedAt:      time.Now(),
-			LastModifiedBy: req.Header().Get("X-Remote-User-ID"),
+			LastModifiedBy: remoteUser.ID,
 			UpdatedAt:      time.Now(),
 			ShiftTags:      req.Msg.ShiftTags,
 			RosterTypeName: req.Msg.RosterTypeName,
@@ -124,10 +132,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		return nil, fmt.Errorf("failed to get required shifts for roster: %w", err)
 	}
 
-	workShiftLm := make(map[string]structs.WorkShift, len(definitions))
-	for _, ws := range definitions {
-		workShiftLm[ws.ID.Hex()] = ws
-	}
+	workShiftLm := data.IndexSlice(definitions, func(e structs.WorkShift) string { return e.ID.Hex() })
 
 	roster.Shifts = make([]structs.PlannedShift, len(req.Msg.Shifts))
 	for idx, shift := range req.Msg.Shifts {
@@ -248,6 +253,11 @@ func (svc *RosterService) DeleteRoster(ctx context.Context, req *connect.Request
 }
 
 func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Request[rosterv1.ApproveRosterRequest]) (*connect.Response[rosterv1.ApproveRosterResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	// first, fetch the roster from the database
 	roster, err := svc.Datastore.DutyRosterByID(ctx, req.Msg.Id)
 	if err != nil {
@@ -276,7 +286,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
 
-	approver := req.Header().Get("X-Remote-User-ID")
+	approver := remoteUser.ID
 	for _, an := range analysis {
 		diff := an.PlannedTime.AsDuration() - an.ExpectedTime.AsDuration()
 		if diff > 0 {
@@ -373,7 +383,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	_, err = svc.sendRosterNotification(ctx, req.Header().Get("X-Remote-User-ID"), roster, false)
+	_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false)
 	if err != nil {
 		return nil, err
 	}
@@ -443,28 +453,19 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 			// check if the shift is filtered by tag.
 			isAllowed := len(rosterType.ShiftTags) == 0 && len(rosterType.OnCallTags) == 0
 
-			// Check if we should only return staff that is assigned to on-call
-			// shifts.
-			if req.Msg.OnCall {
-				for _, onCallTag := range rosterType.OnCallTags {
-					if slices.Contains(def.Tags, onCallTag) {
-						isAllowed = true
-						break
-					}
-				}
-			} else {
-				if !isAllowed {
-					for _, allowedTag := range rosterType.ShiftTags {
-						if slices.Contains(def.Tags, allowedTag) {
-							isAllowed = true
-							break
-						}
-					}
+			if !isAllowed {
+				// Check if we should only return staff that is assigned to on-call
+				// shifts.
+				if req.Msg.OnCall {
+					isAllowed = data.SliceOverlaps(rosterType.OnCallTags, def.Tags)
+				} else {
+					isAllowed = data.SliceOverlaps(rosterType.ShiftTags, def.Tags)
 				}
 			}
 
 			if !isAllowed {
 				log.L(ctx).Infof("shift %s is filtered. shift-tags=%v rosterType.shiftTags=%v rosterType.onCallTags=%v", shift.WorkShiftID, def.Tags, rosterType.ShiftTags, rosterType.OnCallTags)
+
 				continue
 			}
 
@@ -598,6 +599,11 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 }
 
 func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Request[rosterv1.AnalyzeWorkTimeRequest]) (*connect.Response[rosterv1.AnalyzeWorkTimeResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("missing remote user"))
+	}
+
 	from, err := time.ParseInLocation("2006-01-02", req.Msg.From, time.Local)
 	if err != nil {
 		return nil, err
@@ -620,7 +626,7 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 			userIds = req.Msg.Users.UserIds
 		}
 	} else {
-		userIds = []string{req.Header().Get("X-Remote-User-ID")}
+		userIds = []string{remoteUser.ID}
 	}
 
 	res, err := svc.analyzeWorkTime(ctx, userIds, from, to)
@@ -634,6 +640,11 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 }
 
 func (svc *RosterService) SendRosterPreview(ctx context.Context, req *connect.Request[rosterv1.SendRosterPreviewRequest]) (*connect.Response[rosterv1.SendRosterPreviewResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	roster, err := svc.Datastore.DutyRosterByID(ctx, req.Msg.Id)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -643,7 +654,7 @@ func (svc *RosterService) SendRosterPreview(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	deliveries, err := svc.sendRosterNotification(ctx, req.Header().Get("X-Remote-User-ID"), roster, true)
+	deliveries, err := svc.sendRosterNotification(ctx, remoteUser.ID, roster, true)
 	if err != nil {
 		return nil, err
 	}
@@ -730,19 +741,14 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 		return nil, fmt.Errorf("failed to load work-shift definitions: %w", err)
 	}
 
-	wsLm := make(map[string]structs.WorkShift, len(workShifts))
-	for _, s := range workShifts {
-		wsLm[s.ID.Hex()] = s
-	}
+	wsLm := data.IndexSlice(workShifts, func(e structs.WorkShift) string { return e.ID.Hex() })
 
 	allUsers, err := svc.FetchAllUserProfiles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all user profiles: %w", err)
 	}
-	userLm := make(map[string]*idmv1.Profile)
-	for _, u := range allUsers {
-		userLm[u.User.Id] = u
-	}
+
+	userLm := data.IndexSlice(allUsers, func(u *idmv1.Profile) string { return u.GetUser().GetId() })
 
 	for _, shift := range roster.Shifts {
 		shiftName := wsLm[shift.WorkShiftID.Hex()].Name
@@ -872,6 +878,75 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 	}
 
 	return res.Msg.Deliveries, nil
+}
+
+func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Request[rosterv1.GetUserShiftsRequest]) (*connect.Response[rosterv1.GetUserShiftsResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
+	if req.Msg.Timerange == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("missing timerange"))
+	}
+
+	if !req.Msg.Timerange.From.IsValid() || req.Msg.Timerange.To.IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid from or to time"))
+	}
+
+	from := req.Msg.Timerange.From.AsTime()
+	to := req.Msg.Timerange.To.AsTime()
+
+	// collect all duty rosters between 'from' and 'to'
+	rosters := make(map[string]structs.DutyRoster)
+	for iter := from; iter.Before(to) || iter.Equal(to); iter = iter.AddDate(0, 0, 1) {
+		rostersForDate, err := svc.Datastore.DutyRostersByTime(ctx, iter)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to search for duty rosters: %w", err))
+		}
+
+		for _, r := range rostersForDate {
+			rosters[r.ID.Hex()] = r
+		}
+	}
+
+	// load all workshift definitions
+	workShiftDefinitions, err := svc.Datastore.ListWorkShifts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load workshift definitions: %w", err)
+	}
+
+	lm := data.IndexSlice(workShiftDefinitions, func(e structs.WorkShift) string { return e.ID.Hex() })
+
+	var (
+		plannedShifts    []structs.PlannedShift
+		shiftDefinitions = make(map[string]structs.WorkShift)
+	)
+
+	for _, roster := range rosters {
+		for _, shift := range roster.Shifts {
+			if slices.Contains(shift.AssignedUserIds, remoteUser.ID) {
+				plannedShifts = append(plannedShifts, shift)
+				key := shift.WorkShiftID.Hex()
+				shiftDefinitions[key] = lm[key]
+			}
+		}
+	}
+
+	res := &rosterv1.GetUserShiftsResponse{
+		Shifts:      make([]*rosterv1.PlannedShift, 0, len(plannedShifts)),
+		Definitions: make([]*rosterv1.WorkShift, 0, len(shiftDefinitions)),
+	}
+
+	for _, p := range plannedShifts {
+		res.Shifts = append(res.Shifts, p.ToProto())
+	}
+
+	for _, def := range maps.Values(shiftDefinitions) {
+		res.Definitions = append(res.Definitions, def.ToProto())
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string, from, to time.Time) ([]*rosterv1.WorkTimeAnalysis, error) {
@@ -1180,7 +1255,11 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 			}
 
 			for _, profile := range *profiles {
-				if !hasRole(shift.EligibleRoles, profile.Roles) {
+				hasRole := data.SliceOverlapsFunc(shift.EligibleRoles, profile.Roles, func(role *idmv1.Role) string {
+					return role.Id
+				})
+
+				if !hasRole {
 					continue
 				}
 
@@ -1237,22 +1316,6 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 	}
 
 	return results, shiftDefinitions, nil
-}
-
-func hasRole(allowedRoles []string, assignedRoles []*idmv1.Role) bool {
-	if len(allowedRoles) == 0 {
-		return true
-	}
-
-	for _, role := range allowedRoles {
-		for _, assigned := range assignedRoles {
-			if assigned.Id == role {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Time, to time.Time) (map[string]*calendarv1.PublicHoliday, error) {
