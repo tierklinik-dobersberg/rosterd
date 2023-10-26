@@ -65,10 +65,7 @@ export class WorktimesComponent implements OnInit {
   changeModel = makeEmptyChangeModel();
   analyze: AnalyzeVacation | null = null;
 
-  endOfYear: Date = (() => {
-      const now = new Date();
-      return new Date(now.getFullYear() +1, 0, 0);
-  })()
+  endOfYear = new Date((new Date()).getFullYear(), 11, 31, 23, 59, 59)
 
   trackModel: TrackByFunction<Model> = (_, p) => p.profile.user!.id
 

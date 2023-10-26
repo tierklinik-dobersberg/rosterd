@@ -890,7 +890,7 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("missing timerange"))
 	}
 
-	if !req.Msg.Timerange.From.IsValid() || req.Msg.Timerange.To.IsValid() {
+	if !req.Msg.Timerange.From.IsValid() || !req.Msg.Timerange.To.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid from or to time"))
 	}
 

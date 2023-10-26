@@ -14,6 +14,7 @@ import (
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
+	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/database"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
@@ -216,7 +217,7 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 	}
 
 	if err := svc.sendApprovalNotice(ctx, remoteUser.ID, models[0]); err != nil {
-		return nil, fmt.Errorf("failed to send approval notice: %w", err)
+		log.L(ctx).Errorf("failed to send approval notice to %q: %w", remoteUser.ID, err)
 	}
 
 	return connect.NewResponse(&rosterv1.ApproveOrRejectResponse{
