@@ -11,7 +11,7 @@ RUN npm install
 RUN npx browserslist@latest --update-db
 
 COPY ./ui .
-RUN npm run build -- --configuration $CONFIGURATION
+RUN npm run build -- --configuration $CONFIGURATION && rm -r .angular/cache node_modules
 
 # Build the frontend
 FROM node:16 as mailbuild

@@ -39,7 +39,7 @@ type (
 		// AllowedOrigins configures the allowed CORS domains.
 		AllowedOrigins []string `env:"ALLOWED_ORIGINS"`
 		// RosterManagerRoleID holds the ID of the roster_manager role
-		RosterManagerRoleID string `env:"ROSTER_MANAGER_ROLE_ID,default=roster_manager"`
+		RosterManagerRoleID string `env:"ROSTER_MANAGER_ROLE_ID"`
 	}
 )
 
