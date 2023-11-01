@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -167,6 +168,15 @@ func (db *DatabaseImpl) LoadDutyRosters(ctx context.Context) ([]structs.DutyRost
 }
 
 func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]structs.DutyRoster, error) {
+	// make sure we use correct hours/minutes for the from/to query
+	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	to := time.Date(t.Year(), t.Month(), t.Day()+1, 0, 0, 0, -1, t.Location())
+
+	log.L(ctx).
+		WithField("from", from).
+		WithField("to", to).
+		Infof("searching for duty rosters by time")
+
 	res, err := db.dutyRosters.Aggregate(ctx, mongo.Pipeline{
 		{
 			{
@@ -182,7 +192,7 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 											"format":     "%Y-%m-%d",
 										},
 									},
-									t,
+									to,
 								},
 							},
 						},
@@ -195,7 +205,7 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 											"format":     "%Y-%m-%d",
 										},
 									},
-									t,
+									from,
 								},
 							},
 						},

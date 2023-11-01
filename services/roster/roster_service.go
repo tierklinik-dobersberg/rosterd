@@ -409,6 +409,10 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 
+	if len(rosters) == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to find any rosters for %s", t))
+	}
+
 	shifts, err := svc.Datastore.ListWorkShifts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch work shift definitions: %w", err)
@@ -541,8 +545,24 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		dutyRoster = listCopy
 	}
 
-	var from time.Time
-	var to time.Time
+	// check if we should include the work-time analysis as well.
+	shouldIncludeAnalysis := false
+	if req.Msg.ReadMask == nil || len(req.Msg.ReadMask.Paths) == 0 {
+		shouldIncludeAnalysis = true
+	}
+	if !shouldIncludeAnalysis && req.Msg.ReadMask != nil {
+		for _, path := range req.Msg.ReadMask.Paths {
+			if strings.HasPrefix(path, "work_time_analysis") {
+				shouldIncludeAnalysis = true
+				break
+			}
+		}
+	}
+
+	var (
+		from time.Time
+		to   time.Time
+	)
 
 	response := &rosterv1.GetRosterResponse{
 		Roster: make([]*rosterv1.Roster, len(dutyRoster)),
@@ -559,20 +579,6 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 
 		if to.IsZero() || rosterTo.After(to) {
 			to = rosterTo
-		}
-	}
-
-	// check if we should include the work-time analysis as well.
-	shouldIncludeAnalysis := false
-	if req.Msg.ReadMask == nil || len(req.Msg.ReadMask.Paths) == 0 {
-		shouldIncludeAnalysis = true
-	}
-	if !shouldIncludeAnalysis && req.Msg.ReadMask != nil {
-		for _, path := range req.Msg.ReadMask.Paths {
-			if strings.HasPrefix(path, "work_time_analysis") {
-				shouldIncludeAnalysis = true
-				break
-			}
 		}
 	}
 
