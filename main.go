@@ -214,6 +214,7 @@ func prepareConnectServer(p *config.Providers) (public, admin *http.Server) {
 	cfg := cors.Config{
 		AllowedOrigins:   p.Config.AllowedOrigins,
 		AllowCredentials: true,
+		Debug:            true,
 	}
 
 	wrapWithKey := func(key string, next http.Handler) http.Handler {
