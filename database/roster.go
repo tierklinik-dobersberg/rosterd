@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
@@ -87,20 +86,44 @@ func (db *DatabaseImpl) SaveDutyRoster(ctx context.Context, roster *structs.Duty
 	return true, nil
 }
 
-func (db *DatabaseImpl) DeleteDutyRoster(ctx context.Context, id string) error {
+func (db *DatabaseImpl) DeleteDutyRoster(ctx context.Context, id string, supersededBy primitive.ObjectID) error {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
 
-	res, err := db.dutyRosters.DeleteOne(ctx, bson.M{
-		"_id": oid,
+	// if the roster is not superseded by a different one, we can just remove
+	// it from the collection
+	if supersededBy.IsZero() {
+		res, err := db.dutyRosters.DeleteOne(ctx, bson.M{
+			"_id": oid,
+		})
+		if err != nil {
+			return err
+		}
+
+		if res.DeletedCount == 0 {
+			return mongo.ErrNoDocuments
+		}
+
+		return nil
+	}
+
+	// the roster has been superseded by a new version, this may happen if the
+	// roster is changed although it has already been approved.
+	// In this case, we just mark the roster as deleted and store the ID of the new roster
+	// so we can calculate differences and send nices mail updates.
+	res, err := db.dutyRosters.UpdateOne(ctx, bson.M{"_id": oid}, bson.M{
+		"$set": bson.M{
+			"deleted":      true,
+			"supersededBy": supersededBy,
+		},
 	})
 	if err != nil {
 		return err
 	}
 
-	if res.DeletedCount == 0 {
+	if res.MatchedCount == 0 {
 		return mongo.ErrNoDocuments
 	}
 
@@ -153,8 +176,26 @@ func (db *DatabaseImpl) DutyRosterByID(ctx context.Context, id string) (structs.
 	return result, nil
 }
 
+func (db *DatabaseImpl) GetSupersededDutyRoster(ctx context.Context, rosterID primitive.ObjectID) (*structs.DutyRoster, error) {
+	res := db.dutyRosters.FindOne(ctx, bson.M{"supersededBy": rosterID})
+	if res.Err() != nil {
+		return nil, res.Err()
+	}
+
+	var r structs.DutyRoster
+	if err := res.Decode(&r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
 func (db *DatabaseImpl) LoadDutyRosters(ctx context.Context) ([]structs.DutyRoster, error) {
-	res, err := db.dutyRosters.Find(ctx, bson.M{})
+	res, err := db.dutyRosters.Find(ctx, bson.M{
+		"deleted": bson.M{
+			"$exists": false,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +250,11 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 								},
 							},
 						},
+						bson.M{
+							"deleted": bson.M{
+								"$exists": false,
+							},
+						},
 					},
 				},
 			},
@@ -228,139 +274,4 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 	}
 
 	return results, nil
-}
-
-// DEPRECATED
-//
-
-func (db *DatabaseImpl) CreateRoster(ctx context.Context, roster structs.Roster) error {
-	roster.ID = primitive.NewObjectID()
-
-	_, err := db.rosters.InsertOne(ctx, roster)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (db *DatabaseImpl) UpdateRoster(ctx context.Context, roster structs.Roster) error {
-	if roster.ID.IsZero() {
-		return fmt.Errorf("missing roster id")
-	}
-
-	_, err := db.rosters.ReplaceOne(ctx, bson.M{"_id": roster.ID}, roster)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (db *DatabaseImpl) FindRoster(ctx context.Context, month time.Month, year int) (*structs.Roster, error) {
-	result := db.rosters.FindOne(ctx, bson.M{"month": month, "year": year})
-	if result.Err() != nil {
-		return nil, result.Err()
-	}
-
-	var roster structs.Roster
-	if err := result.Decode(&roster); err != nil {
-		return nil, err
-	}
-
-	return &roster, nil
-}
-
-func (db *DatabaseImpl) ListRosterMeta(ctx context.Context, approved *bool) ([]structs.RosterMeta, error) {
-	filter := bson.M{}
-
-	if approved != nil {
-		filter["approved"] = approved
-	}
-
-	results, err := db.rosters.Find(
-		ctx,
-		filter,
-		options.Find().SetSort(bson.D{
-			{Key: "year", Value: 1},
-			{Key: "month", Value: 1},
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var meta []structs.RosterMeta
-	if err := results.All(ctx, &meta); err != nil {
-		return nil, err
-	}
-
-	return meta, nil
-}
-
-func (db *DatabaseImpl) DeleteRoster(ctx context.Context, id string) error {
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
-
-	result, err := db.rosters.DeleteOne(ctx, bson.M{"_id": oid})
-	if err != nil {
-		return err
-	}
-
-	if result.DeletedCount == 0 {
-		return fmt.Errorf("not found")
-	}
-
-	return nil
-}
-
-func (db *DatabaseImpl) LoadRoster(ctx context.Context, id string) (*structs.Roster, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, err
-	}
-
-	result := db.rosters.FindOne(ctx, bson.M{"_id": oid})
-	if result.Err() != nil {
-		return nil, result.Err()
-	}
-
-	var roster structs.Roster
-	if err := result.Decode(&roster); err != nil {
-		return nil, err
-	}
-
-	return &roster, nil
-}
-
-func (db *DatabaseImpl) ApproveRoster(ctx context.Context, approver string, month time.Month, year int) error {
-	result, err := db.rosters.UpdateOne(
-		ctx, bson.M{
-			"year":  year,
-			"month": month,
-		},
-		bson.M{
-			"$set": bson.M{
-				"approved":   true,
-				"approvedAt": time.Now(),
-				"approvedBy": approver,
-			},
-		},
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if result.MatchedCount == 0 {
-		return fmt.Errorf("not found")
-	}
-
-	if result.ModifiedCount == 0 {
-		return fmt.Errorf("already approved")
-	}
-
-	return nil
 }

@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
-import { Profile, Roster, RosterType } from '@tkd/apis';
+import { Profile, Role, Roster, RosterType } from '@tkd/apis';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { ROSTER_SERVICE, USER_SERVICE } from 'src/app/connect_clients';
+import { from, share, BehaviorSubject, filter, map } from 'rxjs';
+import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from 'src/app/connect_clients';
 
 interface RosterWithLink {
   roster: Roster;
@@ -25,6 +26,24 @@ export class TkdRosterOverviewComponent implements OnInit {
   rosterTypes: RosterType[] = [];
 
   trackRoster: TrackByFunction<RosterWithLink> = (_, r) => r.roster.id
+
+
+  private profile = from(
+    inject(AUTH_SERVICE).introspect({})
+      .then(response => response.profile)
+  ).pipe(
+    share({connector: () => new BehaviorSubject<Profile | undefined>(undefined)}),
+    filter(p => !!p),
+  )
+
+  isAdmin = this.profile
+    .pipe(map(p => {
+      if (p!.roles.find((role: Role) => ['idm_superuser', 'roster_manager'].includes(role.name))) {
+        return true
+      }
+
+      return false
+    }))
 
   nextMonth = (() => {
     const now = new Date();

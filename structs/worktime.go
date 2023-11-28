@@ -8,11 +8,12 @@ import (
 
 type (
 	WorkTime struct {
-		ID                   primitive.ObjectID `json:"id" bson:"_id"`
-		UserID               string             `json:"userID" bson:"userID"`
-		TimePerWeek          time.Duration      `json:"timePerWeek" bson:"timePerWeek"`
-		ApplicableFrom       time.Time          `json:"applicableFrom" bson:"applicableFrom"`
-		VacationWeeksPerYear float32            `json:"vacationWeeksPerYear" bson:"vacationWeeksPerYear"`
+		ID                        primitive.ObjectID `json:"id" bson:"_id"`
+		UserID                    string             `json:"userID" bson:"userID"`
+		TimePerWeek               time.Duration      `json:"timePerWeek" bson:"timePerWeek"`
+		ApplicableFrom            time.Time          `json:"applicableFrom" bson:"applicableFrom"`
+		VacationWeeksPerYear      float32            `json:"vacationWeeksPerYear" bson:"vacationWeeksPerYear"`
+		OvertimeAllowancePerMonth time.Duration      `json:"overtimeAllowance" bson:"overtimeAllowance"`
 	}
 
 	WorkTimeStatus struct {

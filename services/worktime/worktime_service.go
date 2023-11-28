@@ -40,10 +40,15 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 
 	for idx, wt := range req.Msg.WorkTimes {
 		model := structs.WorkTime{
-			UserID:               wt.UserId,
-			TimePerWeek:          wt.TimePerWeek.AsDuration(),
-			ApplicableFrom:       wt.ApplicableAfter.AsTime(),
-			VacationWeeksPerYear: wt.VacationWeeksPerYear,
+			UserID:                    wt.UserId,
+			TimePerWeek:               wt.TimePerWeek.AsDuration(),
+			ApplicableFrom:            wt.ApplicableAfter.AsTime(),
+			VacationWeeksPerYear:      wt.VacationWeeksPerYear,
+			OvertimeAllowancePerMonth: wt.OvertimeAllowancePerMonth.AsDuration(),
+		}
+
+		if !wt.OvertimeAllowancePerMonth.IsValid() {
+			model.OvertimeAllowancePerMonth = 0
 		}
 
 		// validate that the user actually exists.
@@ -330,10 +335,11 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 
 func worktimeToProto(wt structs.WorkTime) *rosterv1.WorkTime {
 	return &rosterv1.WorkTime{
-		Id:                   wt.ID.Hex(),
-		UserId:               wt.UserID,
-		TimePerWeek:          durationpb.New(wt.TimePerWeek),
-		ApplicableAfter:      timestamppb.New(wt.ApplicableFrom),
-		VacationWeeksPerYear: wt.VacationWeeksPerYear,
+		Id:                        wt.ID.Hex(),
+		UserId:                    wt.UserID,
+		TimePerWeek:               durationpb.New(wt.TimePerWeek),
+		ApplicableAfter:           timestamppb.New(wt.ApplicableFrom),
+		VacationWeeksPerYear:      wt.VacationWeeksPerYear,
+		OvertimeAllowancePerMonth: durationpb.New(wt.OvertimeAllowancePerMonth),
 	}
 }

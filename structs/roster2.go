@@ -45,6 +45,9 @@ type (
 		UpdatedAt      time.Time          `bson:"updated_at"`
 		ShiftTags      []string           `bson:"shift_tags"`
 		RosterTypeName string             `bson:"roster_type_name"`
+
+		Deleted      bool               `bson:"deleted,omitempty"`
+		SupersededBy primitive.ObjectID `bson:"supersededBy,omitempty"`
 	}
 )
 

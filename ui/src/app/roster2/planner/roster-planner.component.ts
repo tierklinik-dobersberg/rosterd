@@ -33,7 +33,7 @@ export class TkdRosterPlannerComponent implements OnInit {
   private savePending = false;
 
   /** The currently selected date */
-  selectedDate!: Date;
+  selectedDate: Date | null = null;
 
   /** The currently selected user from the side-bar */
   selectedUser: string | null = null;
@@ -58,6 +58,9 @@ export class TkdRosterPlannerComponent implements OnInit {
     shifts: [],
   }
 
+  from: Date | null = null;
+  to: Date | null = null;
+
   shifts: {
     [date: string]: RosterShift[]
   } = {};
@@ -74,12 +77,16 @@ export class TkdRosterPlannerComponent implements OnInit {
     [userId: string]: OffTimeEntry[] | undefined
   } = {};
 
+  maxShifts = 0;
+
   dateDisabled = (d: Date | undefined) => {
-    if (!d || !this.selectedDate) {
+    if (!d || !this.selectedDate || !this.from || !this.to) {
       return false
     }
 
-    return d.getMonth() !== this.selectedDate.getMonth();
+    return d.getTime() < this.from.getTime() || d.getTime() > this.to.getTime();
+
+    //return d.getMonth() !== this.selectedDate.getMonth();
   }
 
   constructor(
@@ -118,7 +125,7 @@ export class TkdRosterPlannerComponent implements OnInit {
         filter(event => event instanceof NavigationStart),
       )
       .subscribe(async () => {
-        if (this.savePending) {
+        if (this.savePending && !this.readonly) {
           await this.saveRoster()
           this.nzMessage.info("Dienstplan wurde erfolgreich gespeichert")
         }
@@ -135,10 +142,15 @@ export class TkdRosterPlannerComponent implements OnInit {
       .subscribe(response => {
         if (this.readonly) {
           this.nzMessage.warning("Du bist nicht berechtigt den Dienstplan zu bearbeiten")
+
           return;
         }
 
         this.savePending = false;
+        if (this.roster.id !== response.roster?.id) {
+
+        }
+
         this.roster.id = response.roster?.id;
         this.workTimeByUser = {};
 
@@ -166,6 +178,17 @@ export class TkdRosterPlannerComponent implements OnInit {
 
           return of(params);
         }),
+        filter(result => {
+          if (result instanceof GetRosterResponse) {
+            if (result.roster.length === 0) {
+              return true
+            }
+
+            return result.roster[0].id !== this.roster.id;
+          }
+
+          return true
+        }),
         switchMap((params: ParamMap | GetRosterResponse) => {
           let fromDate: string;
           let toDate: string;
@@ -190,10 +213,10 @@ export class TkdRosterPlannerComponent implements OnInit {
 
           this.readonly = this.currentRoute.snapshot.data['readonly'] || false;
 
-          const startOfMonth = new Date(fromDate)
-          const endOfMonth = new Date(toDate);
+          this.from = new Date(fromDate)
+          this.to = new Date(toDate);
 
-          this.selectedDate = startOfMonth;
+          this.selectedDate = this.from;
 
           return forkJoin({
             from: of(fromDate),
@@ -201,8 +224,8 @@ export class TkdRosterPlannerComponent implements OnInit {
 
             holidays: from(
               this.holidayService.getHoliday({
-                month: BigInt(startOfMonth.getMonth() + 1),
-                year: BigInt(startOfMonth.getFullYear()),
+                month: BigInt(this.from.getMonth() + 1),
+                year: BigInt(this.from.getFullYear()),
               })
             ),
 
@@ -219,7 +242,7 @@ export class TkdRosterPlannerComponent implements OnInit {
               : from(this.rosterService.getRoster({
                 search: {
                   case: 'date',
-                  value: Timestamp.fromDate(new Date(startOfMonth.getFullYear(), startOfMonth.getMonth(), 2)),
+                  value: Timestamp.fromDate(new Date(this.from.getFullYear(), this.from.getMonth(), 2)),
                 },
                 rosterTypeNames: [this.rosterType],
               }).catch(err => new GetRosterResponse())),
@@ -233,8 +256,8 @@ export class TkdRosterPlannerComponent implements OnInit {
             users: from(this.usersService.listUsers({})),
 
             offTime: from(this.offTimeService.findOffTimeRequests({
-              from: Timestamp.fromDate(startOfMonth),
-              to: Timestamp.fromDate(endOfMonth),
+              from: Timestamp.fromDate(this.from),
+              to: Timestamp.fromDate(this.to),
             }))
           })
         })
@@ -275,7 +298,9 @@ export class TkdRosterPlannerComponent implements OnInit {
         const shiftDefinitions = new Map<string, WorkShift>();
         result.requiredShifts.workShiftDefinitions.forEach(s => shiftDefinitions.set(s.id, s))
 
+        this.maxShifts = 0;
         this.shifts = {};
+
         result.requiredShifts.requiredShifts.forEach(shift => {
           const key = toDateString(shift.from!.toDate())
 
@@ -290,6 +315,10 @@ export class TkdRosterPlannerComponent implements OnInit {
           });
 
           this.shifts[key].push(shift as RosterShift);
+
+          if (this.shifts[key].length > this.maxShifts) {
+            this.maxShifts = this.shifts[key].length;
+          }
         })
 
         this.profiles = result.users.users;
@@ -318,7 +347,7 @@ export class TkdRosterPlannerComponent implements OnInit {
   }
 
   setSelectedDate(date: Date) {
-    this.router.navigate(['/roster/plan/', date.getFullYear(), date.getMonth() + 1]);
+    // this.router.navigate(['/roster/plan/', date.getFullYear(), date.getMonth() + 1]);
   }
 
   setSelectedUser(username: string) {
@@ -356,7 +385,7 @@ export class TkdRosterPlannerComponent implements OnInit {
    * Callback when the user selected a day in the roster
    */
   onDateSelected(date: Date): void {
-    const changed = date.getMonth() !== this.selectedDate.getMonth() || date.getFullYear() !== this.selectedDate.getFullYear();
+    const changed = !this.selectedDate || (date.getMonth() !== this.selectedDate.getMonth() || date.getFullYear() !== this.selectedDate.getFullYear());
 
     if (changed) {
       this.onPanelChange({

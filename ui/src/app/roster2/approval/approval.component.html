@@ -32,7 +32,7 @@
         <td class="p-2 text-left font-inter">
           {{ wt.plannedTime | duration:'default-hours'}}
         </td>
-        <ng-container *ngIf="num(wt.plannedTime!.seconds - wt.expectedTime!.seconds) as diff">
+        <ng-container *ngIf="num(wt.overtime?.seconds || 0) as diff">
           <td class="p-2 text-left font-inter">
             <span [ngClass]="{'text-alert-red': diff < 0, 'text-alert-green': diff > 0}">
               {{ diff > 0 ? '+' : '' }}{{ diff | duration:'default-hours' }}

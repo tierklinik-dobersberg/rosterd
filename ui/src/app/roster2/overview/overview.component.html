@@ -46,7 +46,7 @@
         </ng-template>
 
         <td style="width: 0; min-width: fit-content; white-space: nowrap">
-          <div class="flex flex-row justify-end">
+          <div class="flex flex-row justify-end" *ngIf="isAdmin | async">
             <button class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu4">
               Aktionen
             </button>
@@ -59,6 +59,12 @@
                 <li nz-menu-item (click)="deleteRoster(roster)">Löschen</li>
               </ul>
             </nz-dropdown-menu>
+          </div>
+
+          <div class="flex flex-row justify-end" *ngIf="(isAdmin | async) === false">
+            <button class="tkd-btn tkd-primary tkd-outline" [routerLink]="['./view', roster.id]">
+              Ansehen
+            </button>
           </div>
         </td>
 

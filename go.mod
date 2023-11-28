@@ -14,7 +14,7 @@ require (
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
-	github.com/tierklinik-dobersberg/apis v0.0.0-20231024081328-529e8c93c041
+	github.com/tierklinik-dobersberg/apis v0.0.0-20231109081056-61e0522895c8
 	github.com/tierklinik-dobersberg/cis v0.0.0-20221117114909-db8d495a4502
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9

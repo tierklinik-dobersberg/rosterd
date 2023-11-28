@@ -25,13 +25,15 @@ interface ChangeModel {
   workTimePerWeek: string;
   vacationPerYear: number;
   applicableAfter: string;
+  overtimeAllowance: string;
 }
 
 function makeEmptyChangeModel(): ChangeModel {
   return {
     userId: '',
-    workTimePerWeek: '0',
+    workTimePerWeek: '0h',
     vacationPerYear: 0,
+    overtimeAllowance: '0h',
     applicableAfter: toDateString(new Date()),
   }
 }
@@ -132,6 +134,7 @@ export class WorktimesComponent implements OnInit {
           timePerWeek: Duration.parseString(this.changeModel.workTimePerWeek).toProto(),
           userId: this.changeModel.userId,
           vacationWeeksPerYear: this.changeModel.vacationPerYear,
+          overtimeAllowancePerMonth: Duration.parseString(this.changeModel.overtimeAllowance).toProto(),
         }
       ]
     })

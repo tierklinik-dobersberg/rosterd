@@ -1,15 +1,15 @@
 <span class="inline-block w-full mb-1 text-xs text-center rounded font-lato text-secondary"
   [ngClass]="{'bg-primary text-white':!!holiday}">{{ holiday?.localName}} {{ date | date:'dd.MM' }}</span>
 
-<ul class="flex overflow-auto flex-col flex-grow gap-1 px-0.5 py-0.5 group" *ngIf="!isDisabledDate">
+<ul class="flex overflow-auto flex-col flex-grow gap-1 px-0.5 py-0.5 group" *ngIf="!disabled">
   <ng-container *ngFor="let shift of requiredShifts">
 
     <li cdkOverlayOrigin #trigger="cdkOverlayOrigin"
 
       (contextmenu)="onContextMenu($event, trigger)" (click)="onShiftClick(trigger, shift)"
       [ngStyle]="{backgroundColor: shift.definition.color + '40'}"
-      class="flex overflow-hidden relative flex-row gap-1 justify-start items-center px-1.5 py-1 text-xs shadow-sm transition-all duration-200 ease-in-out cursor-pointer hover:ring-1 text-primary"
-      [ngClass]="{'cursor-not-allowed opacity-40': !!selectedUser && !(selectedUser|inList:shift.eligibleUserIds) && !(selectedUser|inList:assigned[shift.workShiftId]), 'opacity-50': highlightUserShifts !== null && !(highlightUserShifts | inList:assigned[shift.workShiftId]), 'ring-1': highlightUserShifts | inList:assigned[shift.workShiftId], 'rounded': !trigger.elementRef.nativeElement.open, 'rounded-t ring-1 shadow-inner': trigger.elementRef.nativeElement.open }">
+      class="flex overflow-hidden relative flex-row gap-1 justify-start items-center px-1.5 py-1 text-xs shadow-sm transition-all duration-200 ease-in-out hover:ring-1 text-primary"
+      [ngClass]="{'cursor-not-allowed opacity-40': !!selectedUser && !(selectedUser|inList:shift.eligibleUserIds) && !(selectedUser|inList:assigned[shift.workShiftId]), 'opacity-50': highlightUserShifts !== null && !(highlightUserShifts | inList:assigned[shift.workShiftId]), 'ring-1': highlightUserShifts | inList:assigned[shift.workShiftId], 'rounded': !trigger.elementRef.nativeElement.open, 'rounded-t ring-1 shadow-inner': trigger.elementRef.nativeElement.open, 'cursor-pointer': !readonly }">
 
       <div
         [nz-tooltip]="shift.definition.name + ' (' + shift.definition.displayName + ') - Von ' + (shift.from?.toDate()| date:'HH:mm') + ' bis ' + (shift.to?.toDate() | date:'HH:mm')"
@@ -53,7 +53,7 @@
         <ul class="p-2 bg-white rounded-b shadow w-80 ring-1">
           <li *ngFor="let user of shift.eligibleUserIds">
             <ng-container *ngIf="(user | toUser:profiles) as userProfile">
-              <div class="flex flex-row items-center gap-2 p-2 rounded cursor-pointer hover:bg-subtle"
+              <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-subtle" [ngClass]="{'cursor-pointer': !readonly}"
                 (click)="onShiftClick(trigger, shift, user)">
 
                 <nz-avatar nzIcon="user" [nzSrc]="userProfile.user?.avatar"></nz-avatar>

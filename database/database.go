@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -58,22 +59,13 @@ type (
 		DeleteWorkTime(ctx context.Context, ids ...string) error
 	}
 
-	RosterDatabase interface {
-		CreateRoster(ctx context.Context, roster structs.Roster) error
-		UpdateRoster(ctx context.Context, roster structs.Roster) error
-		FindRoster(ctx context.Context, month time.Month, year int) (*structs.Roster, error)
-		ListRosterMeta(ctx context.Context, approved *bool) ([]structs.RosterMeta, error)
-		DeleteRoster(ctx context.Context, id string) error
-		LoadRoster(ctx context.Context, id string) (*structs.Roster, error)
-		ApproveRoster(ctx context.Context, approver string, month time.Month, year int) error
-	}
-
 	DutyRosterDatabase interface {
-		SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster) error
-		DeleteDutyRoster(ctx context.Context, rosterID string) error
+		SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster) (bool, error)
+		DeleteDutyRoster(ctx context.Context, rosterID string, supersededBy primitive.ObjectID) error
 		ApproveDutyRoster(ctx context.Context, rosterID, approver string) error
 		DutyRosterByID(ctx context.Context, id string) (structs.DutyRoster, error)
 		DutyRostersByTime(ctx context.Context, time time.Time) ([]structs.DutyRoster, error)
+		GetSupersededDutyRoster(ctx context.Context, rosterID primitive.ObjectID) (*structs.DutyRoster, error)
 	}
 
 	DatabaseImpl struct {
@@ -201,5 +193,5 @@ var _ interface {
 	OffTimeDatabase
 	ConstraintDatabase
 	WorkTimeDatabase
-	RosterDatabase
+	DutyRosterDatabase
 } = new(DatabaseImpl)

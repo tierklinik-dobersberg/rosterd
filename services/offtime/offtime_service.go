@@ -285,7 +285,7 @@ func (svc *Service) AddOffTimeCosts(ctx context.Context, req *connect.Request[ro
 			}
 
 			// make sure the roster actually exists.
-			_, err = svc.Datastore.LoadRoster(ctx, costs.RosterId)
+			_, err = svc.Datastore.DutyRosterByID(ctx, costs.RosterId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get roster %s: %w", costs.RosterId, err)
 			}

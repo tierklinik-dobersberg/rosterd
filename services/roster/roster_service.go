@@ -24,8 +24,8 @@ import (
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/config"
-	"github.com/tierklinik-dobersberg/rosterd/constraint"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -149,27 +149,32 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		roster.Shifts[idx] = conv
 	}
 
-	changed, err := svc.Datastore.SaveDutyRoster(ctx, &roster)
-	if err != nil {
-		return nil, err
-	}
-
-	// if the roster changed after it was approved remove all off-time costs for that roster
-	// and mark it as "un-approved".
-	if changed && roster.IsApproved() {
-		// reset approval fields if the roster was already approved and save again
+	if roster.IsApproved() {
+		// reset approval fields
 		roster.Approved = false
 		roster.ApprovedAt = time.Time{}
 		roster.ApproverUserId = ""
 
-		if _, err := svc.Datastore.SaveDutyRoster(ctx, &roster); err != nil {
-			return nil, fmt.Errorf("failed to remove approval status from altered roster: %w", err)
-		}
+		oldRosterID := roster.ID
+
+		// generate a new id for the roster
+		roster.ID = primitive.NewObjectID()
+
+		log.L(ctx).Infof("marking approved roster %q as superseded by %s", oldRosterID.Hex(), roster.ID.Hex())
 
 		// remove the approval since this roster has been modified
-		if err := svc.Datastore.DeleteOffTimeCostsByRoster(ctx, roster.ID.Hex()); err != nil {
+		if err := svc.Datastore.DeleteOffTimeCostsByRoster(ctx, oldRosterID.Hex()); err != nil {
 			return nil, fmt.Errorf("failed to delete off-time costs for an already approved roster: %w", err)
 		}
+
+		// mark the old duty roster as deleted and superseded by the new roster ID
+		if err := svc.Datastore.DeleteDutyRoster(ctx, oldRosterID.Hex(), roster.ID); err != nil {
+			return nil, fmt.Errorf("failed to mark updated duty roster with id %q as superseded (deleted): %s", oldRosterID.Hex(), err)
+		}
+	}
+
+	if _, err := svc.Datastore.SaveDutyRoster(ctx, &roster); err != nil {
+		return nil, err
 	}
 
 	allUserIds, err := svc.FetchAllUserIds(ctx)
@@ -245,7 +250,7 @@ func (svc *RosterService) DeleteRoster(ctx context.Context, req *connect.Request
 		return nil, fmt.Errorf("failed to delete off-time costs for roster id %s. Please contact your administrator: %w", req.Msg.Id, err)
 	}
 
-	if err := svc.Datastore.DeleteDutyRoster(ctx, req.Msg.Id); err != nil {
+	if err := svc.Datastore.DeleteDutyRoster(ctx, req.Msg.Id, primitive.NilObjectID); err != nil {
 		return nil, fmt.Errorf("failed to delete roster with id %s. Please contact your administrator: %w", req.Msg.Id, err)
 	}
 
@@ -288,7 +293,8 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 	approver := remoteUser.ID
 	for _, an := range analysis {
-		diff := an.PlannedTime.AsDuration() - an.ExpectedTime.AsDuration()
+		diff := an.Overtime.AsDuration()
+
 		if diff > 0 {
 			// user has more time planned than was expected, add this as some
 			// off-time credits.
@@ -383,10 +389,14 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false)
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		ctx := log.WithLogger(context.Background(), log.L(ctx))
+
+		_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false)
+		if err != nil {
+			log.L(ctx).Errorf("failed to send roster notification: %s", err)
+		}
+	}()
 
 	return connect.NewResponse(&rosterv1.ApproveRosterResponse{}), nil
 }
@@ -461,9 +471,9 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 				// Check if we should only return staff that is assigned to on-call
 				// shifts.
 				if req.Msg.OnCall {
-					isAllowed = data.SliceOverlaps(rosterType.OnCallTags, def.Tags)
+					isAllowed = data.ElemInBothSlices(rosterType.OnCallTags, def.Tags)
 				} else {
-					isAllowed = data.SliceOverlaps(rosterType.ShiftTags, def.Tags)
+					isAllowed = data.ElemInBothSlices(rosterType.ShiftTags, def.Tags)
 				}
 			}
 
@@ -786,10 +796,30 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 		calendar.events = append(calendar.events, event)
 	}
 
-	userIds := make([]string, 0, len(targetUsers))
-	for usrId := range targetUsers {
-		userIds = append(userIds, usrId)
+	var (
+		userDiff     map[string][]ShiftDiff
+		isSuperseded bool
+	)
+
+	if oldRoster, err := svc.Datastore.GetSupersededDutyRoster(ctx, roster.ID); err == nil {
+		userDiff, err = diffRosters(ctx, oldRoster, &roster)
+		if err != nil {
+			log.L(ctx).Errorf("failed to diff duty rosters: %s", err)
+		} else {
+			isSuperseded = true
+		}
+	} else if !errors.Is(err, mongo.ErrNoDocuments) {
+		// just log the error, we're going to send the normal duty roster
+		// notification anyway
+		log.L(ctx).Errorf("failed to load superseded duty roster: %s", err)
 	}
+
+	// make sure every user that has a diff is also part of the target users.
+	for userId := range userDiff {
+		targetUsers[userId] = userLm[userId]
+	}
+
+	userIds := maps.Keys(targetUsers)
 
 	workTime, err := svc.analyzeWorkTime(ctx, userIds, roster.FromTime(), roster.ToTime())
 	if err != nil {
@@ -798,15 +828,28 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 
 	perUserCtx := make(map[string]*structpb.Struct, len(userIds))
 
-	for _, usrId := range userIds {
-		workingDates := perUserShifts[usrId]
+	for _, userId := range userIds {
+		workingDates := perUserShifts[userId]
 		var userWorkTime *rosterv1.WorkTimeAnalysis
 
 		for _, wt := range workTime {
-			if wt.UserId == usrId {
+			if wt.UserId == userId {
 				userWorkTime = wt
+
 				break
 			}
+		}
+
+		diffMaps := make([]any, 0, len(userDiff[userId]))
+		for _, shift := range userDiff[userId] {
+			var m map[string]any
+			if err := mapstructure.Decode(shift, &m); err != nil {
+				return nil, fmt.Errorf("failed to convert shift-diff to map: %w", err)
+			}
+
+			m["Name"] = wsLm[shift.ID].Name
+
+			diffMaps = append(diffMaps, m)
 		}
 
 		shiftMaps := make(map[string]any, len(workingDates))
@@ -828,11 +871,14 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 			"Dates":        shiftMaps,
 			"ExpectedTime": int64(userWorkTime.ExpectedTime.AsDuration().Seconds()),
 			"PlannedTime":  int64(userWorkTime.PlannedTime.AsDuration().Seconds()),
+			"Overtime":     int64(userWorkTime.Overtime.AsDuration().Seconds()),
 			"Preview":      isPreview,
 			"RosterDate":   roster.FromTime().Format("2006/01"),
 			"RosterURL":    fmt.Sprintf(svc.Config.PreviewRosterURL, roster.ID.Hex()),
 			"From":         roster.From,
 			"To":           roster.To,
+			"Diff":         diffMaps,
+			"Superseded":   isSuperseded,
 		}
 
 		s, err := structpb.NewStruct(tmplCtx)
@@ -840,7 +886,7 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 			return nil, fmt.Errorf("failed prepare structpb: %w", err)
 		}
 
-		perUserCtx[usrId] = s
+		perUserCtx[userId] = s
 	}
 
 	subject := fmt.Sprintf("Dienstplan für %s", roster.FromTime().Format("2006/01"))
@@ -900,8 +946,8 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid from or to time"))
 	}
 
-	from := req.Msg.Timerange.From.AsTime()
-	to := req.Msg.Timerange.To.AsTime()
+	from := req.Msg.Timerange.From.AsTime().Local()
+	to := req.Msg.Timerange.To.AsTime().Local()
 
 	// collect all duty rosters between 'from' and 'to'
 	rosters := make(map[string]structs.DutyRoster)
@@ -971,7 +1017,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 		}
 	}
 
-	log.L(ctx).Infof("found %d distinct rosters that need to be analyzed", len(distinctRosters))
+	log.L(ctx).Debugf("found %d distinct rosters that need to be analyzed", len(distinctRosters))
 
 	// fetch all work shifts
 	workShifts, err := svc.Datastore.ListWorkShifts(ctx)
@@ -993,6 +1039,9 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 	// prepare some maps to hold our aggregated results.
 	workTimes := make(map[string]time.Duration, len(userIds))
 	workTimesPerWeek := make(map[string]map[string]time.Duration)
+	workTimePerDay := make(map[string]map[string]time.Duration)
+	overtimePerUser := make(map[string]time.Duration)
+
 	expectedWorkTimes := make(map[string]time.Duration, len(userIds))
 	results := make(map[string]*rosterv1.WorkTimeAnalysis)
 
@@ -1000,6 +1049,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 		workTimes[userId] = 0
 		expectedWorkTimes[userId] = 0
 		workTimesPerWeek[userId] = make(map[string]time.Duration)
+		workTimePerDay[userId] = make(map[string]time.Duration)
 		results[userId] = &rosterv1.WorkTimeAnalysis{
 			UserId: userId,
 		}
@@ -1016,30 +1066,29 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 			// skip the shift if it's not within our time-range
 			if shift.To.Before(from) {
-				log.L(ctx).Infof("skipping shift %s because of shift.To (%s) is before from (%s)", definition.Name, shift.To, from)
+				log.L(ctx).Debugf("skipping shift %s because of shift.To (%s) is before from (%s)", definition.Name, shift.To, from)
 				continue
 			}
 			if shift.From.After(to) {
-				log.L(ctx).Infof("skipping shift %s because of shift.From (%s) is after to (%s)", definition.Name, shift.From, to)
+				log.L(ctx).Debugf("skipping shift %s because of shift.From (%s) is after to (%s)", definition.Name, shift.From, to)
 				continue
 			}
 
 			// find out how much time the shift is worth
 			var timeWorth time.Duration
 			if definition.MinutesWorth != nil && *definition.MinutesWorth > 0 { // FIXME(ppacher): remove the > 0 check so it's possible a shift is nothing worth
-				log.L(ctx).Infof("shift %s has an explicit time-worth field set to %d minutes", shift.WorkShiftID.Hex(), *definition.MinutesWorth)
+				log.L(ctx).Debugf("shift %s has an explicit time-worth field set to %d minutes", shift.WorkShiftID.Hex(), *definition.MinutesWorth)
 				timeWorth = time.Duration(*definition.MinutesWorth) * time.Minute
 			} else {
 				timeWorth = shift.To.Sub(shift.From)
-				log.L(ctx).Infof("shift %s is %s worth", shift.WorkShiftID.Hex(), timeWorth)
-
+				log.L(ctx).Debugf("shift %s is %s worth", shift.WorkShiftID.Hex(), timeWorth)
 			}
 
 			for _, staff := range shift.AssignedUserIds {
 				_, ok := workTimes[staff]
 				if !ok {
 					// skip this user if it wasn't requested.
-					log.L(ctx).Infof("skipping planned work-time analysis for user %s", staff)
+					log.L(ctx).Debugf("skipping planned work-time analysis for user %s", staff)
 					continue
 				}
 
@@ -1047,6 +1096,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 				workTimes[staff] += timeWorth
 				workTimesPerWeek[staff][weekKey(shift.From)] += timeWorth
+				workTimePerDay[staff][shift.From.Format("2006-01-02")] += timeWorth
 			}
 		}
 	}
@@ -1069,7 +1119,6 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 			// find out until when the workTimeHistory is effective.
 			until := to
 			includeUntil := true
-			sumPlanned := time.Duration(0)
 
 			if idx < len(workTimeHistory)-1 {
 				until = workTimeHistory[idx+1].ApplicableFrom
@@ -1095,12 +1144,13 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 				To:              until.Format("2006-01-02"),
 			}
 
-			// build a map to get the number of work-days per week
+			// build a map to get the number of work-days per week and month
 			weekWorkDays := make(map[string]struct {
 				Year int
 				Week int
 				Days int
 			})
+			monthWorkDays := make(map[string]int)
 
 			for iter := startTime; iter.Before(until) || (includeUntil && iter.Equal(until)); iter = iter.AddDate(0, 0, 1) {
 				if hd, ok := holidays[iter.Format("2006-01-02")]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
@@ -1124,10 +1174,16 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 					val.Days++
 					weekWorkDays[key] = val
+
+					monthWorkDays[iter.Format("2006-01")]++
 				}
 			}
 
-			expectedWork := time.Duration(0)
+			var (
+				expectedWork time.Duration
+				sumPlanned   time.Duration
+			)
+
 			for weekKey, week := range weekWorkDays {
 				ratio := float64(week.Days) / 5.0
 				d := time.Duration(float64(wt.TimePerWeek) * ratio)
@@ -1145,10 +1201,65 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 				})
 			}
 
+			// calculate the work time per month
+			worktimePerMonth := make(map[string]time.Duration)
+			for dayStr, plannedWorkTime := range workTimePerDay[userId] {
+				dayTime, _ := time.ParseInLocation("2006-01-02", dayStr, time.Local)
+				month := dayTime.Format("2006-01")
+
+				if dayTime.Before(startTime) || dayTime.After(until) {
+					continue
+				}
+
+				worktimePerMonth[month] += plannedWorkTime
+			}
+
+			// calculate the expected time per month
+			expectedTimePerMonth := make(map[string]time.Duration)
+			for month, numberOfWorkingDays := range monthWorkDays {
+				ratio := float64(numberOfWorkingDays) / 5.0
+				d := time.Duration(float64(wt.TimePerWeek) * ratio)
+
+				expectedTimePerMonth[month] += d
+			}
+
+			// calculate overtime
+			var overtime time.Duration
+			for month, expectedTime := range expectedTimePerMonth {
+				plannedTime := worktimePerMonth[month]
+
+				monthTime, _ := time.ParseInLocation("2006-01", month, time.Local)
+
+				daysInMonth := daysIn(ctx, holidays, monthTime.Month(), monthTime.Year(), startTime, until, includeUntil)
+				overtimeRatio := (wt.OvertimeAllowancePerMonth / time.Duration(daysInMonth)) * time.Duration(monthWorkDays[month])
+
+				diff := plannedTime - expectedTime
+				if diff > 0 {
+					diff = diff - overtimeRatio
+					if diff < 0 {
+						diff = 0
+					}
+				}
+
+				overtime += diff
+				overtimePerUser[userId] += diff
+
+				log.L(ctx).WithFields(logrus.Fields{
+					"month":                    month,
+					"expectedTimePerMonth":     expectedTime,
+					"plannedTime":              plannedTime,
+					"totalWorkingDaysInMonth":  daysInMonth,
+					"rosterWorkingDaysInMonth": monthWorkDays[month],
+					"overtimeRatio":            overtimeRatio,
+					"overtime":                 diff,
+				}).Infof("analyzed overtime per month")
+			}
+
 			sort.Sort(sortWeeks(analysis.Weeks))
 
 			analysis.ExpectedWorkTime = durationpb.New(expectedWork)
 			analysis.Planned = durationpb.New(sumPlanned)
+			analysis.Overtime = durationpb.New(overtime)
 
 			results[userId].Steps = append(results[userId].Steps, analysis)
 
@@ -1159,6 +1270,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 	for _, userId := range userIds {
 		results[userId].ExpectedTime = durationpb.New(expectedWorkTimes[userId])
 		results[userId].PlannedTime = durationpb.New(workTimes[userId])
+		results[userId].Overtime = durationpb.New(overtimePerUser[userId])
 	}
 
 	var resultSlice = make([]*rosterv1.WorkTimeAnalysis, 0, len(results))
@@ -1210,9 +1322,6 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		shiftLm          = make(map[string]struct{})
 		shiftDefinitions = make([]structs.WorkShift, 0)
 	)
-
-	// build a constraint cache to speed up constraint evaluation
-	cache := new(constraint.Cache)
 
 	for iter := from; to.After(iter) || to.Equal(iter); iter = iter.AddDate(0, 0, 1) {
 		_, isHoliday := holidays[iter.Format("2006-01-02")]
@@ -1269,21 +1378,6 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 					continue
 				}
 
-				// check constraints
-				evalShift := structs.RosterShift{
-					ShiftID:            requiredShift.WorkShiftID,
-					IsHoliday:          requiredShift.OnHoliday,
-					IsWeekend:          requiredShift.OnWeekend,
-					From:               shiftStart,
-					To:                 shiftEnd,
-					RequiredStaffCount: shift.RequiredStaffCount,
-					Definition:         shift,
-				}
-				violations, err := constraint.EvaluateForStaff2(ctx, cache, false, log.L(ctx), svc.Datastore, profile.User.Id, profile.Roles, evalShift, nil, false)
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to evaluate constraints for user %s: %w", profile.User.Id, err)
-				}
-
 				// check approved off-time requests
 				approved := true
 				offTimeRequests, err := svc.Datastore.FindOffTimeRequests(ctx, shiftStart, shiftEnd, &approved, []string{profile.User.Id})
@@ -1291,6 +1385,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 					return nil, nil, fmt.Errorf("failed to load approved off-time requests for user %s: %w", profile.User.Id, err)
 				}
 
+				var violations []*rosterv1.ConstraintViolation
 				// create a "fake" violation for each approved off-time-request
 				for _, offReq := range offTimeRequests {
 					violations = append(violations, &rosterv1.ConstraintViolation{
@@ -1348,4 +1443,134 @@ func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Tim
 	}
 
 	return holidayLookupMap, nil
+}
+
+func daysIn(ctx context.Context, holidays map[string]*calendarv1.PublicHoliday, m time.Month, year int, notBefore, notAfter time.Time, includeNotAfter bool) int {
+	firstDayInMonth := time.Date(year, m, 1, 0, 0, 0, 0, time.Local)
+
+	var days int
+	for iter := firstDayInMonth; iter.Month() == m; iter = iter.AddDate(0, 0, 1) {
+		if hd, ok := holidays[iter.Format("2006-01-02")]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
+			// this is a public holiday
+			continue
+		} else if ok {
+			log.L(ctx).Infof("found holiday on %s with type %s", iter, hd.Type.String())
+		}
+
+		if iter.Before(notBefore) {
+			continue
+		}
+
+		if !includeNotAfter && iter.Equal(notAfter) {
+			continue
+		}
+
+		if iter.After(notAfter) {
+			continue
+		}
+
+		switch iter.Weekday() {
+		case time.Saturday, time.Sunday: // FIXME(ppacher): should we make saturday configurable?
+		default:
+			days++
+		}
+	}
+
+	return days
+}
+
+type ShiftDiff struct {
+	ID   string
+	From string
+	To   string
+
+	// If assigned is true than the user has been assigned to
+	// this shift.
+	// If assigned is false, the user has been removed from this
+	// shift.
+	Assigned bool
+}
+
+func diffRosters(ctx context.Context, old, new *structs.DutyRoster) (map[string] /*userId*/ []ShiftDiff, error) {
+	if old.From != new.From || old.To != new.To {
+		return nil, fmt.Errorf("cannot diff rosters with different from/to times")
+	}
+
+	if old.SupersededBy.String() != new.ID.String() {
+		return nil, fmt.Errorf("can only diff rosters where one superseded the other")
+	}
+
+	result := make(map[string][]ShiftDiff)
+
+	plannedShiftKey := func(p structs.PlannedShift) string {
+		return fmt.Sprintf("%s/%s/%s", p.WorkShiftID, p.From.Format(time.RFC3339), p.To.Format(time.RFC3339))
+	}
+
+	// convert our planned shifts to a lookup map
+	oldShifts := data.IndexSlice(old.Shifts, plannedShiftKey)
+	newShifts := data.IndexSlice(new.Shifts, plannedShiftKey)
+
+	// iterate over all "newShifts" and check if a user has been assigned/removed from the related oldShifts
+	for shiftID, shift := range newShifts {
+		oldShift, ok := oldShifts[shiftID]
+
+		if !ok {
+			// this shift has not even been planned in the old roster
+			// so add an assignment for all users of this shift
+
+			for _, userId := range shift.AssignedUserIds {
+				result[userId] = append(result[userId], ShiftDiff{
+					ID:       shift.WorkShiftID.Hex(),
+					From:     shift.From.Format(time.RFC3339),
+					To:       shift.To.Format(time.RFC3339),
+					Assigned: true,
+				})
+			}
+
+			continue
+		}
+
+		// check for new assignments
+		for _, userId := range shift.AssignedUserIds {
+			if !slices.Contains(oldShift.AssignedUserIds, userId) {
+				// this user has been assigned
+				result[userId] = append(result[userId], ShiftDiff{
+					ID:       shift.WorkShiftID.Hex(),
+					From:     shift.From.Format(time.RFC3339),
+					To:       shift.To.Format(time.RFC3339),
+					Assigned: true,
+				})
+			}
+		}
+
+		// check for new unassignments
+		for _, userId := range oldShift.AssignedUserIds {
+			if !slices.Contains(shift.AssignedUserIds, userId) {
+				// this user has been unassigned
+				result[userId] = append(result[userId], ShiftDiff{
+					ID:       shift.WorkShiftID.Hex(),
+					From:     shift.From.Format(time.RFC3339),
+					To:       shift.To.Format(time.RFC3339),
+					Assigned: false,
+				})
+			}
+		}
+
+		// delete the shift from the oldShifts map
+		delete(oldShifts, shiftID)
+	}
+
+	// check which shifts has been planned but got removed
+	for _, shift := range oldShifts {
+		for _, userId := range shift.AssignedUserIds {
+			result[userId] = append(result[userId], ShiftDiff{
+				ID:       shift.WorkShiftID.Hex(),
+				From:     shift.From.Format(time.RFC3339),
+				To:       shift.To.Format(time.RFC3339),
+				Assigned: true,
+			})
+		}
+	}
+
+	return result, nil
 }

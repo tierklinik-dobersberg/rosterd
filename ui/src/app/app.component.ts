@@ -8,6 +8,7 @@ import { BehaviorSubject, filter, from, map, share } from 'rxjs';
 import { AUTH_SERVICE } from './connect_clients';
 import { TkdRoster2Module } from './roster2/roster2.module';
 import { NzIconModule } from 'ng-zorro-antd/icon';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -25,6 +26,9 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
+  public readonly accountServer = environment.accountService;
+  public readonly mainApplication = environment.mainApplication;
+
   profile = from(
     inject(AUTH_SERVICE).introspect({})
       .then(response => response.profile)

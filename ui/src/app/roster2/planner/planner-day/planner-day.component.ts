@@ -14,7 +14,6 @@ import { RosterShift } from "../roster-planner.component";
     :host {
       display: flex;
       flex-direction: column;
-      height: 200px;
       overflow: hidden;
     }
     `
@@ -61,9 +60,8 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
   @Output()
   rosterShiftChange = new EventEmitter<PartialMessage<PlannedShift>[]>();
 
-  get isDisabledDate() {
-    return this.date.getMonth() !== this.rosterDate.getMonth();
-  }
+  @Input()
+  disabled: boolean = false;
 
   constructor(
     private nzModal: NzModalService,
