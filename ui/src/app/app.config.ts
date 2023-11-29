@@ -2,13 +2,13 @@ import { ApplicationConfig, LOCALE_ID, importProvidersFrom } from '@angular/core
 import { provideRouter } from '@angular/router';
 
 import { APP_BASE_HREF } from '@angular/common';
+import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { TkdConnectModule } from '@tkd/angular/connect';
 import { NZ_DATE_CONFIG, NZ_I18N, de_DE } from 'ng-zorro-antd/i18n';
 import { NzMessageModule } from 'ng-zorro-antd/message';
+import { environment } from 'src/environments/environment';
 import { routes } from './app.routes';
-import { connectProviders } from './connect_clients';
-import { provideHttpClient } from '@angular/common/http';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,6 +20,6 @@ export const appConfig: ApplicationConfig = {
     { provide: APP_BASE_HREF, useValue: '/'},
     { provide: NZ_DATE_CONFIG, useValue: { firstDayOfWeek: 1 } },
     importProvidersFrom(NzMessageModule),
-    ...connectProviders
+    importProvidersFrom(TkdConnectModule.forRoot(environment))
   ],
 };

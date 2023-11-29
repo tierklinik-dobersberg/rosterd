@@ -8,7 +8,8 @@ import { Daytime, Role, WorkShift } from '@tkd/apis';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { ROLES_SERVICE, WORKSHIFT_SERVICE } from 'src/app/connect_clients';
+import { ROLE_SERVICE, WORK_SHIFT_SERVICE } from '@tkd/angular/connect';
+import { DaytimePipe, DurationPipe } from '@tkd/angular/pipes';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
 import { padLeft } from 'src/utils';
@@ -58,13 +59,15 @@ function makeEmptyWorkShift(): LocalWorkShift {
     NzRadioModule,
     NzSelectModule,
     NzCheckboxModule,
+    DaytimePipe,
+    DurationPipe,
   ],
   templateUrl: './workshifts.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkshiftsComponent implements OnInit {
-  readonly workShiftService = inject(WORKSHIFT_SERVICE);
-  readonly roleService = inject(ROLES_SERVICE);
+  readonly workShiftService = inject(WORK_SHIFT_SERVICE);
+  readonly roleService = inject(ROLE_SERVICE);
   readonly route = inject(ActivatedRoute);
   readonly destroyRef = inject(DestroyRef);
   readonly cdr = inject(ChangeDetectorRef);

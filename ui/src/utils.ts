@@ -15,4 +15,3 @@ export function padRight(str: string, length: number, pad = ' '): string {
     }
     return str;
 }
-

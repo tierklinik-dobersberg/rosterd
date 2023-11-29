@@ -7,7 +7,7 @@ import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '../connect_clients';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 
 @Component({

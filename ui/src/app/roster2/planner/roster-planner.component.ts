@@ -7,7 +7,7 @@ import { NzCalendarMode } from "ng-zorro-antd/calendar";
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { Subject, forkJoin, from, of, throwError } from 'rxjs';
 import { debounceTime, filter, switchMap } from "rxjs/operators";
-import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from 'src/app/connect_clients';
+import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
 import { toDateString } from "src/utils";
 
 export interface RosterShift extends RequiredShift {

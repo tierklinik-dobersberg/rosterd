@@ -11,8 +11,7 @@
       <th class="p-4 font-normal text-left font-lato">Typ</th>
       <th class="p-4 font-normal text-left font-lato">Wochentage</th>
       <th class="p-4 font-normal text-left font-lato">Beschreibung</th>
-      <th class="p-4 font-normal text-left font-lato">Start-Zeit</th>
-      <th class="p-4 font-normal text-left font-lato">Dauer</th>
+      <th class="p-4 font-normal text-left font-lato">Zeit</th>
       <th class="p-4 font-normal text-left font-lato">Wertung</th>
       <th class="p-4 font-normal text-left font-lato">Tags</th>
       <th class="p-4 font-normal text-left font-lato">Mitarbeiter-Anzahl</th>
@@ -32,8 +31,7 @@
         <td class="p-2 font-inter">{{ entry.onHoliday ? 'Feiertage' : 'Regulär' }}</td>
         <td class="p-2 font-inter">{{ entry.days | workday }}</td>
         <td class="p-2 font-inter">{{ entry.description }}</td>
-        <td class="p-2 font-inter">{{ entry.from| daytime }}</td>
-        <td class="p-2 font-inter">{{ entry.duration | duration }}</td>
+        <td class="p-2 font-inter">{{ entry.from| daytime }} - {{ entry.from | daytime:entry.duration }} <span class="text-secondary">({{ entry.duration | duration }})</span> </td>
         <td class="p-2 font-inter">{{ (entry.timeWorth?.seconds ? entry.timeWorth : entry.duration) | duration }}</td>
         <td class="p-2 font-inter">{{ entry.tags.join(', ') }}</td>
         <td class="p-2 font-inter">{{ entry.requiredStaffCount }}</td>

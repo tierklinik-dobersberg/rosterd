@@ -43,18 +43,16 @@ func main() {
 
 	cfg, err := config.Read(ctx)
 	if err != nil {
-		l.Error("failed to read configuration", "error", err)
-		os.Exit(1)
+		l.Fatal("failed to read configuration", "error", err.Error())
 	}
 
 	p, err := config.NewProviders(ctx, cfg, http.DefaultClient, mailTemplates)
 	if err != nil {
-		l.Error("failed to create application providers: %w", err)
-		os.Exit(1)
+		l.Fatal("failed to create application providers", "error", err.Error())
 	}
 
 	if err := bootstrapRosterManagerRole(p); err != nil {
-		logrus.Fatalf("failed to bootstrap roster_manager role: %s", err)
+		l.Fatal("failed to bootstrap roster_manager role", "error", err.Error())
 	}
 
 	/*

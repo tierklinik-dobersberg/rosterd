@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByF
 import { Profile, Role, Roster, RosterType } from '@tkd/apis';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { from, share, BehaviorSubject, filter, map } from 'rxjs';
-import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from 'src/app/connect_clients';
+import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
 
 interface RosterWithLink {
   roster: Roster;

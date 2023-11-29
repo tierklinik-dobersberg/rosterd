@@ -18,13 +18,10 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { ApprovalComponent } from './approval/approval.component';
 import { TkdConstraintViolationPipe } from "./constraint-violation-text.pipe";
 import { TkdDebounceEventDirective } from "./debounce-event.directive";
-import { DurationPipe } from "./duration.pipe";
-import { TkdInListPipe } from "./in-list.pipe";
 import { TkdRosterOverviewComponent } from "./overview/overview.component";
 import { TkdRosterPlannerComponent, TkdRosterPlannerDayComponent } from './planner';
 import { TkdRoster2Routing } from './roster2-routing.module';
-import { DisplayNamePipe, ToUserPipe } from "./to-user.pipe";
-import { UserColorPipe, UserContrastColorPipe } from "./user.pipes";
+import { DurationPipe, ToUserPipe, DisplayNamePipe, UserColorPipe, UserContrastColorPipe, TkdInListPipe } from "@tkd/angular/pipes";
 
 @NgModule({
   imports: [
@@ -44,17 +41,17 @@ import { UserColorPipe, UserContrastColorPipe } from "./user.pipes";
     NzDropDownModule,
     NzSelectModule,
     NzDatePickerModule,
-  ],
-  declarations: [
-    TkdRosterPlannerComponent,
-    TkdRosterPlannerDayComponent,
-    TkdInListPipe,
-    TkdConstraintViolationPipe,
     DurationPipe,
     ToUserPipe,
     DisplayNamePipe,
     UserColorPipe,
     UserContrastColorPipe,
+    TkdInListPipe,
+  ],
+  declarations: [
+    TkdRosterPlannerComponent,
+    TkdRosterPlannerDayComponent,
+    TkdConstraintViolationPipe,
     TkdDebounceEventDirective,
     TkdRosterOverviewComponent,
     ApprovalComponent

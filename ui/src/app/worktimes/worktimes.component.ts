@@ -10,7 +10,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { Duration } from 'src/duration';
 import { toDateString } from 'src/utils';
-import { USER_SERVICE, WORKTIME_SERVICE } from '../connect_clients';
+import { USER_SERVICE, WORKTIME_SERVICE } from '@tkd/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 
 interface Model {

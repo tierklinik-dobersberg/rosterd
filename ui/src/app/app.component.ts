@@ -5,10 +5,11 @@ import { Profile, Role } from '@tkd/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
-import { AUTH_SERVICE } from './connect_clients';
+import { AUTH_SERVICE } from '@tkd/angular/connect';
 import { TkdRoster2Module } from './roster2/roster2.module';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { environment } from 'src/environments/environment';
+import { TkdConnectModule } from '@tkd/angular/connect';
 
 @Component({
   selector: 'app-root',

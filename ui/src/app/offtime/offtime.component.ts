@@ -10,9 +10,9 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { OFFTIME_SERVICE, USER_SERVICE } from '../connect_clients';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
-import { DisplayNamePipe, ToUserPipe } from '../roster2/to-user.pipe';
+import { DisplayNamePipe, ToUserPipe } from '@tkd/angular/pipes';
 
 @Component({
   selector: 'app-offtime',
