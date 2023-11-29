@@ -4,3 +4,7 @@
   flex-direction: column;
 }
 
+#content > ng-component {
+  display: block;
+  overflow: auto;
+}
