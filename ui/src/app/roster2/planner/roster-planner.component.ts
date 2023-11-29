@@ -269,6 +269,7 @@ export class TkdRosterPlannerComponent implements OnInit {
           // throw new Error("got more than one roster")
         }
 
+        let allowedRoles = new Set<string>();
         let roster: Roster;
 
         if (result.roster.roster.length) {
@@ -296,7 +297,13 @@ export class TkdRosterPlannerComponent implements OnInit {
         })
 
         const shiftDefinitions = new Map<string, WorkShift>();
-        result.requiredShifts.workShiftDefinitions.forEach(s => shiftDefinitions.set(s.id, s))
+        result.requiredShifts.workShiftDefinitions.forEach(s => {
+          // collect all allowed role ids.
+          s.eligibleRoleIds
+            .forEach(roleId => allowedRoles.add(roleId))
+
+          shiftDefinitions.set(s.id, s)
+        })
 
         this.maxShifts = 0;
         this.shifts = {};
@@ -321,7 +328,11 @@ export class TkdRosterPlannerComponent implements OnInit {
           }
         })
 
-        this.profiles = result.users.users;
+        this.profiles = result.users.users
+          .filter(profile => {
+            return profile.roles
+              .some(role => allowedRoles.has(role.id))
+          });
 
         this.workTimeByUser = {};
         result.workTime.results.forEach(wt => {
