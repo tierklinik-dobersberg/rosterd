@@ -39,7 +39,19 @@
 
         <td class="p-2">
           <div class="flex flex-row items-center justify-end gap-2">
-            <button [routerLink]="['workshifts', 'edit', entry.id]" class="tkd-btn tkd-primary tkd-outline">Bearbeiten</button>
+
+            <button class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu">
+              Aktionen
+            </button>
+
+
+            <nz-dropdown-menu #menu="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item [routerLink]="['workshifts', 'edit', entry.id]">Bearbeiten</li>
+                <li nz-menu-item (click)="duplicate(entry)">Duplizieren</li>
+                <li nz-menu-item (click)="delete(entry)" class="text-alert-red-dark">Löschen</li>
+              </ul>
+            </nz-dropdown-menu>
           </div>
         </td>
     </tr>
