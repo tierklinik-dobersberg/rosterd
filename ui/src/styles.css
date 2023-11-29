@@ -8,3 +8,16 @@
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap");
 }
 
+::-webkit-scrollbar {
+    height: 4px;
+    width: 4px;
+    background-color: #ddd;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #888;
+}
+
+::-webkit-scrollbar-corner {
+    background: #000;
+}
