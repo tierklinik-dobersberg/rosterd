@@ -9,3 +9,9 @@
 ::ng-deep tkd-roster-planner nz-calendar-header {
   display: none !important;
 }
+
+:host {
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
