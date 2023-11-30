@@ -81,12 +81,15 @@ export class TkdRosterPlannerComponent implements OnInit {
 
   dateDisabled = (d: Date | undefined) => {
     if (!d || !this.selectedDate || !this.from || !this.to) {
+      console.log("no date")
       return false
     }
 
-    return d.getTime() < this.from.getTime() || d.getTime() > this.to.getTime();
+    const disabled = d.getTime() < this.from.getTime() || d.getTime() > this.to.getTime();
 
-    //return d.getMonth() !== this.selectedDate.getMonth();
+    console.log(d.toLocaleDateString(), "d", d.toLocaleString(), "from", this.from.toLocaleString(), "to", this.to.toLocaleString(), disabled)
+
+    return disabled
   }
 
   constructor(
@@ -213,8 +216,11 @@ export class TkdRosterPlannerComponent implements OnInit {
 
           this.readonly = this.currentRoute.snapshot.data['readonly'] || false;
 
-          this.from = new Date(fromDate)
-          this.to = new Date(toDate);
+          const _from = new Date(fromDate)
+          const _to  = new Date(toDate);
+
+          this.from = new Date(_from.getFullYear(), _from.getMonth(), _from.getDate(), 0, 0, 0)
+          this.to = new Date(_to.getFullYear(), _to.getMonth(), _to.getDate()+1, 0, 0, -1)
 
           this.selectedDate = this.from;
 
