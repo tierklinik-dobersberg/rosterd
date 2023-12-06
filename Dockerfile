@@ -2,14 +2,12 @@
 # Build the frontend
 FROM node:16 as uibuild
 ARG CONFIGURATION="production"
-ARG GITHUB_TOKEN
 
 WORKDIR /app/ui
 
 COPY ui/.npmrc ui/package.json ui/package-lock.json ./
-RUN echo "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN" >> ./.npmrc
-
-RUN npm install
+RUN --mount=type=secret,id=github_token \
+  echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/github_token)" >> ./.npmrc && npm install && rm .npmrc
 
 RUN npx browserslist@latest --update-db
 
