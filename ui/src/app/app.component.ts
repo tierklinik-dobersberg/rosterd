@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterModule, RouterOutlet } from '@angular/router';
-import { Profile, Role } from '@tkd/apis';
+import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
-import { AUTH_SERVICE } from '@tkd/angular/connect';
+import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from './roster2/roster2.module';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { environment } from 'src/environments/environment';
-import { TkdConnectModule } from '@tkd/angular/connect';
+import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
 
 @Component({
   selector: 'app-root',

@@ -2,12 +2,12 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { OffTimeCosts, Profile, UserOffTimeCosts } from '@tkd/apis';
+import { OffTimeCosts, Profile, UserOffTimeCosts } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 
 @Component({

@@ -4,12 +4,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
-import { OffTimeType, Profile } from '@tkd/apis';
+import { OffTimeType, Profile } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 
 interface CreateModel {

@@ -3,12 +3,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject }
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
-import { Profile } from '@tkd/apis';
+import { Profile } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
 

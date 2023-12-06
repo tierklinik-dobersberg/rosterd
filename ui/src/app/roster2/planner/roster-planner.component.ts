@@ -2,12 +2,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnIn
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationStart, ParamMap, Router } from "@angular/router";
 import { PartialMessage, Timestamp } from "@bufbuild/protobuf";
-import { GetRosterResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from '@tkd/apis';
+import { GetRosterResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
 import { NzCalendarMode } from "ng-zorro-antd/calendar";
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { Subject, forkJoin, from, of, throwError } from 'rxjs';
 import { debounceTime, filter, switchMap } from "rxjs/operators";
-import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { toDateString } from "src/utils";
 
 export interface RosterShift extends RequiredShift {

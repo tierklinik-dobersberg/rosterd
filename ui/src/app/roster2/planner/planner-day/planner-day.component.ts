@@ -1,7 +1,7 @@
 import { CdkOverlayOrigin } from "@angular/cdk/overlay";
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
 import { PartialMessage } from "@bufbuild/protobuf";
-import { OffTimeEntry, PlannedShift, Profile, PublicHoliday, WorkTimeAnalysis } from "@tkd/apis";
+import { OffTimeEntry, PlannedShift, Profile, PublicHoliday, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { NzModalService } from "ng-zorro-antd/modal";
 import { RosterShift } from "../roster-planner.component";
 

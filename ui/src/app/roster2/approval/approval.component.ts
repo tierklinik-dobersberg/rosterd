@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnIn
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
-import { ApproveRosterWorkTimeSplit, OffTimeEntry, Profile, Roster, WorkTimeAnalysis } from '@tkd/apis';
+import { ApproveRosterWorkTimeSplit, OffTimeEntry, Profile, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
 import { from, switchMap } from 'rxjs';
-import { OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { Duration } from 'src/duration';
 
 @Component({

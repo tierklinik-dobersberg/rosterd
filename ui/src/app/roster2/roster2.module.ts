@@ -21,7 +21,7 @@ import { TkdDebounceEventDirective } from "./debounce-event.directive";
 import { TkdRosterOverviewComponent } from "./overview/overview.component";
 import { TkdRosterPlannerComponent, TkdRosterPlannerDayComponent } from './planner';
 import { TkdRoster2Routing } from './roster2-routing.module';
-import { DurationPipe, ToUserPipe, DisplayNamePipe, UserColorPipe, UserContrastColorPipe, TkdInListPipe } from "@tkd/angular/pipes";
+import { DurationPipe, ToUserPipe, DisplayNamePipe, UserColorPipe, UserContrastColorPipe, TkdInListPipe } from "@tierklinik-dobersberg/angular/pipes";
 
 @NgModule({
   imports: [

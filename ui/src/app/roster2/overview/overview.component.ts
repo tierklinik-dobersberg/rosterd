@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
-import { Profile, Role, Roster, RosterType } from '@tkd/apis';
+import { Profile, Role, Roster, RosterType } from '@tierklinik-dobersberg/apis';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { from, share, BehaviorSubject, filter, map } from 'rxjs';
-import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 
 interface RosterWithLink {
   roster: Roster;

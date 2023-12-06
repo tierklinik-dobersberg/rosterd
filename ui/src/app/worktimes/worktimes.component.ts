@@ -1,16 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ConnectError } from '@bufbuild/connect';
+import { ConnectError } from '@connectrpc/connect';
 import { Timestamp } from '@bufbuild/protobuf';
-import { AnalyzeVacation, Profile, UserVacationSum, WorkTime } from '@tkd/apis';
+import { AnalyzeVacation, Profile, UserVacationSum, WorkTime } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageModule, NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { Duration } from 'src/duration';
 import { toDateString } from 'src/utils';
-import { USER_SERVICE, WORKTIME_SERVICE } from '@tkd/angular/connect';
+import { USER_SERVICE, WORKTIME_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 
 interface Model {

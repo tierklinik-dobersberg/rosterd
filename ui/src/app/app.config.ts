@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { APP_BASE_HREF } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { TkdConnectModule } from '@tkd/angular/connect';
+import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
 import { NZ_DATE_CONFIG, NZ_I18N, de_DE } from 'ng-zorro-antd/i18n';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { environment } from 'src/environments/environment';

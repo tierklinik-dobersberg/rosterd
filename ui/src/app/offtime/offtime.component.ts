@@ -3,16 +3,16 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByF
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
-import { ApprovalRequestType, OffTimeEntry, Profile } from '@tkd/apis';
+import { ApprovalRequestType, OffTimeEntry, Profile } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tkd/angular/connect';
+import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
-import { DisplayNamePipe, ToUserPipe } from '@tkd/angular/pipes';
+import { DisplayNamePipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipes';
 
 @Component({
   selector: 'app-offtime',

@@ -2,12 +2,12 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { Constraint, CreateWorkShiftRequest, Role, WorkShift } from '@tkd/apis';
-import { DaytimePipe, RoleListPipe, WorkDayPipe } from '@tkd/angular/pipes';
+import { Constraint, CreateWorkShiftRequest, Role, WorkShift } from '@tierklinik-dobersberg/apis';
+import { DaytimePipe, RoleListPipe, WorkDayPipe } from '@tierklinik-dobersberg/angular/pipes';
 import { TkdRoster2Module } from '../roster2/roster2.module';
-import { WORK_SHIFT_SERVICE, CONSTRAINT_SERVICE, ROLE_SERVICE } from '@tkd/angular/connect';
+import { WORK_SHIFT_SERVICE, CONSTRAINT_SERVICE, ROLE_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { ConnectError } from '@bufbuild/connect';
+import { ConnectError } from '@connectrpc/connect';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 
 
