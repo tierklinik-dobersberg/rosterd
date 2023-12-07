@@ -332,6 +332,8 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 		userIds = []string{remoteUser.ID}
 	}
 
+	log.L(ctx).Infof("loading off-time costs for users: %v", userIds)
+
 	costs, err := svc.Datastore.GetOffTimeCosts(ctx, userIds...)
 	if err != nil {
 		return nil, err
@@ -344,6 +346,8 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 		cost := costs[idx]
 
 		m[cost.UserID] = append(m[cost.UserID], cost)
+
+		log.L(ctx).Infof("adding new offtime cost to user %q", cost.UserID)
 	}
 
 	for user, costs := range m {
@@ -384,6 +388,8 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 			}
 		}
 
+		log.L(ctx).Infof("prepared off-time cost summary for user %q with %d results and %s vacation / %s timeoff", user, len(res.Costs), sumVacation, sumTimeOff)
+
 		res.Summary = &rosterv1.OffTimeCostSummary{
 			Vacation: durationpb.New(sumVacation),
 			TimeOff:  durationpb.New(sumTimeOff),
@@ -392,8 +398,9 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 		response.Results = append(response.Results, res)
 	}
 
-	if len(req.Msg.GetReadMask().GetPaths()) > 0 {
-		fmutils.Filter(response, req.Msg.ReadMask.Paths)
+	if paths := req.Msg.GetReadMask().GetPaths(); len(paths) > 0 {
+		log.L(ctx).Infof("filtering response based on get-paths: %v", paths)
+		fmutils.Filter(response, paths)
 	}
 
 	return connect.NewResponse(response), nil
