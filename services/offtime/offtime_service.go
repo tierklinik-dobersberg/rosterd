@@ -330,7 +330,7 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 		}
 	} else {
 		// if unspecified, load all users for admin and only the owner if not
-		if !remoteUser.Admin {
+		if remoteUser.Admin {
 			var err error
 			userIds, err = svc.FetchAllUserIds(ctx)
 			if err != nil {
