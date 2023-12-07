@@ -340,7 +340,9 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 	response := &rosterv1.GetOffTimeCostsResponse{}
 
 	m := make(map[string][]structs.OffTimeCosts)
-	for _, cost := range costs {
+	for idx := range costs {
+		cost := costs[idx]
+
 		m[cost.UserID] = append(m[cost.UserID], cost)
 	}
 
