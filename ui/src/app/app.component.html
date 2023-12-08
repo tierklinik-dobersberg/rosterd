@@ -33,7 +33,7 @@
   (nzOnClose)="closeDrawer()" *ngIf="isAdmin">
 
   <div *nzDrawerContent class="flex flex-col gap-4">
-    <div class="w-full border-b border-subtle py-2">
+    <div class="w-full border-b border-subtle py-2 flex flex-row items-center justify-between">
       <span *ngIf="(profile | async) as user" class="flex flex-row items-center justify-start gap-2 font-light font-inter">
         <a [attr.href]="accountServer" target="_blank">
           <nz-avatar [nzSize]="16" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
@@ -42,6 +42,10 @@
 
         <span>{{ user.user?.displayName || user.user?.username }}</span>
       </span>
+
+      <svg class="hover:text-color-primary cursor-pointer" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" (click)="closeDrawer()">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
     </div>
 
     <nav class="flex flex-col gap-2 font-light text-inter">

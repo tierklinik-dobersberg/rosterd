@@ -1,5 +1,5 @@
 <div class="relative flex flex-row overflow-hidden">
-  <div class="flex flex-col items-center flex-shrink-0 w-24 gap-2 bg-white border-r shadow-sm border-subtle print:hidden" *ngIf="!readonly">
+  <div class="hidden md:flex flex-col items-center flex-shrink-0 w-24 gap-2 bg-white border-r shadow-sm border-subtle print:hidden" *ngIf="!readonly">
     <div class="flex flex-col items-center flex-grow w-full overflow-auto">
       <ng-container *ngFor="let user of profiles">
         <ng-container *ngIf="user.user?.id as userId">
