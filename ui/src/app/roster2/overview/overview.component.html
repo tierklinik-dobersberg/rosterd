@@ -8,9 +8,9 @@
     <tr class="bg-subtle">
       <th class="px-2 py-4 font-normal text-left font-lato">Zeitraum</th>
       <th class="px-2 py-4 font-normal text-left font-lato">Typ</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Bearbeiter</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Freigegeben</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Letzte Änderung</th>
+      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Bearbeiter</th>
+      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Freigegeben</th>
+      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Letzte Änderung</th>
       <th class="w-0 px-2 py-4 font-normal text-left font-lato">Aktionen</th>
     </tr>
   </thead>
@@ -20,7 +20,7 @@
       <ng-container *ngIf="entry.roster as roster">
         <td class="p-2 text-left font-inter">{{ roster.from }} - {{ roster.to }}</td>
         <td class="p-2 text-left font-inter">{{ roster.rosterTypeName }}</td>
-        <td class="p-2 text-left font-inter">
+        <td class="p-2 text-left font-inter hidden md:table-cell">
           <span *ngIf="(roster.lastModifiedBy | toUser:profiles) as editor"
             class="flex flex-row items-center justify-start gap-2 text-left">
             <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="editor.user?.avatar" class="rounded-full shadow ring-1">
@@ -28,7 +28,7 @@
             {{ editor | displayName }}
           </span>
         </td>
-        <td class="p-2 text-left font-inter" *ngIf="roster.approved; else: notApproved">
+        <td class="p-2 text-left font-inter hidden md:table-cell" *ngIf="roster.approved; else: notApproved">
           <span *ngIf="(roster.approverUserId | toUser:profiles) as approver"
             class="flex flex-row items-center justify-start gap-2 text-left">
             <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="approver.user?.avatar" class="rounded-full shadow ring-1">
@@ -37,13 +37,13 @@
           </span>
         </td>
 
-        <td class="p-2 text-left font-inter">
+        <ng-template #notApproved>
+          <td class="p-2 text-left font-inter text-secondary hidden md:table-cell">N/A</td>
+        </ng-template>
+
+        <td class="p-2 text-left font-inter hidden md:table-cell">
           {{ roster.updatedAt?.toDate() | date:'mediumDate'}}
         </td>
-
-        <ng-template #notApproved>
-          <td class="p-2 text-left font-inter text-secondary">N/A</td>
-        </ng-template>
 
         <td style="width: 0; min-width: fit-content; white-space: nowrap">
           <div class="flex flex-row justify-end" *ngIf="isAdmin | async">
