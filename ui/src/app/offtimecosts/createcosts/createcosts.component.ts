@@ -17,7 +17,7 @@ interface CreateModel {
   comment: string;
   date: Date;
   costs: number;
-  type: 'vacation' | 'timeOff';
+  type: 'vacation' | 'timeOff' | '';
 }
 
 function makeEmptyCreateModel(): CreateModel {
@@ -26,7 +26,7 @@ function makeEmptyCreateModel(): CreateModel {
     comment: '',
     date: new Date(),
     costs: 0,
-    type: 'timeOff',
+    type: '',
   }
 }
 
