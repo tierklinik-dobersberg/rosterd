@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import { RouterModule, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
+import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
+import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
-import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
-import { TkdRoster2Module } from './roster2/roster2.module';
-import { NzIconModule } from 'ng-zorro-antd/icon';
 import { environment } from 'src/environments/environment';
-import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
+import { TkdRoster2Module } from './roster2/roster2.module';
 
 @Component({
   selector: 'app-root',
@@ -22,13 +22,23 @@ import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
     RouterModule,
     NzMessageModule,
     NzIconModule,
+    NzDrawerModule,
   ],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   public readonly accountServer = environment.accountService;
   public readonly mainApplication = environment.mainApplication;
+  public readonly router = inject(Router);
+  public readonly cdr = inject(ChangeDetectorRef);
+
+  drawerVisible = false;
+
+  closeDrawer() {
+    this.drawerVisible = false;
+  }
 
   profile = from(
     inject(AUTH_SERVICE).introspect({})
@@ -46,4 +56,17 @@ export class AppComponent {
 
       return false
     }))
+
+  ngOnInit() {
+    this.router
+      .events
+      .pipe(
+        filter(evt => evt instanceof NavigationEnd)
+      )
+      .subscribe(() => {
+        this.drawerVisible = false;
+
+        this.cdr.markForCheck();
+      })
+  }
 }
