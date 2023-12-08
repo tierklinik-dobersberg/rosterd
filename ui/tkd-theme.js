@@ -26,6 +26,11 @@ module.exports = plugin.withOptions(
               color: 'var(--hover)',
               borderColor: 'var(--hover)',
             }
+          },
+
+          '&[disabled]': {
+            cursor: 'not-allowed',
+            '@apply opacity-75': {}
           }
         },
 
