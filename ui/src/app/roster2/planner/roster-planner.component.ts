@@ -9,6 +9,7 @@ import { Subject, forkJoin, from, of, throwError } from 'rxjs';
 import { debounceTime, filter, switchMap } from "rxjs/operators";
 import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { toDateString } from "src/utils";
+import { ConnectError } from "@connectrpc/connect";
 
 export interface RosterShift extends RequiredShift {
   definition: WorkShift;
@@ -86,8 +87,6 @@ export class TkdRosterPlannerComponent implements OnInit {
     }
 
     const disabled = d.getTime() < this.from.getTime() || d.getTime() > this.to.getTime();
-
-    console.log(d.toLocaleDateString(), "d", d.toLocaleString(), "from", this.from.toLocaleString(), "to", this.to.toLocaleString(), disabled)
 
     return disabled
   }
@@ -171,12 +170,19 @@ export class TkdRosterPlannerComponent implements OnInit {
         switchMap(params => {
           const id = params.get("id");
           if (!!id) {
-            return from(this.rosterService.getRoster({
-              search: {
-                case: 'id',
-                value: id,
-              },
-            }))
+            return from(
+              this.rosterService.getRoster({
+                search: {
+                  case: 'id',
+                  value: id,
+                },
+              })
+              .catch(err => {
+                this.nzMessage.error('Dienstplan konnte nicht geladen werden: ' + ConnectError.from(err).rawMessage)
+
+                return new GetRosterResponse;
+              })
+            )
           }
 
           return of(params);
@@ -196,7 +202,7 @@ export class TkdRosterPlannerComponent implements OnInit {
           let fromDate: string;
           let toDate: string;
 
-          if (params instanceof GetRosterResponse) {
+          if ('roster' in params) {
             if (!params.roster?.length) {
               this.router.navigate(['/roster'])
             }
@@ -243,7 +249,7 @@ export class TkdRosterPlannerComponent implements OnInit {
               }
             })),
 
-            roster: params instanceof GetRosterResponse
+            roster: 'roster' in params
               ? of(params)
               : from(this.rosterService.getRoster({
                 search: {
