@@ -9,6 +9,9 @@ import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzMessageModule, NzMessageService } from 'ng-zorro-antd/message';
+import { ConnectError } from '@connectrpc/connect';
 
 @Component({
   selector: 'app-offtimecosts',
@@ -19,6 +22,8 @@ import { TkdRoster2Module } from '../roster2/roster2.module';
     NzRadioModule,
     NzAvatarModule,
     NzSelectModule,
+    NzModalModule,
+    NzMessageModule,
     FormsModule,
     RouterModule,
     TkdRoster2Module,
@@ -27,9 +32,11 @@ import { TkdRoster2Module } from '../roster2/roster2.module';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OfftimecostsComponent implements OnInit {
-  offTimeService = inject(OFFTIME_SERVICE);
-  usersService = inject(USER_SERVICE);
-  cdr = inject(ChangeDetectorRef);
+  private readonly offTimeService = inject(OFFTIME_SERVICE);
+  private readonly usersService = inject(USER_SERVICE);
+  private readonly nzModal = inject(NzModalService)
+  private readonly nzMessageService = inject(NzMessageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   timeRange: [Date, Date] | null = null;
   filterType: 'all' | 'vacation' | 'za' = 'all';
@@ -112,7 +119,21 @@ export class OfftimecostsComponent implements OnInit {
   }
 
   async delete(id: string) {
-    await this.offTimeService.deleteOffTimeCosts({ids: [id]})
-    this.loadCosts()
+    this.nzModal
+      .confirm({
+        nzTitle: 'Bestätigung erforderlich',
+        nzContent: 'Möchtest du den Eintrag wirklich löschen?',
+        nzOkDanger: true,
+        nzOkText: 'Löschen',
+        nzCancelText: 'Abbrechen',
+        nzOnOk: async () => {
+          await this.offTimeService.deleteOffTimeCosts({ids: [id]})
+            .catch(err => {
+              this.nzMessageService.error('Eintrag konnte nicht gelöscht werden: ' + ConnectError.from(err).rawMessage)
+            })
+
+          this.loadCosts()
+        }
+      })
   }
 }
