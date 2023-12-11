@@ -1,12 +1,17 @@
 <span class="inline-block w-full mb-1 text-xs text-center rounded font-lato text-secondary"
-  [ngClass]="{'bg-primary text-white':!!holiday}">{{ holiday?.localName}} {{ date | date:'dd.MM' }}</span>
+  [ngClass]="{'bg-primary text-white':!!holiday}">
+  <span>{{ holiday?.localName}}</span>
+  <span *ngIf="!layout.lg && !holiday">
+    {{ date | date:'EEEE' }} |
+  </span>
+  <span>{{ date | date:'dd.MM' }}</span>
+</span>
 
 <ul class="flex overflow-auto flex-col flex-grow gap-1 px-0.5 py-0.5 group" *ngIf="!disabled">
   <ng-container *ngFor="let shift of requiredShifts">
 
     <li cdkOverlayOrigin #trigger="cdkOverlayOrigin"
-
-      (contextmenu)="onContextMenu($event, trigger)" (click)="onShiftClick(trigger, shift)"
+      (click)="onShiftClick(trigger, shift)"
       [ngStyle]="{backgroundColor: shift.definition.color + '40'}"
       class="flex overflow-hidden relative flex-row gap-1 justify-start items-center px-1.5 py-1 text-xs shadow-sm transition-all duration-200 ease-in-out hover:ring-1 text-primary"
       [ngClass]="{'cursor-not-allowed opacity-40': !!selectedUser && !(selectedUser|inList:shift.eligibleUserIds) && !(selectedUser|inList:assigned[shift.workShiftId]), 'opacity-50': highlightUserShifts !== null && !(highlightUserShifts | inList:assigned[shift.workShiftId]), 'ring-1': highlightUserShifts | inList:assigned[shift.workShiftId], 'rounded': !trigger.elementRef.nativeElement.open, 'rounded-t ring-1 shadow-inner': trigger.elementRef.nativeElement.open, 'cursor-pointer': !readonly }">
@@ -49,35 +54,48 @@
 
       <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="trigger"
         [cdkConnectedOverlayOpen]="trigger.elementRef.nativeElement.open"
-        (overlayOutsideClick)="onOverlayOutsideClick($event, trigger)">
-        <ul class="p-2 bg-white rounded-b shadow w-80 ring-1">
-          <li *ngFor="let user of shift.eligibleUserIds">
-            <ng-container *ngIf="(user | toUser:profiles) as userProfile">
-              <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-subtle" [ngClass]="{'cursor-pointer': !readonly}"
-                (click)="onShiftClick(trigger, shift, user)">
-
-                <nz-avatar nzIcon="user" [nzSrc]="userProfile.user?.avatar"></nz-avatar>
-                <div class="flex flex-col justify-start gap-1">
-                  <span>{{ userProfile | displayName }}</span>
-                  <span class="text-xs leading-3 text-secondary" *ngIf="workTimeStatus[user] as work">
-                    <span
-                      [ngClass]="{'text-alert-red': work.expectedTime!.seconds < work.plannedTime!.seconds}">{{ work.plannedTime | duration:'default-hours' }}</span>
-                    <span>/{{ work.expectedTime | duration:'default-hours' }}</span>
-                  </span>
-                </div>
-
-                <div class="flex-grow"></div>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"
-                  *ngIf="user|inList:assigned[shift.workShiftId]">
-                  <path fill-rule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clip-rule="evenodd" />
-                </svg>
-              </div>
-            </ng-container>
-          </li>
-        </ul>
+        (overlayOutsideClick)="onOverlayOutsideClick($event, trigger)" *ngIf="layout.lg">
+        <ng-container *ngTemplateOutlet="userSelectionTemplate; context: {
+          shift: shift,
+          trigger: trigger,
+        }"></ng-container>
       </ng-template>
     </li>
   </ng-container>
 </ul>
+
+<ng-template #userSelectionTemplate let-shift="shift" let-trigger="trigger">
+  <ul class="p-2 bg-white rounded-b" [ngClass]="{'ring-1 shadow w-80': !!trigger, 'w-full': !trigger}" *ngIf="shift">
+    <li *ngFor="let user of shift.eligibleUserIds">
+      <ng-container *ngIf="(user | toUser:profiles) as userProfile">
+        <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-subtle" [ngClass]="{'cursor-pointer': !readonly}"
+          (click)="onShiftClick(trigger, shift, user)">
+
+          <nz-avatar nzIcon="user" [nzSrc]="userProfile.user?.avatar"></nz-avatar>
+          <div class="flex flex-col justify-start gap-1">
+            <span>{{ userProfile | displayName }}</span>
+            <span class="text-xs leading-3 text-secondary" *ngIf="workTimeStatus[user] as work">
+              <span
+                [ngClass]="{'text-alert-red': work.expectedTime!.seconds < work.plannedTime!.seconds}">{{ work.plannedTime | duration:'default-hours' }}</span>
+              <span>/{{ work.expectedTime | duration:'default-hours' }}</span>
+            </span>
+          </div>
+
+          <div class="flex-grow"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"
+            *ngIf="user|inList:assigned[shift.workShiftId]">
+            <path fill-rule="evenodd"
+              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+              clip-rule="evenodd" />
+          </svg>
+        </div>
+      </ng-container>
+    </li>
+  </ul>
+</ng-template>
+
+<nz-drawer *ngIf="!layout.lg" [nzVisible]="drawerVisible" (nzOnClose)="drawerVisible = false" [nzWidth]="(layout.drawerWidth | async) || 'inherit'">
+  <ng-container *nzDrawerContent>
+    <ng-container *ngTemplateOutlet="userSelectionTemplate; context: drawerContext"></ng-container>
+  </ng-container>
+</nz-drawer>

@@ -1,9 +1,10 @@
 import { CdkOverlayOrigin } from "@angular/cdk/overlay";
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from "@angular/core";
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from "@angular/core";
 import { PartialMessage } from "@bufbuild/protobuf";
 import { OffTimeEntry, PlannedShift, Profile, PublicHoliday, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { NzModalService } from "ng-zorro-antd/modal";
 import { RosterShift } from "../roster-planner.component";
+import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 
 @Component({
   selector: 'tkd-roster-planner-day',
@@ -14,12 +15,13 @@ import { RosterShift } from "../roster-planner.component";
     :host {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
     `
   ],
 })
 export class TkdRosterPlannerDayComponent implements OnChanges {
+  public readonly layout = inject(LayoutService);
+
   @Input()
   date!: Date;
 
@@ -63,12 +65,15 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
   @Input()
   disabled: boolean = false;
 
+  drawerContext: any;
+  drawerVisible = false;
+
   constructor(
     private nzModal: NzModalService,
     private cdr: ChangeDetectorRef
   ) {}
 
-  onShiftClick(trigger: CdkOverlayOrigin, shift: RosterShift, user = this.selectedUser) {
+  onShiftClick(trigger: CdkOverlayOrigin | null, shift: RosterShift, user = this.selectedUser) {
     if (this.readonly) {
       return;
     }
@@ -144,7 +149,18 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
       return
     }
 
-    trigger.elementRef.nativeElement.open = !trigger.elementRef.nativeElement.open;
+    if (!!trigger && this.layout.lg) {
+      trigger.elementRef.nativeElement.open = !trigger.elementRef.nativeElement.open;
+    } else {
+      this.drawerContext = {
+        shift,
+        trigger: null,
+      }
+
+      this.drawerVisible = true
+
+      this.cdr.markForCheck();
+    }
   }
 
   onOverlayOutsideClick(event: MouseEvent, trigger: CdkOverlayOrigin) {
@@ -158,20 +174,6 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
     }
 
     trigger.elementRef.nativeElement.open = false;
-  }
-
-  onContextMenu(event: Event, trigger: CdkOverlayOrigin) {
-    if (this.readonly) {
-      return;
-    }
-
-    // stop immediate propergation as onShiftClick() would close the
-    // overlay immediately again.
-    event.stopImmediatePropagation();
-    event.preventDefault();
-
-    trigger.elementRef.nativeElement.open = !trigger.elementRef.nativeElement.open;
-    return false;
   }
 
   private publishRosterShift() {

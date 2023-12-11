@@ -5,6 +5,7 @@ import { APP_BASE_HREF } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
+import { TkdLayoutModule } from '@tierklinik-dobersberg/angular/layout';
 import { NZ_DATE_CONFIG, NZ_I18N, de_DE } from 'ng-zorro-antd/i18n';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { environment } from 'src/environments/environment';
@@ -22,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     { provide: NZ_DATE_CONFIG, useValue: { firstDayOfWeek: 1 } },
     importProvidersFrom(NzMessageModule),
     importProvidersFrom(NzModalModule),
-    importProvidersFrom(TkdConnectModule.forRoot(environment))
+    importProvidersFrom(TkdConnectModule.forRoot(environment)),
+    importProvidersFrom(TkdLayoutModule),
   ],
 };

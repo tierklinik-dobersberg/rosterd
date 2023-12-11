@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/bufbuild/connect-go"
@@ -202,7 +201,7 @@ func prepareConnectServer(p *config.Providers) (public, admin *http.Server) {
 	// Get a static file handler.
 	// This will either return a handler for the embed.FS, a local directory using http.Dir
 	// or a reverse proxy to some other service.
-	staticFilesHandler, err := getStaticFilesHandler(os.Getenv("STATIC_DIR"))
+	staticFilesHandler, err := getStaticFilesHandler(p.Config.StaticFiles)
 	if err != nil {
 		logrus.Fatal(err)
 	}

@@ -40,6 +40,8 @@ type (
 		AllowedOrigins []string `env:"ALLOWED_ORIGINS"`
 		// RosterManagerRoleID holds the ID of the roster_manager role
 		RosterManagerRoleID string `env:"ROSTER_MANAGER_ROLE_ID"`
+		// Path or URL for the rosterd frontend
+		StaticFiles string `env:"STATIC_FILES"`
 	}
 )
 

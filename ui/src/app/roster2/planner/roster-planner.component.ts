@@ -10,6 +10,8 @@ import { debounceTime, filter, switchMap } from "rxjs/operators";
 import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { toDateString } from "src/utils";
 import { ConnectError } from "@connectrpc/connect";
+import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
+import { formatDate } from "src/duration";
 
 export interface RosterShift extends RequiredShift {
   definition: WorkShift;
@@ -22,16 +24,24 @@ export interface RosterShift extends RequiredShift {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TkdRosterPlannerComponent implements OnInit {
-  /* Services */
-  readonly rosterService = inject(ROSTER_SERVICE);
-  readonly holidayService = inject(HOLIDAY_SERVICE)
-  readonly usersService = inject(USER_SERVICE);
-  readonly offTimeService = inject(OFFTIME_SERVICE);
-  readonly destroyRef = inject(DestroyRef);
-  readonly cdr = inject(ChangeDetectorRef);
+  /* Private Services */
+  private readonly rosterService = inject(ROSTER_SERVICE);
+  private readonly holidayService = inject(HOLIDAY_SERVICE)
+  private readonly usersService = inject(USER_SERVICE);
+  private readonly offTimeService = inject(OFFTIME_SERVICE);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  /** Public Services */
+  public readonly layout = inject(LayoutService)
+    .withAutoUpdate(this.cdr);
 
   private debounceSave$ = new Subject<void>();
   private savePending = false;
+
+  drawerVisible = false;
+
+  dates: Date[] = [];
 
   /** The currently selected date */
   selectedDate: Date | null = null;
@@ -81,8 +91,7 @@ export class TkdRosterPlannerComponent implements OnInit {
   maxShifts = 0;
 
   dateDisabled = (d: Date | undefined) => {
-    if (!d || !this.selectedDate || !this.from || !this.to) {
-      console.log("no date")
+    if (!d || !this.from || !this.to) {
       return false
     }
 
@@ -281,6 +290,15 @@ export class TkdRosterPlannerComponent implements OnInit {
           // throw new Error("got more than one roster")
         }
 
+        // prepare the dates slice for mobile view
+        this.dates = [];
+        let iter = this.from!;
+        while(iter.toDateString() !== this.to?.toDateString()) {
+          this.dates.push(iter)
+
+          iter = new Date(iter.getFullYear(), iter.getMonth(), iter.getDate() + 1)
+        }
+
         let allowedRoles = new Set<string>();
         let roster: Roster;
 
@@ -374,15 +392,18 @@ export class TkdRosterPlannerComponent implements OnInit {
   }
 
   setSelectedUser(username: string) {
+    this.drawerVisible = false;
+
     if (this.selectedUser === username) {
       this.selectedUser = null;
+
       return;
     }
 
     this.selectedUser = username;
   }
 
-  setRosterShifts(date: string, shifts: PartialMessage<PlannedShift>[]) {
+  setRosterShifts(date: string | Date, shifts: PartialMessage<PlannedShift>[]) {
     shifts.forEach(updated => {
       const existingIndex = this.roster.shifts?.findIndex(s => {
         return s.workShiftId === updated.workShiftId
