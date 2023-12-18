@@ -8,3 +8,43 @@
   display: block;
   overflow: auto;
 }
+
+nav {
+  @apply flex flex-col gap-2 w-full font-lato font-normal text-sm;
+
+}
+
+nav a {
+  @apply flex items-center gap-3 p-3 pl-4;
+  @apply border-r-2 border-transparent;
+  @apply transition-colors duration-200 ease-in-out;
+}
+
+nav a:visited, nav a:active {
+  @apply text-primary;
+}
+
+nav a.nav__active {
+  @apply border-primary bg-subtle;
+}
+
+::ng-deep nav a ng-icon {
+  --ng-icon__size: 1rem !important;
+  @apply text-primary text-opacity-75;
+}
+
+header nav {
+  @apply flex-row;
+}
+
+header nav a {
+  @apply border-r-0 border-b-2;
+}
+
+header nav a ng-icon {
+  display: none;
+}
+
+header nav a.nav__active {
+  background-color: unset;
+}

@@ -6,16 +6,14 @@
 
   <h1 routerLink="/roster/" class="text-base md:text-lg font-light cursor-pointer font-inter sm:leading-3 leading-4">Dienstplan / Urlaubs Verwaltung</h1>
 
-  <nav class="hidden lg:flex flex-row items-stretch justify-start flex-grow h-full gap-2 ml-8 font-light text-inter">
+  <nav *ngIf="layout.lg" class="flex flex-row items-stretch justify-start flex-grow h-full gap-2 ml-8 font-light text-inter">
     <ng-container *ngTemplateOutlet="navigationTemplate"></ng-container>
   </nav>
 
   <div class="flex-grow lg:hidden"></div>
 
-  <button class="block lg:hidden justify-self-end" (click)="drawerVisible = !drawerVisible">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-    </svg>
+  <button class="lg:hidden justify-self-end flex items-center justify-center" (click)="drawerVisible = !drawerVisible">
+    <ng-icon name="heroBars4" size="1rem"></ng-icon>
   </button>
 
   <div class="hidden lg:block">
@@ -29,26 +27,36 @@
   </div>
 </header>
 
-<nz-drawer [nzClosable]="false" [nzVisible]="drawerVisible" [nzPlacement]="'right'"
-  (nzOnClose)="closeDrawer()" *ngIf="isAdmin">
+<ng-template #drawerTitle>
+  <div class="flex flex-row justify-between items-center w-full">
+    <span *ngIf="(profile | async) as user" class="flex flex-row w-full items-center justify-start gap-2 text-sm ">
 
-  <div *nzDrawerContent class="flex flex-col gap-4">
-    <div class="w-full border-b border-subtle py-2 flex flex-row items-center justify-between">
-      <span *ngIf="(profile | async) as user" class="flex flex-row items-center justify-start gap-2 font-light font-inter">
-        <a [attr.href]="accountServer" target="_blank">
-          <nz-avatar [nzSize]="16" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-          </nz-avatar>
-        </a>
+      <a [attr.href]="accountServer" target="_blank">
+        <nz-avatar [nzSize]="36" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full border border-subtle">
+        </nz-avatar>
+      </a>
 
-        <span>{{ user.user?.displayName || user.user?.username }}</span>
+      <span class="inline-flex flex-col items-start leading-4 font-lato">
+        <span class="font-semibold">{{ user.user?.username }}</span>
+        <span class=" text-sm font-light" *ngIf="(user | displayName) !== user.user?.username">{{ user | displayName }}</span>
       </span>
+    </span>
 
-      <svg class="hover:text-color-primary cursor-pointer" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6" (click)="closeDrawer()">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </div>
+    <ng-icon name="heroXMarkMini" size="1rem" strokeWidth="1px" (click)="drawerVisible = false"></ng-icon>
+  </div>
+</ng-template>
 
-    <nav class="flex flex-col gap-2 font-light text-inter">
+<nz-drawer [nzClosable]="false" [nzVisible]="drawerVisible" [nzPlacement]="'right'"
+  (nzOnClose)="closeDrawer()" *ngIf="isAdmin && !layout.lg" [nzTitle]="drawerTitle" class="rounded-l">
+
+  <div *nzDrawerContent class="flex flex-col gap-4 -ml-6 -mr-6">
+    <nav class="flex flex-col gap-2 w-full">
+
+      <a [attr.href]="accountServer" role="navigation" target="_blank">
+          <ng-icon name="heroUser"></ng-icon>
+          Profil anzeigen
+      </a>
+
       <ng-container *ngTemplateOutlet="navigationTemplate; context: {$implicit: true}"></ng-container>
     </nav>
   </div>
@@ -61,29 +69,39 @@
 
 <ng-template #navigationTemplate let-drawer>
     <ng-container *ngIf="isAdmin | async">
-      <a [ngClass]="{'px-6 py-4 border-t-2 border-b-2': !drawer, 'px-2 py-2 border-t-1 border-b-1 rounded hover:bg-sublte': drawer}"
-        class="transition duration-200 ease-in-out border-transparent"
+      <a
         role="navigation" routerLink="/roster"
-        [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Dienstpläne</a>
-
-      <a [ngClass]="{'px-6 py-4 border-t-2 border-b-2': !drawer, 'px-2 py-2 border-t-1 border-b-1 rounded hover:bg-sublte': drawer}"
-        class="transition duration-200 ease-in-out border-transparent"
+        [routerLinkActive]="'nav__active'">
+        <ng-icon name="ionCalendarOutline"></ng-icon>
+        Dienstpläne
+      </a>
+      <a
         role="navigation" routerLink="/offtimes"
-        [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Urlaubsanträge</a>
+        [routerLinkActive]="'nav__active'">
+        <ng-icon name="ionAirplaneOutline"></ng-icon>
+        Urlaubsanträge
+      </a>
 
-      <a [ngClass]="{'px-6 py-4 border-t-2 border-b-2': !drawer, 'px-2 py-2 border-t-1 border-b-1 rounded hover:bg-sublte': drawer}"
-        class="transition duration-200 ease-in-out border-transparent"
+      <a
         role="navigation" routerLink="/costs"
-        [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Abwesenheiten</a>
+        [routerLinkActive]="'nav__active'">
+        <ng-icon name="ionAlarmOutline"></ng-icon>
+        Abwesenheiten
+      </a>
 
-      <a [ngClass]="{'px-6 py-4 border-t-2 border-b-2': !drawer, 'px-2 py-2 border-t-1 border-b-1 rounded hover:bg-sublte': drawer}"
-        class="transition duration-200 ease-in-out border-transparent"
+      <a
         role="navigation" routerLink="/worktimes"
-        [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Arbeitszeiten</a>
+        [routerLinkActive]="'nav__active'">
+        <ng-icon name="heroClock"></ng-icon>
+        Arbeitszeiten
+      </a>
 
-      <a [ngClass]="{'px-6 py-4 border-t-2 border-b-2': !drawer, 'px-2 py-2 border-t-1 border-b-1 rounded hover:bg-sublte': drawer}"
-        class="transition duration-200 ease-in-out border-transparent"
+      <a
         role="navigation" routerLink="/admin/"
-        [routerLinkActive]="'border-b-primary border-t-transparent font-normal text-color-primary'">Administration</a>
+        [routerLinkActive]="'nav__active'">
+        <ng-icon name="heroCog6Tooth"></ng-icon>
+        Administration
+      </a>
+
     </ng-container>
 </ng-template>

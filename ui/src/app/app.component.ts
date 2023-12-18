@@ -1,3 +1,4 @@
+import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
@@ -10,6 +11,7 @@ import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { TkdRoster2Module } from './roster2/roster2.module';
+import { NgIconsModule } from '@ng-icons/core';
 
 @Component({
   selector: 'app-root',
@@ -22,6 +24,7 @@ import { TkdRoster2Module } from './roster2/roster2.module';
     RouterModule,
     NzMessageModule,
     NzIconModule,
+    NgIconsModule,
     NzDrawerModule,
   ],
   templateUrl: './app.component.html',
@@ -33,6 +36,7 @@ export class AppComponent implements OnInit {
   public readonly mainApplication = environment.mainApplication;
   public readonly router = inject(Router);
   public readonly cdr = inject(ChangeDetectorRef);
+  public readonly layout = inject(LayoutService).withAutoUpdate();
 
   drawerVisible = false;
 
