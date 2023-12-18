@@ -214,6 +214,8 @@ export class TkdRosterPlannerComponent implements OnInit {
           if ('roster' in params) {
             if (!params.roster?.length) {
               this.router.navigate(['/roster'])
+
+              return throwError(() => new Error('unexpected response'))
             }
 
             this.rosterType = params.roster[0].rosterTypeName
