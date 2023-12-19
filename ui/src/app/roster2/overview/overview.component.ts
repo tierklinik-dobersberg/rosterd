@@ -27,7 +27,6 @@ export class TkdRosterOverviewComponent implements OnInit {
 
   trackRoster: TrackByFunction<RosterWithLink> = (_, r) => r.roster.id
 
-
   private profile = from(
     inject(AUTH_SERVICE).introspect({})
       .then(response => response.profile)

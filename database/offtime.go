@@ -8,6 +8,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (db *DatabaseImpl) GetOffTimeRequest(ctx context.Context, ids ...string) ([]structs.OffTimeEntry, error) {
@@ -46,6 +47,19 @@ func (db *DatabaseImpl) CreateOffTimeRequest(ctx context.Context, req *structs.O
 	}
 
 	req.ID = res.InsertedID.(primitive.ObjectID)
+
+	return nil
+}
+
+func (db *DatabaseImpl) UpdateOffTimeRequest(ctx context.Context, req *structs.OffTimeEntry) error {
+	res, err := db.offTime.ReplaceOne(ctx, bson.M{"_id": req.ID}, req)
+	if err != nil {
+		return err
+	}
+
+	if res.MatchedCount != 1 {
+		return mongo.ErrNoDocuments
+	}
 
 	return nil
 }

@@ -100,6 +100,96 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 	}), nil
 }
 
+func (svc *Service) UpdateOffTimeRequest(ctx context.Context, req *connect.Request[rosterv1.UpdateOffTimeRequestRequest]) (*connect.Response[rosterv1.UpdateOffTimeRequestResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
+	entries, err := svc.Datastore.GetOffTimeRequest(ctx, req.Msg.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entries) == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("off-time request with id %q not found", req.Msg.Id))
+	}
+
+	if len(entries) > 1 {
+		return nil, fmt.Errorf("internal: multiple off-time requests with the same ID")
+	}
+
+	entry := entries[0]
+
+	if entry.Approval != nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("off-time request has already been approved or rejected and cannot be modified anymore"))
+	}
+
+	if !remoteUser.Admin && entry.RequestorId != remoteUser.ID {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("you are not allowed to update this off-time request"))
+	}
+
+	paths := []string{
+		"from",
+		"to",
+		"requestor_id",
+		"description",
+		"request_type",
+	}
+
+	if p := req.Msg.FieldMask.GetPaths(); len(p) > 0 {
+		paths = p
+	}
+
+	for _, p := range paths {
+		switch p {
+		case "from":
+			if !req.Msg.From.IsValid() {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from field is invalid"))
+			}
+
+			entry.From = req.Msg.From.AsTime()
+
+		case "to":
+			if !req.Msg.To.IsValid() {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to field is invalid"))
+			}
+
+			entry.To = req.Msg.To.AsTime()
+
+		case "requestor_id":
+			if req.Msg.RequestorId != "" {
+				if !remoteUser.Admin {
+					if req.Msg.RequestorId != entry.RequestorId {
+						return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("you are not allowed to change the requestor"))
+					}
+				}
+
+				if err := svc.verifyUsersExists(ctx, req.Msg.RequestorId); err != nil {
+					return nil, err
+				}
+
+				entry.RequestorId = req.Msg.RequestorId
+			} else {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("requestor must be set"))
+			}
+
+		case "description":
+			entry.Description = req.Msg.Description
+		case "request_type":
+			entry.RequestType = requestTypeFromProto(req.Msg.RequestType)
+		}
+	}
+
+	if err := svc.Datastore.UpdateOffTimeRequest(ctx, &entry); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&rosterv1.UpdateOffTimeRequestResponse{
+		Entry: entry.ToProto(),
+	}), nil
+}
+
 func (svc *Service) DeleteOffTimeRequest(ctx context.Context, req *connect.Request[rosterv1.DeleteOffTimeRequestRequest]) (*connect.Response[rosterv1.DeleteOffTimeRequestResponse], error) {
 	remoteUser := auth.From(ctx)
 	if remoteUser == nil {
