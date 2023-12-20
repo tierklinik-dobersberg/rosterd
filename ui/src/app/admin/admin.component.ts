@@ -24,6 +24,13 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
     NzModalModule
   ],
   templateUrl: './admin.component.html',
+  styles: [
+    `
+    :host {
+      @apply flex flex-col overflow-hidden flex-grow;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AdminComponent implements OnInit {

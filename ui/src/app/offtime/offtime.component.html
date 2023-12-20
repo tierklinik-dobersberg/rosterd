@@ -1,7 +1,10 @@
-<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
-  Urlaubsanträge
+<h2 class="flex flex-row justify-between items-center mb-4 text-lg font-normal font-inter">
+  <div class="flex flex-row gap-2 items-center">
+    <ng-icon name="ionAirplaneOutline" size="1.5rem" class="text-color-secondary"></ng-icon>
+    Urlaubsanträge
+  </div>
 
-  <div class="space-x-2">
+  <div class="space-x-2 hidden xl:block">
     <nz-range-picker [(ngModel)]="rangeFilter" (ngModelChange)="loadOffTimeEntries()"></nz-range-picker>
     <nz-radio-group [(ngModel)]="filterType">
       <label nz-radio-button nzValue="all">Alle</label>
@@ -12,72 +15,74 @@
   <button class="tkd-btn tkd-primary" [routerLink]="['create']">Antrag erstellen</button>
 </h2>
 
-<table class="w-full border border-collapse rounded table-auto border-subtle">
-  <thead>
-    <tr class="rounded-t bg-subtle">
-      <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Von</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Bis</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Beschreibung</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Freigegeben</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Erstellt am</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let e of entries; trackBy: trackEntry"
-      class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
-      <td class="p-2 text-left font-inter">
-        <span class="flex flex-row items-center justify-start gap-2 text-left"
-          *ngIf="(e.requestorId | toUser:profiles) as user">
-          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-          </nz-avatar>
-          {{ user | displayName }}
-        </span>
-      </td>
-      <td class="p-2 text-left font-inter">{{ e.from!.toDate() | date:'short' }}</td>
-      <td class="p-2 text-left font-inter">{{ e.to!.toDate() | date:'short'}}</td>
-      <td class="p-2 text-left font-inter">{{ e.description }}</td>
-
-      <td class="p-2 leading-3 text-left font-inter">
-        <div *ngIf="e.approval; else: naTemplate" [nz-tooltip]="e.approval.comment" class="inline-block w-fit">
-          <span class="font-medium text-alert-green" *ngIf="e.approval.approved">Genehmigt</span>
-          <span class="font-medium text-alert-red" *ngIf="!e.approval.approved">Abgelehnt</span><br>
-          <span class="text-xs text-secondary">
-            {{ e.approval.approverId | toUser:profiles | displayName }} /
-            {{ e.approval.approvedAt!.toDate() | date:'short'}}
+<div class="overflow-auto">
+  <table class="w-full border border-collapse rounded table-auto border-subtle">
+    <thead>
+      <tr class="rounded-t bg-subtle">
+        <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Von</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Bis</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Beschreibung</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Freigegeben</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Erstellt am</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let e of entries; trackBy: trackEntry"
+        class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+        <td class="p-2 text-left font-inter">
+          <span class="flex flex-row items-center justify-start gap-2 text-left"
+            *ngIf="(e.requestorId | toUser:profiles) as user">
+            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+            </nz-avatar>
+            {{ user | displayName }}
           </span>
-        </div>
-      </td>
+        </td>
+        <td class="p-2 text-left font-inter">{{ e.from!.toDate() | date:'short' }}</td>
+        <td class="p-2 text-left font-inter">{{ e.to!.toDate() | date:'short'}}</td>
+        <td class="p-2 text-left font-inter">{{ e.description }}</td>
 
-      <td class="p-2 leading-3 text-left font-inter">
-        {{ e.createdAt!.toDate() | date:'short'}}<br />
-        <span class="text-xs text-secondary" *ngIf="e.requestorId !== e.creatorId">(von
-          {{ e.creatorId | toUser:profiles | displayName }})</span>
-      </td>
+        <td class="p-2 leading-3 text-left font-inter">
+          <div *ngIf="e.approval; else: naTemplate" [nz-tooltip]="e.approval.comment" class="inline-block w-fit">
+            <span class="font-medium text-alert-green" *ngIf="e.approval.approved">Genehmigt</span>
+            <span class="font-medium text-alert-red" *ngIf="!e.approval.approved">Abgelehnt</span><br>
+            <span class="text-xs text-secondary">
+              {{ e.approval.approverId | toUser:profiles | displayName }} /
+              {{ e.approval.approvedAt!.toDate() | date:'short'}}
+            </span>
+          </div>
+        </td>
 
-      <td style="width: 0; min-width: fit-content; white-space: nowrap">
-        <div class="flex flex-row gap-2 flex-nowrap">
-          <ng-container *ngIf="!e.approval">
-          </ng-container>
-        </div>
+        <td class="p-2 leading-3 text-left font-inter">
+          {{ e.createdAt!.toDate() | date:'short'}}<br />
+          <span class="text-xs text-secondary" *ngIf="e.requestorId !== e.creatorId">(von
+            {{ e.creatorId | toUser:profiles | displayName }})</span>
+        </td>
 
-        <button *ngIf="!e.approval" class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu4">
-          Aktionen
-        </button>
+        <td style="width: 0; min-width: fit-content; white-space: nowrap">
+          <div class="flex flex-row gap-2 flex-nowrap">
+            <ng-container *ngIf="!e.approval">
+            </ng-container>
+          </div>
 
-        <nz-dropdown-menu #menu4="nzDropdownMenu">
-          <ul nz-menu>
-            <li nz-menu-item (click)="approveOrRejectConfirmation(true, e)">Genehmigen</li>
-            <li nz-menu-item (click)="approveOrRejectConfirmation(false, e)">Ablehnen</li>
-            <li nz-menu-item [routerLink]="['edit', e.id]">Bearbeiten</li>
-            <li nz-menu-item nzDanger (click)="deleteEntry(e)">Löschen</li>
-          </ul>
-        </nz-dropdown-menu>
-      </td>
-    </tr>
-  </tbody>
-</table>
+          <button *ngIf="!e.approval" class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu4">
+            Aktionen
+          </button>
+
+          <nz-dropdown-menu #menu4="nzDropdownMenu">
+            <ul nz-menu>
+              <li nz-menu-item (click)="approveOrRejectConfirmation(true, e)">Genehmigen</li>
+              <li nz-menu-item (click)="approveOrRejectConfirmation(false, e)">Ablehnen</li>
+              <li nz-menu-item [routerLink]="['edit', e.id]">Bearbeiten</li>
+              <li nz-menu-item nzDanger (click)="deleteEntry(e)">Löschen</li>
+            </ul>
+          </nz-dropdown-menu>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 <ng-template #naTemplate>
   <span class="text-secondary">N/A</span>

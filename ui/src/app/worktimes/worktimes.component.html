@@ -1,88 +1,93 @@
-<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
+<h2 class="flex flex-row justify-start items-center gap-2 mb-4 text-lg font-normal font-inter">
+  <ng-icon name="heroClock" size="1.5rem" class="text-color-secondary"></ng-icon>
   Arbeitszeiten
 </h2>
 
-<table class="w-full border border-collapse rounded table-auto border-subtle">
-  <thead>
-    <tr class="rounded-t bg-subtle">
-      <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Seit / Eintritt</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Aktuelle Arbeitszeit</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Urlaub / Jahr</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Ended mit</th>
-      <th class="px-2 py-4 font-normal leading-3 text-left font-lato">Resturlaub
-        <br>
-        <span class="text-xs font-inter">(bis <strong>{{ endOfYear | date:'mediumDate' }}</strong>)</span>
-      </th>
-      <th class="px-2 py-4 font-normal text-left font-lato">ZA-Guthaben</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <ng-container *ngFor="let m of models; trackBy: trackModel" >
-      <tr *ngIf="(m.current || m.next) as current; else: emptyRow" class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
-        <td  class="p-2 text-left font-inter">
-            <span class="flex flex-row items-center justify-start gap-2 text-left">
-                <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="m.profile.user?.avatar"
-                  class="rounded-full shadow ring-1">
-                </nz-avatar>
-                {{ m.profile | displayName }}
-              </span>
-        </td>
-        <td  class="p-2 text-left font-inter">
-          {{ current.applicableAfter!.toDate() | date:'mediumDate'  }}
-        </td>
-        <td  class="p-2 text-left font-inter">
-          {{ current.timePerWeek | duration:'default-hours' }} / Woche
-        </td>
-        <td  class="p-2 text-left font-inter">{{ current.vacationWeeksPerYear }} Wochen</td>
-        <td  class="p-2 leading-3 text-left font-inter">
-          <ng-container *ngIf="m.next && m.next !== current; else: naTemplate">
-            {{ m.next.applicableAfter!.toDate() | date:'mediumDate' }}
-            <br />
-            <span class="text-xs">(dann {{ m.next.timePerWeek | duration:'default-hours'}}/Woche)</span>
-          </ng-container>
-        </td>
-        <td  class="p-2 leading-3 text-left font-inter">
-          <ng-container *ngIf="m.credits; else: naTemplate">
-            {{ m.credits.vacationCreditsLeft | duration:'default-hours' }}
-            <br />
-            <span class="text-xs">({{ m.credits.vacationCreditsLeft!.seconds / current.timePerWeek!.seconds}} Wochen)</span>
-          </ng-container>
-        </td>
-        <td class="p-2 text-left font-inter" [class.text-alert-red]="(m.credits?.timeOffCredits?.seconds || 0) < 0">
-          {{ m.credits?.timeOffCredits | duration:'default-hours' }}
-        </td>
-        <td style="width: 0; min-width: fit-content; white-space: nowrap">
-          <div class="flex flex-row gap-2 flex-nowrap">
-          <button class="tkd-btn tkd-secondary tkd-outline" (click)="openModal(m.profile)">Arbeitszeit ändern</button>
-          <button class="tkd-btn tkd-secondary tkd-outline" (click)="showHistory(m.profile)">Details</button>
-          </div>
-        </td>
+<div class="overflow-auto">
+  <table class="w-full border rounded table-auto border-subtle">
+    <thead>
+      <tr class="rounded bg-subtle">
+        <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Seit / Eintritt</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Aktuelle Arbeitszeit</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Urlaub / Jahr</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Ended mit</th>
+        <th class="px-2 py-4 font-normal leading-3 text-left font-lato">Resturlaub
+          <br>
+          <span class="text-xs font-inter">(bis <strong>{{ endOfYear | date:'mediumDate' }}</strong>)</span>
+        </th>
+        <th class="px-2 py-4 font-normal text-left font-lato">ZA-Guthaben</th>
+        <th></th>
       </tr>
-      <ng-template #emptyRow>
-        <ng-container *ngTemplateOutlet="noWtTemplate; context: {$implicit: m.profile}"></ng-container>
-      </ng-template>
-    </ng-container>
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      <ng-container *ngFor="let m of models; trackBy: trackModel">
+        <tr *ngIf="(m.current || m.next) as current; else: emptyRow"
+          class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+          <td class="p-2 text-left font-inter">
+            <span class="flex flex-row items-center justify-start gap-2 text-left">
+              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="m.profile.user?.avatar"
+                class="rounded-full shadow ring-1">
+              </nz-avatar>
+              {{ m.profile | displayName }}
+            </span>
+          </td>
+          <td class="p-2 text-left font-inter">
+            {{ current.applicableAfter!.toDate() | date:'mediumDate' }}
+          </td>
+          <td class="p-2 text-left font-inter">
+            {{ current.timePerWeek | duration:'default-hours' }} / Woche
+          </td>
+          <td class="p-2 text-left font-inter">{{ current.vacationWeeksPerYear }} Wochen</td>
+          <td class="p-2 leading-3 text-left font-inter">
+            <ng-container *ngIf="m.next && m.next !== current; else: naTemplate">
+              {{ m.next.applicableAfter!.toDate() | date:'mediumDate' }}
+              <br />
+              <span class="text-xs">(dann {{ m.next.timePerWeek | duration:'default-hours'}}/Woche)</span>
+            </ng-container>
+          </td>
+          <td class="p-2 leading-3 text-left font-inter">
+            <ng-container *ngIf="m.credits; else: naTemplate">
+              {{ m.credits.vacationCreditsLeft | duration:'default-hours' }}
+              <br />
+              <span class="text-xs">({{ m.credits.vacationCreditsLeft!.seconds / current.timePerWeek!.seconds}}
+                Wochen)</span>
+            </ng-container>
+          </td>
+          <td class="p-2 text-left font-inter" [class.text-alert-red]="(m.credits?.timeOffCredits?.seconds || 0) < 0">
+            {{ m.credits?.timeOffCredits | duration:'default-hours' }}
+          </td>
+          <td style="width: 0; min-width: fit-content; white-space: nowrap">
+            <div class="flex flex-row gap-2 flex-nowrap">
+              <button class="tkd-btn tkd-secondary tkd-outline" (click)="openModal(m.profile)">Arbeitszeit
+                ändern</button>
+              <button class="tkd-btn tkd-secondary tkd-outline" (click)="showHistory(m.profile)">Details</button>
+            </div>
+          </td>
+        </tr>
+        <ng-template #emptyRow>
+          <ng-container *ngTemplateOutlet="noWtTemplate; context: {$implicit: m.profile}"></ng-container>
+        </ng-template>
+      </ng-container>
+    </tbody>
+  </table>
+</div>
 
 <ng-template #noWtTemplate let-profile>
   <tr lass="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
-    <td  class="p-2 text-left font-inter">
-            <span class="flex flex-row items-center justify-start gap-2 text-left">
-                <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="profile.user?.avatar"
-                  class="rounded-full shadow ring-1">
-                </nz-avatar>
-                {{ profile | displayName }}
-            </span>
+    <td class="p-2 text-left font-inter">
+      <span class="flex flex-row items-center justify-start gap-2 text-left">
+        <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="profile.user?.avatar" class="rounded-full shadow ring-1">
+        </nz-avatar>
+        {{ profile | displayName }}
+      </span>
     </td>
-    <td  class="p-2 text-left font-inter"></td>
-    <td  class="p-2 text-left font-inter"></td>
-    <td  class="p-2 text-left font-inter"></td>
-    <td  class="p-2 text-left font-inter"></td>
-    <td  class="p-2 text-left font-inter"></td>
-    <td  class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
+    <td class="p-2 text-left font-inter"></td>
     <td style="width: 0; min-width: fit-content; white-space: nowrap">
       <div class="flex flex-row gap-2 flex-nowrap">
         <button class="tkd-btn tkd-secondary tkd-outline" (click)="openModal(profile)">Arbeitszeit ändern</button>
@@ -101,30 +106,36 @@
   </ng-container>
 
   <ng-container *nzModalContent>
-    <form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto" (ngSubmit)="saveForUser()">
+    <form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto"
+      (ngSubmit)="saveForUser()">
 
       <div class="flex flex-col">
         <label class="text-xs leading-3 uppercase text-secondary">Arbeitszeit / Woche</label>
-        <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="workTimePerWeek" [(ngModel)]="changeModel.workTimePerWeek">
+        <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="workTimePerWeek"
+          [(ngModel)]="changeModel.workTimePerWeek">
       </div>
 
       <div class="flex flex-col">
         <label class="text-xs leading-3 uppercase text-secondary">Urlaubswochen / Jahr</label>
-        <input type="number" value="5" class="w-full p-1 text-sm border text-normal border-tertiary" name="vacationCreditsPerYear" [(ngModel)]="changeModel.vacationPerYear">
+        <input type="number" value="5" class="w-full p-1 text-sm border text-normal border-tertiary"
+          name="vacationCreditsPerYear" [(ngModel)]="changeModel.vacationPerYear">
       </div>
 
       <div class="flex flex-col">
         <label class="text-xs leading-3 uppercase text-secondary">Überstundenpauschale / Monat</label>
-        <input type="text" value="5" class="w-full p-1 text-sm border text-normal border-tertiary" name="overtimeAllowance" [(ngModel)]="changeModel.overtimeAllowance">
+        <input type="text" value="5" class="w-full p-1 text-sm border text-normal border-tertiary"
+          name="overtimeAllowance" [(ngModel)]="changeModel.overtimeAllowance">
       </div>
 
       <div class="flex flex-col">
         <label class="text-xs leading-3 uppercase text-secondary">Ab</label>
-        <input type="date" value="5" class="w-full p-1 text-sm border text-normal border-tertiary" name="applicableAfter" [(ngModel)]="changeModel.applicableAfter">
+        <input type="date" value="5" class="w-full p-1 text-sm border text-normal border-tertiary"
+          name="applicableAfter" [(ngModel)]="changeModel.applicableAfter">
       </div>
 
       <div class="flex flex-row items-stretch w-full gap-2">
-        <button class="w-full tkd-btn tkd-primary tkd-outline" type="button" (click)="setForUser = null">Abbrechen</button>
+        <button class="w-full tkd-btn tkd-primary tkd-outline" type="button"
+          (click)="setForUser = null">Abbrechen</button>
         <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
       </div>
     </form>
@@ -135,14 +146,18 @@
   <ng-container *nzModalContent>
     <nz-timeline>
       <nz-timeline-item *ngFor="let step of analyze?.slices">
-        <p class="font-medium font-inter">{{ step.workTime!.applicableAfter!.toDate() | date:'mediumDate' }} - {{ step.endsAt!.toDate() | date:'mediumDate' }}</p>
-        <p class="text-secondary">Arbeitszeit: <span class="font-normal text-primary">{{ step.workTime?.timePerWeek | duration:'default-hours' }} / Woche</span></p>
-        <p class="text-secondary">Urlaub/Jahr: <span class="font-normal text-primary">{{ step.workTime?.vacationWeeksPerYear }} Wochen</span></p>
+        <p class="font-medium font-inter">{{ step.workTime!.applicableAfter!.toDate() | date:'mediumDate' }} - {{
+          step.endsAt!.toDate() | date:'mediumDate' }}</p>
+        <p class="text-secondary">Arbeitszeit: <span class="font-normal text-primary">{{ step.workTime?.timePerWeek |
+            duration:'default-hours' }} / Woche</span></p>
+        <p class="text-secondary">Urlaub/Jahr: <span class="font-normal text-primary">{{
+            step.workTime?.vacationWeeksPerYear }} Wochen</span></p>
         <p class="text-secondary">
           Urlaubsanspruch im Zeitraum:
           <span class="font-normal text-primary">{{ step.vacationPerWorkTime | duration:'default-hours' }}</span>
         </p>
-        <p *ngIf="!!step.costsSum?.seconds" class="text-secondary">Verbrauchter Urlaub: <span class="font-normal text-primary">{{ step.costsSum | duration:'default-hours' }}</span></p>
+        <p *ngIf="!!step.costsSum?.seconds" class="text-secondary">Verbrauchter Urlaub: <span
+            class="font-normal text-primary">{{ step.costsSum | duration:'default-hours' }}</span></p>
       </nz-timeline-item>
     </nz-timeline>
   </ng-container>

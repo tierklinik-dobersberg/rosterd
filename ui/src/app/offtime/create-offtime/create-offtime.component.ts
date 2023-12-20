@@ -112,6 +112,7 @@ export class CreateOfftimeComponent implements OnInit {
         from: Timestamp.fromDate(this.model.from),
         to: Timestamp.fromDate(this.model.to),
         requestType: this.typeToProto(this.model.type),
+        requestorId: this.model.requestorId,
       })
       .then(() => {
         this.router.navigate(['/offtimes'])

@@ -1,86 +1,93 @@
-<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
-  Dienstpläne
-  <button class="tkd-btn tkd-primary" (click)="modal.open()">Erstellen</button>
+<h2 class="flex flex-row justify-between items-center gap-2 mb-4 text-lg font-normal font-inter">
+  <div class="flex flex-row items-center gap-2">
+    <ng-icon name="ionCalendarOutline" size="1.5rem" class="text-color-secondary"></ng-icon>
+    Dienstpläne
+  </div>
+
+  <button class="justify-self-end tkd-btn tkd-primary" (click)="modal.open()">Erstellen</button>
 </h2>
 
-<table class="w-full border border-collapse rounded table-auto border-subtle">
-  <thead>
-    <tr class="bg-subtle">
-      <th class="px-2 py-4 font-normal text-left font-lato">Zeitraum</th>
-      <th class="px-2 py-4 font-normal text-left font-lato">Typ</th>
-      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Bearbeiter</th>
-      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Freigegeben</th>
-      <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Letzte Änderung</th>
-      <th class="w-0 px-2 py-4 font-normal text-left font-lato">Aktionen</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let entry of rosters; trackBy: trackRoster"
-      class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
-      <ng-container *ngIf="entry.roster as roster">
-        <td class="p-2 text-left font-inter">{{ roster.from }} - {{ roster.to }}</td>
-        <td class="p-2 text-left font-inter">{{ roster.rosterTypeName }}</td>
-        <td class="p-2 text-left font-inter hidden md:table-cell">
-          <span *ngIf="(roster.lastModifiedBy | toUser:profiles) as editor"
-            class="flex flex-row items-center justify-start gap-2 text-left">
-            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="editor.user?.avatar" class="rounded-full shadow ring-1">
-            </nz-avatar>
-            {{ editor | displayName }}
-          </span>
+<div class="overflow-auto">
+  <table class="w-full border border-collapse rounded table-auto border-subtle">
+    <thead>
+      <tr class="bg-subtle">
+        <th class="px-2 py-4 font-normal text-left font-lato">Zeitraum</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">Typ</th>
+        <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Bearbeiter</th>
+        <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Freigegeben</th>
+        <th class="px-2 py-4 font-normal text-left font-lato hidden md:table-cell">Letzte Änderung</th>
+        <th class="w-0 px-2 py-4 font-normal text-left font-lato">Aktionen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let entry of rosters; trackBy: trackRoster"
+        class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+        <ng-container *ngIf="entry.roster as roster">
+          <td class="p-2 text-left font-inter">{{ roster.from }} - {{ roster.to }}</td>
+          <td class="p-2 text-left font-inter">{{ roster.rosterTypeName }}</td>
+          <td class="p-2 text-left font-inter hidden md:table-cell">
+            <span *ngIf="(roster.lastModifiedBy | toUser:profiles) as editor"
+              class="flex flex-row items-center justify-start gap-2 text-left">
+              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="editor.user?.avatar" class="rounded-full shadow ring-1">
+              </nz-avatar>
+              {{ editor | displayName }}
+            </span>
+          </td>
+          <td class="p-2 text-left font-inter hidden md:table-cell" *ngIf="roster.approved; else: notApproved">
+            <span *ngIf="(roster.approverUserId | toUser:profiles) as approver"
+              class="flex flex-row items-center justify-start gap-2 text-left">
+              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="approver.user?.avatar" class="rounded-full shadow ring-1">
+              </nz-avatar>
+              {{ approver | displayName }}
+            </span>
+          </td>
+
+          <ng-template #notApproved>
+            <td class="p-2 text-left font-inter text-secondary hidden md:table-cell">N/A</td>
+          </ng-template>
+
+          <td class="p-2 text-left font-inter hidden md:table-cell">
+            {{ roster.updatedAt?.toDate() | date:'mediumDate'}}
+          </td>
+
+          <td style="width: 0; min-width: fit-content; white-space: nowrap">
+            <div class="flex flex-row justify-end" *ngIf="isAdmin | async">
+              <button class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu4">
+                Aktionen
+              </button>
+
+              <nz-dropdown-menu #menu4="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item [routerLink]="['./view', roster.id]">Anzeigen</li>
+                  <li nz-menu-item (click)="sendPreview(roster)">Vorschau senden</li>
+                  <li nz-menu-item [routerLink]="['./plan', roster.id]">Bearbeiten</li>
+                  <li nz-menu-item [routerLink]="['./approve', entry.roster.id]">Freigeben</li>
+                  <li nz-menu-item (click)="deleteRoster(roster)">Löschen</li>
+                </ul>
+              </nz-dropdown-menu>
+            </div>
+
+            <div class="flex flex-row justify-end" *ngIf="(isAdmin | async) === false">
+              <button class="tkd-btn tkd-primary tkd-outline" [routerLink]="['./view', roster.id]">
+                Ansehen
+              </button>
+            </div>
+          </td>
+
+        </ng-container>
+      </tr>
+
+      <tr *ngIf="!rosters?.length">
+        <td colspan="5" class="p-8">
+          <nz-empty></nz-empty>
         </td>
-        <td class="p-2 text-left font-inter hidden md:table-cell" *ngIf="roster.approved; else: notApproved">
-          <span *ngIf="(roster.approverUserId | toUser:profiles) as approver"
-            class="flex flex-row items-center justify-start gap-2 text-left">
-            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="approver.user?.avatar" class="rounded-full shadow ring-1">
-            </nz-avatar>
-            {{ approver | displayName }}
-          </span>
-        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
-        <ng-template #notApproved>
-          <td class="p-2 text-left font-inter text-secondary hidden md:table-cell">N/A</td>
-        </ng-template>
-
-        <td class="p-2 text-left font-inter hidden md:table-cell">
-          {{ roster.updatedAt?.toDate() | date:'mediumDate'}}
-        </td>
-
-        <td style="width: 0; min-width: fit-content; white-space: nowrap">
-          <div class="flex flex-row justify-end" *ngIf="isAdmin | async">
-            <button class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu4">
-              Aktionen
-            </button>
-
-            <nz-dropdown-menu #menu4="nzDropdownMenu">
-              <ul nz-menu>
-                <li nz-menu-item [routerLink]="['./view', roster.id]">Anzeigen</li>
-                <li nz-menu-item (click)="sendPreview(roster)">Vorschau senden</li>
-                <li nz-menu-item [routerLink]="['./plan', roster.id]">Bearbeiten</li>
-                <li nz-menu-item [routerLink]="['./approve', entry.roster.id]">Freigeben</li>
-                <li nz-menu-item (click)="deleteRoster(roster)">Löschen</li>
-              </ul>
-            </nz-dropdown-menu>
-          </div>
-
-          <div class="flex flex-row justify-end" *ngIf="(isAdmin | async) === false">
-            <button class="tkd-btn tkd-primary tkd-outline" [routerLink]="['./view', roster.id]">
-              Ansehen
-            </button>
-          </div>
-        </td>
-
-      </ng-container>
-    </tr>
-
-    <tr *ngIf="!rosters?.length">
-      <td colspan="5" class="p-8">
-        <nz-empty></nz-empty>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
-<nz-modal [nzFooter]="null" nzTitle="Neuen Dienstplan erstellen" #modal="nzModal" [nzClosable]="true" (nzOnCancel)="modal.close()">
+<nz-modal [nzFooter]="null" nzTitle="Neuen Dienstplan erstellen" #modal="nzModal" [nzClosable]="true"
+  (nzOnCancel)="modal.close()">
   <div *nzModalContent>
 
     <nz-select #typeSelect nzPlaceHolder="Dienstplan Typ">
@@ -89,6 +96,8 @@
 
     <nz-range-picker #rangePicker [nzShowTime]="false"></nz-range-picker>
 
-    <button class="tkd-btn tkd-primary" [routerLink]="['plan', typeSelect.activatedValue, rangePicker.inputValue[0], rangePicker.inputValue[1]]" (click)="modal.close()">Erstellen</button>
+    <button class="tkd-btn tkd-primary"
+      [routerLink]="['plan', typeSelect.activatedValue, rangePicker.inputValue[0], rangePicker.inputValue[1]]"
+      (click)="modal.close()">Erstellen</button>
   </div>
 </nz-modal>

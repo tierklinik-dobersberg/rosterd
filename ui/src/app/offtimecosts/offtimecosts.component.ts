@@ -12,6 +12,7 @@ import { TkdRoster2Module } from '../roster2/roster2.module';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzMessageModule, NzMessageService } from 'ng-zorro-antd/message';
 import { ConnectError } from '@connectrpc/connect';
+import { NgIconsModule } from '@ng-icons/core';
 
 @Component({
   selector: 'app-offtimecosts',
@@ -27,8 +28,16 @@ import { ConnectError } from '@connectrpc/connect';
     FormsModule,
     RouterModule,
     TkdRoster2Module,
+    NgIconsModule
   ],
   templateUrl: './offtimecosts.component.html',
+  styles: [
+    `
+    :host {
+      @apply flex flex-col overflow-hidden flex-grow;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OfftimecostsComponent implements OnInit {

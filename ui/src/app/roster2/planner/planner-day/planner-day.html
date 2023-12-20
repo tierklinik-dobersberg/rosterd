@@ -18,7 +18,7 @@
 
       <div
         [nz-tooltip]="shift.definition.name + ' (' + shift.definition.displayName + ') - Von ' + (shift.from?.toDate()| date:'HH:mm') + ' bis ' + (shift.to?.toDate() | date:'HH:mm')"
-        class="flex overflow-hidden flex-col justify-between pr-1.5 text-xs uppercase whitespace-nowrap border-r select-none text-ellipsis text-secondary font-lato"
+        class="flex overflow-hidden flex-col justify-between pr-1.5 text-xs uppercase whitespace-nowrap border-r select-none text-ellipsis text-secondary font-lato w-10"
         [ngStyle]="{borderColor: shift.definition.color + 'aa'}" style="font-size: 0.65rem;">
 
         <span class="transition-all duration-200 ease-in-out translate-y-2 group-hover:translate-y-0"

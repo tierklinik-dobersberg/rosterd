@@ -12,6 +12,7 @@ import { Duration } from 'src/duration';
 import { toDateString } from 'src/utils';
 import { USER_SERVICE, WORKTIME_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
+import { NgIconsModule } from '@ng-icons/core';
 
 interface Model {
   profile: Profile;
@@ -48,8 +49,16 @@ function makeEmptyChangeModel(): ChangeModel {
     NzModalModule,
     NzMessageModule,
     NzTimelineModule,
+    NgIconsModule
   ],
   templateUrl: './worktimes.component.html',
+  styles: [
+    `
+    :host {
+      @apply flex flex-col overflow-hidden flex-grow;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorktimesComponent implements OnInit {

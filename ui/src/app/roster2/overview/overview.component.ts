@@ -12,6 +12,13 @@ interface RosterWithLink {
 @Component({
   selector: 'app-overview',
   templateUrl: './overview.component.html',
+  styles: [
+    `
+    :host {
+      @apply flex flex-col overflow-hidden flex-grow;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TkdRosterOverviewComponent implements OnInit {

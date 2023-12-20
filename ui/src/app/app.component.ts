@@ -1,8 +1,9 @@
 import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
+import { moveInOutAnimation, moveInOutListAnimation } from '@tierklinik-dobersberg/angular/animations';
 import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -29,12 +30,16 @@ import { NgIconsModule } from '@ng-icons/core';
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    moveInOutAnimation,
+  ]
 })
 export class AppComponent implements OnInit {
   public readonly accountServer = environment.accountService;
   public readonly mainApplication = environment.mainApplication;
   public readonly router = inject(Router);
+  public readonly route = inject(ActivatedRoute)
   public readonly cdr = inject(ChangeDetectorRef);
   public readonly layout = inject(LayoutService).withAutoUpdate();
 
@@ -43,6 +48,8 @@ export class AppComponent implements OnInit {
   closeDrawer() {
     this.drawerVisible = false;
   }
+
+  isRosterView = false;
 
   profile = from(
     inject(AUTH_SERVICE).introspect({})
@@ -69,6 +76,10 @@ export class AppComponent implements OnInit {
       )
       .subscribe(() => {
         this.drawerVisible = false;
+
+        this.isRosterView = this.router.routerState.snapshot.url.startsWith('/roster/view')
+          || this.router.routerState.snapshot.url.startsWith('/roster/plan');
+
 
         this.cdr.markForCheck();
       })

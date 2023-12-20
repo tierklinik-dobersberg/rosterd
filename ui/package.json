@@ -26,7 +26,7 @@
     "@ng-icons/core": "^26.3.0",
     "@ng-icons/heroicons": "^26.3.0",
     "@ng-icons/ionicons": "^26.3.0",
-    "@tierklinik-dobersberg/angular": "^0.0.7",
+    "@tierklinik-dobersberg/angular": "^0.0.11",
     "@tierklinik-dobersberg/apis": "^0.0.4",
     "@tierklinik-dobersberg/tailwind": ">=0.0.9",
     "ng-zorro-antd": "^16.1.0",

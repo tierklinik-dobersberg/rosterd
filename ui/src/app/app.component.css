@@ -1,17 +1,9 @@
-:host  {
-  max-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-#content > ng-component {
-  display: block;
-  overflow: auto;
+:host {
+  @apply flex flex-row w-full h-screen overflow-hidden print:overflow-auto print:h-auto;
 }
 
 nav {
-  @apply flex flex-col gap-2 w-full font-lato font-normal text-sm;
-
+  @apply flex flex-col font-lato font-normal text-sm;
 }
 
 nav a {

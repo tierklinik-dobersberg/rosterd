@@ -13,6 +13,7 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { DisplayNamePipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { NgIconsModule } from '@ng-icons/core';
 
 @Component({
   selector: 'app-offtime',
@@ -27,9 +28,17 @@ import { DisplayNamePipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipe
     NzDropDownModule,
     NzToolTipModule,
     NzDatePickerModule,
-    NzRadioModule
+    NzRadioModule,
+    NgIconsModule
   ],
   templateUrl: './offtime.component.html',
+  styles: [
+    `
+    :host {
+      @apply flex flex-col overflow-hidden flex-grow;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OfftimeComponent implements OnInit {

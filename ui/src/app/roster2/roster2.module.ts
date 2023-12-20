@@ -23,6 +23,7 @@ import { TkdRosterPlannerComponent, TkdRosterPlannerDayComponent } from './plann
 import { TkdRoster2Routing } from './roster2-routing.module';
 import { DurationPipe, ToUserPipe, DisplayNamePipe, UserColorPipe, UserContrastColorPipe, TkdInListPipe } from "@tierklinik-dobersberg/angular/pipes";
 import { NzDrawerModule } from "ng-zorro-antd/drawer";
+import { NgIconsModule } from "@ng-icons/core";
 
 @NgModule({
   imports: [
@@ -49,6 +50,7 @@ import { NzDrawerModule } from "ng-zorro-antd/drawer";
     UserContrastColorPipe,
     TkdInListPipe,
     NzDrawerModule,
+    NgIconsModule
   ],
   declarations: [
     TkdRosterPlannerComponent,
