@@ -86,6 +86,11 @@ export class TkdRosterOverviewComponent implements OnInit {
           link: `plan/${roster.rosterTypeName}/${date.getFullYear()}/${date.getMonth() + 1}`,
         }
       }))
+      .then(rosters => {
+        return rosters.sort((a, b) => {
+          return new Date(b.roster.from).getTime() - new Date(a.roster.from).getTime()
+        })
+      })
   }
 
   async ngOnInit() {
