@@ -50,7 +50,7 @@
             <ng-container *ngIf="m.credits; else: naTemplate">
               {{ m.credits.vacationCreditsLeft | duration:'default-hours' }}
               <br />
-              <span class="text-xs">({{ m.credits.vacationCreditsLeft!.seconds / current.timePerWeek!.seconds}}
+              <span class="text-xs" *ngIf="current.timePerWeek!.seconds > 0">({{ m.credits.vacationCreditsLeft!.seconds / current.timePerWeek!.seconds}}
                 Wochen)</span>
             </ng-container>
           </td>
