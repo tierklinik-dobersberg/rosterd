@@ -366,6 +366,13 @@ export class TkdRosterPlannerComponent implements OnInit {
               .some(role => allowedRoles.has(role.id))
           });
 
+        if (this.profiles.length === 0) {
+          console.group("No profiles found that match the allowed roles")
+          console.log("allowedRoles", allowedRoles)
+          console.log("result", result)
+          console.groupEnd()
+        }
+
         this.workTimeByUser = {};
         result.workTime.results.forEach(wt => {
           this.workTimeByUser[wt.userId] = wt

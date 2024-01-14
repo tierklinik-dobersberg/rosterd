@@ -406,16 +406,29 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 	// determine for which Users we want to load costs
 	var userIds []string
 	if req.Msg.ForUsers != nil {
-		if !remoteUser.Admin {
+		hasOtherUsers := false
+
+		for _, id := range req.Msg.ForUsers.UserIds {
+			if id != remoteUser.ID {
+				hasOtherUsers = true
+				break
+			}
+		}
+
+		if hasOtherUsers && !remoteUser.Admin {
 			return nil, connect.NewError(connect.CodeAborted, fmt.Errorf("you're not allowed to perform this operation"))
 		}
 
 		userIds = req.Msg.ForUsers.UserIds
 		if len(userIds) == 0 {
-			var err error
-			userIds, err = svc.FetchAllUserIds(ctx)
-			if err != nil {
-				return nil, err
+			if remoteUser.Admin {
+				var err error
+				userIds, err = svc.FetchAllUserIds(ctx)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				userIds = []string{remoteUser.ID}
 			}
 		}
 	} else {

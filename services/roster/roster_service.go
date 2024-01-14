@@ -220,6 +220,15 @@ func (svc *RosterService) GetRequiredShifts(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
+	tags := rosterType.ShiftTags
+	if req.Msg.OnCall {
+		tags = rosterType.OnCallTags
+
+		if len(tags) == 0 {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("roster type does not have on-call tags configured"))
+		}
+	}
+
 	requiredShifts, definitions, err := svc.getRequiredShifts(ctx, from, to, nil, rosterType.ShiftTags)
 	if err != nil {
 		return nil, err
