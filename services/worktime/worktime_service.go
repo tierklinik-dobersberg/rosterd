@@ -291,11 +291,9 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 
 				userCosts := costsByUser[userId]
 				slSum := time.Duration(0)
-				toSum := time.Duration(0)
 
 				for _, cost := range userCosts {
-					if !cost.IsVacation || cost.Date.After(endsAt) {
-						toSum += cost.Costs
+					if !cost.IsVacation || cost.Date.After(endsAt) || cost.Date.Before(iter.ApplicableFrom) {
 						continue
 					}
 
