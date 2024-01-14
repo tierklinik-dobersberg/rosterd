@@ -45,10 +45,16 @@
 
       <div class="flex flex-row flex-wrap items-center flex-grow gap-1">
         <div *ngFor="let user of assigned[shift.workShiftId]">
-          <span *ngIf="(user|toUser:profiles) as profile" class="block px-0.5 rounded border border-subtle"
+          <span *ngIf="(user|toUser:profiles) as profile; else: noProfileTmpl" class="block px-0.5 rounded border border-subtle"
             [ngStyle]="{backgroundColor: (profile | color) + 'aa', color: (profile | contrastColor), borderColor: (profile|color)}">
             <span>{{ (profile | displayName).substr(0, 2) }}</span>
           </span>
+
+          <ng-template #noProfileTmpl>
+            <span class="block px-0.5 rounded border border-subtle" [nz-tooltip]="'User-ID: ' + user">
+              N/A
+            </span>
+          </ng-template>
         </div>
       </div>
 
