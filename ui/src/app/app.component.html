@@ -1,7 +1,7 @@
   <!--
     Menu on Desktop and up
   -->
-  <nav *ngIf="layout.lg && !isRosterView" class="relative z-10 flex flex-col flex-shrink-0 w-64 h-full bg-white shadow-md print:hidden">
+  <nav *ngIf="layout.lg && !isRosterView && (isAdmin | async)" class="relative z-10 flex flex-col flex-shrink-0 w-64 h-full bg-white shadow-md print:hidden">
     <!-- Logo -->
     <div class="ml-1 h-16">
       <a class="flex items-center space-x-2" href="https://my.dobersberg.vet">
