@@ -89,7 +89,7 @@ export class WorktimesComponent implements OnInit {
       const profiles = await this.userService.listUsers({}).then(response => response.users);
       const workTimes = await this.workTimeService.getWorkTime({}).then(response => response.results);
 
-      const credits = await this.workTimeService.getVacationCreditsLeft({ until: Timestamp.fromDate(this.endOfYear) })
+      const credits = await this.workTimeService.getVacationCreditsLeft({ until: Timestamp.fromDate(this.endOfYear), forUsers: {} })
         .then(response => response.results)
 
       this.models = profiles.map(profile => {

@@ -52,6 +52,9 @@ export class TkdRosterPlannerComponent implements OnInit {
   /** A list of all users that can be assigned */
   profiles: Profile[] = [];
 
+  /** A list of all user profiles */
+  allProfiles: Profile[] = [];
+
   /** The id of the user for which shifts should be highlighted */
   highlightUserShifts: string | null = null;
 
@@ -359,6 +362,8 @@ export class TkdRosterPlannerComponent implements OnInit {
             this.maxShifts = this.shifts[key].length;
           }
         })
+
+        this.allProfiles = result.users.users;
 
         this.profiles = result.users.users
           .filter(profile => {

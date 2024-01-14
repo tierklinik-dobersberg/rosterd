@@ -10,6 +10,13 @@ import { Duration } from 'src/duration';
 @Component({
   selector: 'app-approval',
   templateUrl: './approval.component.html',
+  styles: [
+    `
+    :host {
+      @apply block overflow-auto;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ApprovalComponent implements OnInit {

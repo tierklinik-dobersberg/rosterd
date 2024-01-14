@@ -158,6 +158,13 @@
         </p>
         <p *ngIf="!!step.costsSum?.seconds" class="text-secondary">Verbrauchter Urlaub: <span
             class="font-normal text-primary">{{ step.costsSum | duration:'default-hours' }}</span></p>
+
+        <p class="text-secondary" *ngIf="step.vacationPerWorkTime && step.costsSum">
+          Rest-Urlaub im Zeitraum:
+          <span class="font-normal text-primary">
+            {{ (step.vacationPerWorkTime!.seconds + step.costsSum!.seconds ) | duration:'default-hours' }}
+          </span>
+        </p>
       </nz-timeline-item>
     </nz-timeline>
   </ng-container>
