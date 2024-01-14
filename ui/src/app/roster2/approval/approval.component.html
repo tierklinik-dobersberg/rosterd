@@ -40,11 +40,11 @@
             </span>
           </td>
           <td class="p-2 text-left font-inter">
-            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="vacation" [ngModel]="userSplit[wt.userId][0] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 0, $event)">
+            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="vacation" [ngModelOptions]="{updateOn: 'blur'}" [ngModel]="userSplit[wt.userId][0] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 0, $event)">
             <span class="text-secondary" *ngIf="diff > 0">N/A</span>
           </td>
           <td class="p-2 text-left font-inter">
-            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="timeoff" [ngModel]="userSplit[wt.userId][1] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 1, $event)">
+            <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary" name="timeoff" [ngModelOptions]="{updateOn: 'blur'}"  [ngModel]="userSplit[wt.userId][1] | duration:'default-hours'" (ngModelChange)="updateSplit(wt.userId, 1, $event)">
             <span class="text-secondary" *ngIf="diff > 0">N/A</span>
           </td>
         </ng-container>

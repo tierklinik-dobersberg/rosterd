@@ -41,12 +41,13 @@ export class ApprovalComponent implements OnInit {
   num = Number;
 
   updateSplit(userId: string, idx: 0 | 1, value: string) {
-    const d = Duration.parseString(value)
-    if (d.seconds === 0) {
-      return;
-    }
+    try {
+      const d = Duration.parseString(value)
+      this.userSplit[userId][idx] = d.seconds;
 
-    this.userSplit[userId][idx] = d.seconds;
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   async approve() {
