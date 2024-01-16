@@ -57,6 +57,8 @@ type (
 		WorkTimeHistoryForStaff(ctx context.Context, staff string) ([]structs.WorkTime, error)
 		GetCurrentWorkTimes(ctx context.Context, until time.Time) (map[string]structs.WorkTime, error)
 		DeleteWorkTime(ctx context.Context, ids ...string) error
+		GetWorktimeByID(ctx context.Context, id string) (*structs.WorkTime, error)
+		UpdateWorkTime(ctx context.Context, wt *structs.WorkTime) error
 	}
 
 	DutyRosterDatabase interface {

@@ -14,6 +14,8 @@ type (
 		ApplicableFrom            time.Time          `json:"applicableFrom" bson:"applicableFrom"`
 		VacationWeeksPerYear      float32            `json:"vacationWeeksPerYear" bson:"vacationWeeksPerYear"`
 		OvertimeAllowancePerMonth time.Duration      `json:"overtimeAllowance" bson:"overtimeAllowance"`
+		EndsWith                  time.Time          `json:"endsWith,omitempty" bson:"endsWith,omitempty"`
+		ExcludeFromTimeTracking   bool               `json:"excludeFromTimeTracking" bson:"excludeFromTimeTracking"`
 	}
 
 	WorkTimeStatus struct {

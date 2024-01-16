@@ -25,6 +25,10 @@ export class TkdConstraintViolationPipe implements PipeTransform {
               prefix = 'Abwesenheit'
               name = val.kind.value.entry?.description;
               break;
+
+            case "NoWorkTime":
+              prefix = "Arbeitsverhältnis beendet"
+              break;
           }
 
           if (!name) {

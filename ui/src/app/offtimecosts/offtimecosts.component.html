@@ -83,7 +83,7 @@
             {{ c.creatorId | toUser:profiles | displayName }}
           </td>
           <td>
-            <button *ngIf="!c.rosterId && !c.offtimeId" class="tkd-btn tkd-danger tkd-outline"
+            <button class="tkd-btn tkd-danger tkd-outline"
               (click)="delete(c.id)">Löschen</button>
           </td>
         </tr>

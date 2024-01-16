@@ -34,16 +34,26 @@ export class ApprovalComponent implements OnInit {
   timeAnalysis: WorkTimeAnalysis[] = [];
   offTimePerUser: {[userId: string]: (undefined | OffTimeEntry[])} = {};
 
-  userSplit: {
-    [userId: string]: [number, number]
+  vacationPerUser: {
+    [userId: string]: number
   } = {};
 
   num = Number;
 
-  updateSplit(userId: string, idx: 0 | 1, value: string) {
+  updateSplit(userId: string, value: string) {
     try {
+      const wt = this.timeAnalysis.find(wt => wt.userId === userId);
+      if (!wt) {
+        return
+      }
+
+      if (!wt.overtime || wt.overtime!.seconds >= 0) {
+        return
+      }
+
       const d = Duration.parseString(value)
-      this.userSplit[userId][idx] = d.seconds;
+
+      this.vacationPerUser[userId] = d.seconds;
 
     } catch (err) {
       console.error(err)
@@ -53,12 +63,21 @@ export class ApprovalComponent implements OnInit {
   async approve() {
     const wts: {[userId: string]: PartialMessage<ApproveRosterWorkTimeSplit>} = {};
 
-    Object.keys(this.userSplit)
+    Object.keys(this.vacationPerUser)
       .forEach(userId => {
+        const wt = this.timeAnalysis.find(wt => wt.userId === userId);
+
+        if (!wt || !wt.overtime || wt.overtime.seconds >= 0) {
+          return
+        }
+
+        let vacation = this.vacationPerUser[userId];
+        let timeoff = Number(wt.overtime.seconds) + vacation;
+
         wts[userId] = {
           userId,
-          vacation: Duration.seconds(-1 * this.userSplit[userId][0]).toProto(),
-          timeOff: Duration.seconds(-1 * this.userSplit[userId][1]).toProto(),
+          vacation: Duration.seconds(-1 * vacation).toProto(),
+          timeOff: Duration.seconds(timeoff).toProto(),
         }
       })
 
@@ -94,9 +113,13 @@ export class ApprovalComponent implements OnInit {
         this.roster = response.roster[0];
         this.timeAnalysis = response.workTimeAnalysis;
 
-        this.userSplit = {};
+        this.vacationPerUser = {};
         this.timeAnalysis.forEach(wt => {
-          this.userSplit[wt.userId] = [0, 0]
+          if (!wt.overtime || Number(wt.overtime.seconds) === 0) {
+            return
+          }
+
+          this.vacationPerUser[wt.userId] = 0
         })
 
         this.offTimeService.findOffTimeRequests({

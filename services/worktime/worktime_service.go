@@ -2,6 +2,7 @@ package worktime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -10,12 +11,14 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mennanov/fmutils"
+	"github.com/sirupsen/logrus"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/config"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -45,6 +48,11 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 			ApplicableFrom:            wt.ApplicableAfter.AsTime(),
 			VacationWeeksPerYear:      wt.VacationWeeksPerYear,
 			OvertimeAllowancePerMonth: wt.OvertimeAllowancePerMonth.AsDuration(),
+			ExcludeFromTimeTracking:   wt.ExcludeFromTimeTracking,
+		}
+
+		if wt.EndsWith.IsValid() {
+			model.EndsWith = wt.EndsWith.AsTime()
 		}
 
 		if !wt.OvertimeAllowancePerMonth.IsValid() {
@@ -267,18 +275,30 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 				continue
 			}
 
-			// if there's another work-history entry after this one we need
-			// to update endsAt to the beginning of the next entry.
-			if idx+1 < len(workHistory) {
+			switch {
+			case !iter.EndsWith.IsZero():
+				endsAt = iter.EndsWith
+
+			case idx+1 < len(workHistory):
 				next := workHistory[idx+1]
 				endsAt = next.ApplicableFrom
 			}
 
+			// if there's another work-history entry after this one we need
+			// to update endsAt to the beginning of the next entry.
+
 			daysUntilEnd := math.Floor(float64(endsAt.Sub(iter.ApplicableFrom)) / float64(time.Hour*24))
 
-			vacationWeeksPerDay := iter.VacationWeeksPerYear / 365.0
-			vacationsPerPeriod := vacationWeeksPerDay * float32(iter.TimePerWeek) * float32(daysUntilEnd)
+			vacationWeeksPerDay := float64(iter.VacationWeeksPerYear) / 365.0
+			vacationsPerPeriod := vacationWeeksPerDay * float64(iter.TimePerWeek) * float64(daysUntilEnd)
 			vacationSum += time.Duration(vacationsPerPeriod)
+
+			log.L(ctx).WithFields(logrus.Fields{
+				"daysUntilEnd":        daysUntilEnd,
+				"vacationWeeksPerDay": vacationWeeksPerDay,
+				"vacationsPerPeriod":  vacationsPerPeriod,
+				"vacationSum":         vacationSum,
+			}).Infof("vacation credits between %s and %s (%d days)", iter.ApplicableFrom, endsAt, endsAt.Sub(iter.ApplicableFrom)/(24*time.Hour))
 
 			if req.Msg.Analyze {
 				sl := &rosterv1.AnalyzeVacationSum{
@@ -335,8 +355,8 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 			}
 		}
 
-		perUser.VacationCreditsLeft = durationpb.New(vacationSum)
-		perUser.TimeOffCredits = durationpb.New(timeOffSum)
+		perUser.VacationCreditsLeft = durationpb.New(vacationSum.Round(time.Minute))
+		perUser.TimeOffCredits = durationpb.New(timeOffSum.Round(time.Minute))
 
 		response.Results[idx] = perUser
 	}
@@ -344,13 +364,65 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 	return connect.NewResponse(response), nil
 }
 
+func (svc *Service) UpdateWorkTime(ctx context.Context, req *connect.Request[rosterv1.UpdateWorkTimeRequest]) (*connect.Response[rosterv1.UpdateWorkTimeResponse], error) {
+	wt, err := svc.Datastore.GetWorktimeByID(ctx, req.Msg.Id)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no work-time with the given id"))
+		}
+
+		return nil, err
+	}
+
+	paths := []string{
+		"ends_with",
+		"exclude_from_time_tracking",
+	}
+
+	if p := req.Msg.GetFieldMask().GetPaths(); len(p) > 0 {
+		paths = p
+	}
+
+	for _, p := range paths {
+		switch p {
+		case "ends_with":
+			if req.Msg.EndsWith.IsValid() {
+				wt.EndsWith = req.Msg.EndsWith.AsTime()
+			} else {
+				wt.EndsWith = time.Time{}
+			}
+
+		case "exclude_from_time_tracking":
+			wt.ExcludeFromTimeTracking = req.Msg.ExcludeFromTimeTracking
+
+		default:
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid path in field_mask"))
+		}
+	}
+
+	if err := svc.Datastore.UpdateWorkTime(ctx, wt); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&rosterv1.UpdateWorkTimeResponse{
+		Worktime: worktimeToProto(*wt),
+	}), nil
+}
+
 func worktimeToProto(wt structs.WorkTime) *rosterv1.WorkTime {
-	return &rosterv1.WorkTime{
+	wtpb := &rosterv1.WorkTime{
 		Id:                        wt.ID.Hex(),
 		UserId:                    wt.UserID,
 		TimePerWeek:               durationpb.New(wt.TimePerWeek),
 		ApplicableAfter:           timestamppb.New(wt.ApplicableFrom),
 		VacationWeeksPerYear:      wt.VacationWeeksPerYear,
 		OvertimeAllowancePerMonth: durationpb.New(wt.OvertimeAllowancePerMonth),
+		ExcludeFromTimeTracking:   wt.ExcludeFromTimeTracking,
 	}
+
+	if !wt.EndsWith.IsZero() {
+		wtpb.EndsWith = timestamppb.New(wt.EndsWith)
+	}
+
+	return wtpb
 }

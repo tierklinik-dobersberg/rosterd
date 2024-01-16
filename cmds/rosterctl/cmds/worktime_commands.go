@@ -27,6 +27,7 @@ func WorkTimeCommand(root *cli.Root) *cobra.Command {
 		SetWorkTimeCommand(root),
 		GetWorkTimesCommand(root),
 		GetVacationCreditsLeftCommand(root),
+		UpdateWorkTimeCommand(root),
 		DeleteWorkTimeCommand(root),
 	)
 
@@ -35,19 +36,33 @@ func WorkTimeCommand(root *cli.Root) *cobra.Command {
 
 func SetWorkTimeCommand(root *cli.Root) *cobra.Command {
 	var (
-		userId               string
+		user                 string
 		vacationWeeksPerYear float32
 		timePerWeek          time.Duration
 		applicableFrom       string
+		endsWith             string
+		timeTracking         bool
 	)
 
 	cmd := &cobra.Command{
 		Use: "set",
 		Run: func(cmd *cobra.Command, args []string) {
+			user = root.MustResolveUserToId(user)
+
 			wt := &rosterv1.WorkTime{
-				UserId:               userId,
-				TimePerWeek:          durationpb.New(timePerWeek),
-				VacationWeeksPerYear: vacationWeeksPerYear,
+				UserId:                  user,
+				TimePerWeek:             durationpb.New(timePerWeek),
+				VacationWeeksPerYear:    vacationWeeksPerYear,
+				ExcludeFromTimeTracking: !timeTracking,
+			}
+
+			if endsWith != "" {
+				t, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
+				if err != nil {
+					logrus.Fatalf("failed to parse --ends-with value: %s", err)
+				}
+
+				wt.EndsWith = timestamppb.New(t)
 			}
 
 			if applicableFrom != "" {
@@ -73,10 +88,65 @@ func SetWorkTimeCommand(root *cli.Root) *cobra.Command {
 
 	f := cmd.Flags()
 	{
-		f.StringVar(&userId, "user-id", "", "The ID of the user")
+		f.StringVar(&user, "user", "", "The ID or username of the user")
 		f.Float32Var(&vacationWeeksPerYear, "vacation-weeks", 5, "How many weeks of vacation should be granted in a full work-year")
 		f.DurationVar(&timePerWeek, "work-time", 40*time.Hour, "How many time the user is expected to work per week")
 		f.StringVar(&applicableFrom, "from", "", "After which date (YYYY-MM-DD) this work-time entry is effective.")
+		f.BoolVar(&timeTracking, "time-tracking", true, "Whether or not time tracking should be enabled for this work-time")
+		f.StringVar(&endsWith, "ends-with", "", "A date at which the work-time definitions ends (YYYY-MM-DD)")
+	}
+
+	return cmd
+}
+
+func UpdateWorkTimeCommand(root *cli.Root) *cobra.Command {
+	var (
+		endsWith     string
+		timeTracking bool
+	)
+
+	cmd := &cobra.Command{
+		Use:  "update",
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			wt := &rosterv1.UpdateWorkTimeRequest{
+				Id:                      args[0],
+				ExcludeFromTimeTracking: !timeTracking,
+			}
+
+			if endsWith != "" {
+				t, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
+				if err != nil {
+					logrus.Fatalf("failed to parse --ends-with value: %s", err)
+				}
+
+				wt.EndsWith = timestamppb.New(t)
+			}
+
+			wt.FieldMask = &fieldmaskpb.FieldMask{}
+
+			if cmd.Flag("time-tracking").Changed {
+				wt.FieldMask.Paths = append(wt.FieldMask.Paths, "exclude_from_time_tracking")
+			}
+
+			if cmd.Flag("ends-with").Changed {
+				wt.FieldMask.Paths = append(wt.FieldMask.Paths, "ends_with")
+			}
+
+			res, err := root.WorkTime().UpdateWorkTime(context.Background(), connect.NewRequest(wt))
+
+			if err != nil {
+				logrus.Fatalf("failed to update work-time: %s", err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
+
+	f := cmd.Flags()
+	{
+		f.BoolVar(&timeTracking, "time-tracking", true, "Whether or not time tracking should be enabled for this work-time")
+		f.StringVar(&endsWith, "ends-with", "", "A date at which the work-time definitions ends (YYYY-MM-DD)")
 	}
 
 	return cmd
@@ -88,6 +158,8 @@ func GetWorkTimesCommand(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "get",
 		Run: func(cmd *cobra.Command, args []string) {
+			args = root.MustResolveUserIds(args)
+
 			req := &rosterv1.GetWorkTimeRequest{
 				UserIds: args,
 			}

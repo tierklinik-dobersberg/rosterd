@@ -127,7 +127,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 	}
 
 	// load all required shift definitions for this roster
-	_, definitions, err := svc.getRequiredShifts(ctx, roster.FromTime(), roster.ToTime(), nil, rosterType.ShiftTags)
+	_, definitions, users, err := svc.getRequiredShifts(ctx, roster.FromTime(), roster.ToTime(), nil, rosterType.ShiftTags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get required shifts for roster: %w", err)
 	}
@@ -177,13 +177,8 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		return nil, err
 	}
 
-	allUserIds, err := svc.FetchAllUserIds(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user ids: %w", err)
-	}
-
 	// caculate the work-time for the roster
-	analysis, err := svc.analyzeWorkTime(ctx, allUserIds, roster.FromTime(), roster.ToTime())
+	analysis, err := svc.analyzeWorkTime(ctx, users, roster.FromTime(), roster.ToTime())
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
@@ -229,7 +224,7 @@ func (svc *RosterService) GetRequiredShifts(ctx context.Context, req *connect.Re
 		}
 	}
 
-	requiredShifts, definitions, err := svc.getRequiredShifts(ctx, from, to, nil, rosterType.ShiftTags)
+	requiredShifts, definitions, _, err := svc.getRequiredShifts(ctx, from, to, nil, tags)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +297,10 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 	approver := remoteUser.ID
 	for _, an := range analysis {
+		if an.ExcludeFromTimeTracking {
+			continue
+		}
+
 		diff := an.Overtime.AsDuration()
 
 		if diff > 0 {
@@ -348,7 +347,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 			}
 
 			if (timeOffCosts + vacationCosts) != diff {
-				return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must not be more than %q", timeOffCosts, vacationCosts, diff)
+				return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must equal %q", timeOffCosts, vacationCosts, diff)
 			}
 
 			if timeOffCosts < 0 {
@@ -401,7 +400,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 	go func() {
 		ctx := log.WithLogger(context.Background(), log.L(ctx))
 
-		_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false)
+		_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false, req.Msg.SendNotificationToUsers)
 		if err != nil {
 			log.L(ctx).Errorf("failed to send roster notification: %s", err)
 		}
@@ -679,7 +678,7 @@ func (svc *RosterService) SendRosterPreview(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	deliveries, err := svc.sendRosterNotification(ctx, remoteUser.ID, roster, true)
+	deliveries, err := svc.sendRosterNotification(ctx, remoteUser.ID, roster, true, req.Msg.SendNotificationToUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -747,7 +746,7 @@ func (c calendar) ToICS(rosterFrom time.Time) string {
 	return blob
 }
 
-func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId string, roster structs.DutyRoster, isPreview bool) ([]*idmv1.DeliveryNotification, error) {
+func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId string, roster structs.DutyRoster, isPreview bool, receipients []string) ([]*idmv1.DeliveryNotification, error) {
 	type Shift struct {
 		Name string
 		From string
@@ -828,11 +827,25 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 		targetUsers[userId] = userLm[userId]
 	}
 
+	// filter out any user that is not part of receipienets
+	if len(receipients) > 0 {
+		for key := range targetUsers {
+			if !slices.Contains(receipients, key) {
+				delete(targetUsers, key)
+			}
+		}
+	}
+
 	userIds := maps.Keys(targetUsers)
 
 	workTime, err := svc.analyzeWorkTime(ctx, userIds, roster.FromTime(), roster.ToTime())
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze work time: %w", err)
+	}
+
+	userWorkTimes, err := svc.Datastore.GetCurrentWorkTimes(ctx, roster.ToTime())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user work times: %w", err)
 	}
 
 	perUserCtx := make(map[string]*structpb.Struct, len(userIds))
@@ -877,17 +890,18 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 		}
 
 		tmplCtx := map[string]any{
-			"Dates":        shiftMaps,
-			"ExpectedTime": int64(userWorkTime.ExpectedTime.AsDuration().Seconds()),
-			"PlannedTime":  int64(userWorkTime.PlannedTime.AsDuration().Seconds()),
-			"Overtime":     int64(userWorkTime.Overtime.AsDuration().Seconds()),
-			"Preview":      isPreview,
-			"RosterDate":   roster.FromTime().Format("2006/01"),
-			"RosterURL":    fmt.Sprintf(svc.Config.PreviewRosterURL, roster.ID.Hex()),
-			"From":         roster.From,
-			"To":           roster.To,
-			"Diff":         diffMaps,
-			"Superseded":   isSuperseded,
+			"Dates":                   shiftMaps,
+			"ExpectedTime":            int64(userWorkTime.ExpectedTime.AsDuration().Seconds()),
+			"PlannedTime":             int64(userWorkTime.PlannedTime.AsDuration().Seconds()),
+			"Overtime":                int64(userWorkTime.Overtime.AsDuration().Seconds()),
+			"Preview":                 isPreview,
+			"RosterDate":              roster.FromTime().Format("2006/01"),
+			"RosterURL":               fmt.Sprintf(svc.Config.PreviewRosterURL, roster.ID.Hex()),
+			"ExcludeFromTimeTracking": userWorkTimes[userId].ExcludeFromTimeTracking,
+			"From":                    roster.From,
+			"To":                      roster.To,
+			"Diff":                    diffMaps,
+			"Superseded":              isSuperseded,
 		}
 
 		s, err := structpb.NewStruct(tmplCtx)
@@ -923,6 +937,8 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 			ContentId:      "Dienstplan.ics",
 		})
 	}
+
+	log.L(ctx).WithField("targetUsers", userIds).Infof("sending roster notification")
 
 	req := &idmv1.SendNotificationRequest{
 		TargetUsers:            userIds,
@@ -1124,12 +1140,20 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 		}
 
 		startTime := from
+
+		excludeFromTimeTracking := false
+
 		for idx, wt := range workTimeHistory {
 			// find out until when the workTimeHistory is effective.
 			until := to
 			includeUntil := true
 
-			if idx < len(workTimeHistory)-1 {
+			switch {
+			case !wt.EndsWith.IsZero():
+				until = wt.EndsWith
+				includeUntil = false
+
+			case idx < len(workTimeHistory)-1:
 				until = workTimeHistory[idx+1].ApplicableFrom
 				includeUntil = false
 			}
@@ -1137,6 +1161,10 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 			if until.After(to) {
 				until = to
 				includeUntil = true
+			}
+
+			if wt.ExcludeFromTimeTracking {
+				excludeFromTimeTracking = true
 			}
 
 			// skip this entry if it either gets in effect after our requested time period
@@ -1274,6 +1302,8 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 			startTime = until
 		}
+
+		results[userId].ExcludeFromTimeTracking = excludeFromTimeTracking
 	}
 
 	for _, userId := range userIds {
@@ -1306,7 +1336,7 @@ func (sw sortWeeks) Less(i, j int) bool {
 }
 func (sw sortWeeks) Swap(i, j int) { sw[i], sw[j] = sw[j], sw[i] }
 
-func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.Time, profiles *[]*idmv1.Profile, allowedTags []string) ([]structs.RequiredShift, []structs.WorkShift, error) {
+func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.Time, profiles *[]*idmv1.Profile, allowedTags []string) ([]structs.RequiredShift, []structs.WorkShift, []string, error) {
 	// fetch user profiles
 	if profiles == nil {
 		profiles = new([]*idmv1.Profile)
@@ -1315,14 +1345,14 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		var err error
 		*profiles, err = svc.FetchAllUserProfiles(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to fetch users: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to fetch users: %w", err)
 		}
 	}
 
 	// fetch all holidays
 	holidays, err := svc.getHolidayLookupMap(ctx, from, to)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// generate a list of required shifts
@@ -1330,14 +1360,22 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		results          = make([]structs.RequiredShift, 0)
 		shiftLm          = make(map[string]struct{})
 		shiftDefinitions = make([]structs.WorkShift, 0)
+		eligibleUsers    = make(map[string]struct{})
 	)
 
 	for iter := from; to.After(iter) || to.Equal(iter); iter = iter.AddDate(0, 0, 1) {
 		_, isHoliday := holidays[iter.Format("2006-01-02")]
 
+		currentWorkTimes, err := svc.Datastore.GetCurrentWorkTimes(ctx, iter)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to get current work-times: %w", err)
+		}
+
+		log.L(ctx).Infof("current work times: %v", currentWorkTimes)
+
 		shiftsPerDay, err := svc.Datastore.GetShiftsForDay(ctx, iter.Weekday(), isHoliday)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		for _, shift := range shiftsPerDay {
@@ -1379,7 +1417,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 			}
 
 			for _, profile := range *profiles {
-				hasRole := data.SliceOverlapsFunc(shift.EligibleRoles, profile.Roles, func(role *idmv1.Role) string {
+				hasRole := data.ElemInBothSlicesFunc(shift.EligibleRoles, profile.Roles, func(role *idmv1.Role) string {
 					return role.Id
 				})
 
@@ -1387,11 +1425,13 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 					continue
 				}
 
+				eligibleUsers[profile.User.Id] = struct{}{}
+
 				// check approved off-time requests
 				approved := true
 				offTimeRequests, err := svc.Datastore.FindOffTimeRequests(ctx, shiftStart, shiftEnd, &approved, []string{profile.User.Id})
 				if err != nil {
-					return nil, nil, fmt.Errorf("failed to load approved off-time requests for user %s: %w", profile.User.Id, err)
+					return nil, nil, nil, fmt.Errorf("failed to load approved off-time requests for user %s: %w", profile.User.Id, err)
 				}
 
 				var violations []*rosterv1.ConstraintViolation
@@ -1403,6 +1443,17 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 							OffTime: &rosterv1.OffTimeViolation{
 								Entry: offReq.ToProto(),
 							},
+						},
+					})
+				}
+
+				if wt, ok := currentWorkTimes[profile.User.Id]; !ok || (!wt.EndsWith.IsZero() && wt.EndsWith.Before(iter)) {
+					log.L(ctx).Infof("no work time for user %s on %s", profile.User.Id, iter)
+
+					violations = append(violations, &rosterv1.ConstraintViolation{
+						Hard: true,
+						Kind: &rosterv1.ConstraintViolation_NoWorkTime{
+							NoWorkTime: true,
 						},
 					})
 				}
@@ -1425,7 +1476,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		}
 	}
 
-	return results, shiftDefinitions, nil
+	return results, shiftDefinitions, maps.Keys(eligibleUsers), nil
 }
 
 func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Time, to time.Time) (map[string]*calendarv1.PublicHoliday, error) {

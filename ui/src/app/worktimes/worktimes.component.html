@@ -40,17 +40,24 @@
           </td>
           <td class="p-2 text-left font-inter">{{ current.vacationWeeksPerYear }} Wochen</td>
           <td class="p-2 leading-3 text-left font-inter">
-            <ng-container *ngIf="m.next && m.next !== current; else: naTemplate">
-              {{ m.next.applicableAfter!.toDate() | date:'mediumDate' }}
-              <br />
-              <span class="text-xs">(dann {{ m.next.timePerWeek | duration:'default-hours'}}/Woche)</span>
+            <ng-container *ngIf="current.endsWith; else: nextTmpl">
+              {{ current.endsWith!.toDate() | date:"mediumDate"}}
             </ng-container>
+
+            <ng-template #nextTmpl>
+              <ng-container *ngIf="m.next && m.next !== current; else: naTemplate">
+                {{ m.next.applicableAfter!.toDate() | date:'mediumDate' }}
+                <br />
+                <span class="text-xs">(dann {{ m.next.timePerWeek | duration:'default-hours'}}/Woche)</span>
+              </ng-container>
+            </ng-template>
           </td>
           <td class="p-2 leading-3 text-left font-inter">
             <ng-container *ngIf="m.credits; else: naTemplate">
               {{ m.credits.vacationCreditsLeft | duration:'default-hours' }}
               <br />
-              <span class="text-xs" *ngIf="current.timePerWeek!.seconds > 0">({{ m.credits.vacationCreditsLeft!.seconds / current.timePerWeek!.seconds}}
+              <span class="text-xs" *ngIf="current.timePerWeek!.seconds > 0">({{ m.credits.vacationCreditsLeft!.seconds
+                / current.timePerWeek!.seconds}}
                 Wochen)</span>
             </ng-container>
           </td>
@@ -133,6 +140,17 @@
           name="applicableAfter" [(ngModel)]="changeModel.applicableAfter">
       </div>
 
+      <div class="flex flex-col">
+        <label class="text-xs leading-3 uppercase text-secondary">Ended mit</label>
+        <input type="date" value="5" class="w-full p-1 text-sm border text-normal border-tertiary" name="endsWith"
+          [(ngModel)]="changeModel.endsWith">
+      </div>
+
+      <div class="flex flex-col">
+        <label nz-checkbox class="text-xs leading-3 uppercase text-secondary" name="timeTracking"
+          [(ngModel)]="changeModel.timeTracking">Time-Tracking</label>
+      </div>
+
       <div class="flex flex-row items-stretch w-full gap-2">
         <button class="w-full tkd-btn tkd-primary tkd-outline" type="button"
           (click)="setForUser = null">Abbrechen</button>
@@ -146,16 +164,30 @@
   <ng-container *nzModalContent>
     <nz-timeline>
       <nz-timeline-item *ngFor="let step of analyze?.slices">
-        <p class="font-medium font-inter">{{ step.workTime!.applicableAfter!.toDate() | date:'mediumDate' }} - {{
-          step.endsAt!.toDate() | date:'mediumDate' }}</p>
-        <p class="text-secondary">Arbeitszeit: <span class="font-normal text-primary">{{ step.workTime?.timePerWeek |
-            duration:'default-hours' }} / Woche</span></p>
-        <p class="text-secondary">Urlaub/Jahr: <span class="font-normal text-primary">{{
-            step.workTime?.vacationWeeksPerYear }} Wochen</span></p>
+        <p class="font-medium font-inter">
+          {{ step.workTime!.applicableAfter!.toDate() | date:'mediumDate' }} - {{ step.endsAt!.toDate() |
+          date:'mediumDate' }}
+        </p>
+
         <p class="text-secondary">
-          Urlaubsanspruch im Zeitraum:
+          Arbeitszeit:
+          <span class="font-normal text-primary">
+            {{ step.workTime?.timePerWeek | duration:'default-hours' }} / Woche
+          </span>
+        </p>
+
+        <p class="text-secondary">
+          Urlaub/Jahr:
+          <span class="font-normal text-primary">
+            {{ step.workTime?.vacationWeeksPerYear }} Wochen
+          </span>
+        </p>
+
+        <p class="text-secondary">
+          Urlaubsanspruch im Zeitraum ({{ step.numberOfDays }} Tage):
           <span class="font-normal text-primary">{{ step.vacationPerWorkTime | duration:'default-hours' }}</span>
         </p>
+
         <p *ngIf="!!step.costsSum?.seconds" class="text-secondary">Verbrauchter Urlaub: <span
             class="font-normal text-primary">{{ step.costsSum | duration:'default-hours' }}</span></p>
 

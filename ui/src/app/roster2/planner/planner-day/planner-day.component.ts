@@ -120,8 +120,14 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
                   case 'evaluation':
                     reason += 'Evaluation: '  + vio.kind.value.description
                     break;
+
                   case 'offTime':
                     reason += 'OffTime: ' + vio.kind.value.entry?.description
+                    break;
+
+                  case 'NoWorkTime':
+                    reason += "Keine Arbeitszeiten in diesen Zeitraum"
+                    break;
                 }
 
               })

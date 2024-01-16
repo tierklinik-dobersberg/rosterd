@@ -13,6 +13,7 @@ import { toDateString } from 'src/utils';
 import { USER_SERVICE, WORKTIME_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { NgIconsModule } from '@ng-icons/core';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 
 interface Model {
   profile: Profile;
@@ -27,6 +28,8 @@ interface ChangeModel {
   vacationPerYear: number;
   applicableAfter: string;
   overtimeAllowance: string;
+  endsWith: string;
+  timeTracking: boolean;
 }
 
 function makeEmptyChangeModel(): ChangeModel {
@@ -36,6 +39,8 @@ function makeEmptyChangeModel(): ChangeModel {
     vacationPerYear: 0,
     overtimeAllowance: '0h',
     applicableAfter: toDateString(new Date()),
+    endsWith: '',
+    timeTracking: true,
   }
 }
 
@@ -48,6 +53,7 @@ function makeEmptyChangeModel(): ChangeModel {
     NzAvatarModule,
     NzModalModule,
     NzMessageModule,
+    NzCheckboxModule,
     NzTimelineModule,
     NgIconsModule
   ],
@@ -92,21 +98,32 @@ export class WorktimesComponent implements OnInit {
       const credits = await this.workTimeService.getVacationCreditsLeft({ until: Timestamp.fromDate(this.endOfYear), forUsers: {} })
         .then(response => response.results)
 
-      this.models = profiles.map(profile => {
-        const wt = workTimes.find(wt => wt.userId === profile.user!.id);
+      this.models = profiles
+        .map(profile => {
+          const wt = workTimes.find(wt => wt.userId === profile.user!.id);
 
-        return {
-          profile: profile,
-          current: wt?.current,
-          next: wt?.history.find(h => h.applicableAfter!.seconds > (wt.current?.applicableAfter?.seconds || 0)),
-          credits: credits.find(c => c.userId === profile.user!.id),
-        }
-      })
+          return {
+            profile: profile,
+            current: wt?.current,
+            next: wt?.history.find(h => h.applicableAfter!.seconds > (wt.current?.applicableAfter?.seconds || 0)),
+            credits: credits.find(c => c.userId === profile.user!.id),
+          }
+        })
+        .sort((a, b) => {
+          if (b.profile.user!.username > a.profile.user!.username) {
+            return -1
+          }
+
+          if (b.profile.user!.username < a.profile.user!.username) {
+            return 1
+          }
+
+          return 0
+        })
 
       this.cdr.markForCheck();
     } catch (err) {
       console.error(err);
-      debugger;
 
       this.message.error(ConnectError.from(err).rawMessage)
     }
@@ -144,6 +161,8 @@ export class WorktimesComponent implements OnInit {
           userId: this.changeModel.userId,
           vacationWeeksPerYear: this.changeModel.vacationPerYear,
           overtimeAllowancePerMonth: Duration.parseString(this.changeModel.overtimeAllowance).toProto(),
+          endsWith: this.changeModel.endsWith != "" ? Timestamp.fromDate(new Date(this.changeModel.endsWith)) : undefined,
+          excludeFromTimeTracking: !this.changeModel.timeTracking,
         }
       ]
     })

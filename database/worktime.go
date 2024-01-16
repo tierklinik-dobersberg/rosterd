@@ -7,6 +7,7 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -16,6 +17,19 @@ func (db *DatabaseImpl) SaveWorkTimePerWeek(ctx context.Context, wt *structs.Wor
 	_, err := db.worktime.InsertOne(ctx, wt)
 
 	return err
+}
+
+func (db *DatabaseImpl) UpdateWorkTime(ctx context.Context, wt *structs.WorkTime) error {
+	res, err := db.worktime.ReplaceOne(ctx, bson.M{"_id": wt.ID}, wt)
+	if err != nil {
+		return err
+	}
+
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
 }
 
 func (db *DatabaseImpl) WorkTimeHistoryForStaff(ctx context.Context, userID string) ([]structs.WorkTime, error) {
@@ -36,6 +50,28 @@ func (db *DatabaseImpl) WorkTimeHistoryForStaff(ctx context.Context, userID stri
 	}
 
 	return result, nil
+}
+
+func (db *DatabaseImpl) GetWorktimeByID(ctx context.Context, id string) (*structs.WorkTime, error) {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
+	res := db.worktime.FindOne(ctx, bson.M{
+		"_id": oid,
+	})
+
+	if res.Err() != nil {
+		return nil, err
+	}
+
+	var result structs.WorkTime
+	if err := res.Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time) (map[string]structs.WorkTime, error) {
@@ -70,6 +106,12 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 				"applicableFrom": bson.M{
 					"$last": "$applicableFrom",
 				},
+				"endsWith": bson.M{
+					"$last": "$endsWith",
+				},
+				"excludeFromTimeTracking": bson.M{
+					"$last": "$excludeFromTimeTracking",
+				},
 				"vacationWeeksPerYear": bson.M{
 					"$last": "$vacationWeeksPerYear",
 				},
@@ -82,11 +124,13 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 	}
 
 	var result []struct {
-		Staff                string             `bson:"_id"`
-		TimePerWeek          time.Duration      `bson:"timePerWeek"`
-		ApplicableFrom       time.Time          `bson:"applicableFrom"`
-		VacationWeeksPerYear float32            `bson:"vacationWeeksPerYear"`
-		WorkTimeID           primitive.ObjectID `bson:"workTimeID"`
+		Staff                   string             `bson:"_id"`
+		TimePerWeek             time.Duration      `bson:"timePerWeek"`
+		ApplicableFrom          time.Time          `bson:"applicableFrom"`
+		VacationWeeksPerYear    float32            `bson:"vacationWeeksPerYear"`
+		WorkTimeID              primitive.ObjectID `bson:"workTimeID"`
+		ExcludeFromTimeTracking bool               `bson:"excludeFromTimeTracking"`
+		EndsWith                time.Time          `bson:"endsWith"`
 	}
 
 	if err := res.All(ctx, &result); err != nil {
@@ -96,11 +140,13 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 	var m = make(map[string]structs.WorkTime)
 	for _, r := range result {
 		m[r.Staff] = structs.WorkTime{
-			ID:                   r.WorkTimeID,
-			UserID:               r.Staff,
-			TimePerWeek:          r.TimePerWeek,
-			ApplicableFrom:       r.ApplicableFrom,
-			VacationWeeksPerYear: r.VacationWeeksPerYear,
+			ID:                      r.WorkTimeID,
+			UserID:                  r.Staff,
+			TimePerWeek:             r.TimePerWeek,
+			ApplicableFrom:          r.ApplicableFrom,
+			VacationWeeksPerYear:    r.VacationWeeksPerYear,
+			EndsWith:                r.EndsWith,
+			ExcludeFromTimeTracking: r.ExcludeFromTimeTracking,
 		}
 	}
 
