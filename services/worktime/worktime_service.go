@@ -89,6 +89,11 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 }
 
 func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[rosterv1.GetWorkTimeRequest]) (*connect.Response[rosterv1.GetWorkTimeResponse], error) {
+	remoteUser := auth.From(ctx)
+	if remoteUser == nil {
+		return nil, connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
 	// determine the read_mask to apply
 	paths := []string{
 		"results.user_id",
@@ -102,13 +107,21 @@ func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[roster
 	// determine for which users we should load the work-times
 	userIds := req.Msg.UserIds
 	if len(userIds) == 0 {
-		var err error
-		userIds, err = svc.FetchAllUserIds(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch user ids: %w", err)
-		}
+		if remoteUser.Admin {
+			var err error
+			userIds, err = svc.FetchAllUserIds(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch user ids: %w", err)
+			}
 
-		log.L(ctx).Infof("loading work-times for all %d users", len(userIds))
+			log.L(ctx).Infof("loading work-times for all %d users", len(userIds))
+		} else {
+			userIds = []string{remoteUser.ID}
+		}
+	} else {
+		if !remoteUser.Admin && len(userIds) != 1 || userIds[0] != remoteUser.ID {
+			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("you're not allowed to perform this operation"))
+		}
 	}
 
 	// determine which fields we should populate.

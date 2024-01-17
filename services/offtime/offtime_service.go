@@ -19,7 +19,9 @@ import (
 	"github.com/tierklinik-dobersberg/rosterd/database"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -94,6 +96,40 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 	if err := svc.Datastore.CreateOffTimeRequest(ctx, &entry); err != nil {
 		return nil, err
 	}
+
+	go func() {
+		managerUsers, err := svc.Providers.Users.ListUsers(context.Background(), connect.NewRequest(&idmv1.ListUsersRequest{
+			FilterByRoles: []string{svc.Config.RosterManagerRoleID},
+			FieldMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"users.user.id"},
+			},
+		}))
+
+		userIds := maps.Keys(data.IndexSlice(managerUsers.Msg.Users, func(p *idmv1.Profile) string {
+			return p.User.Id
+		}))
+
+		if err != nil {
+			log.L(context.Background()).Errorf("failed to get roster_manager users: %s", err)
+		}
+
+		svc.Providers.Notify.SendNotification(context.Background(), connect.NewRequest(&idmv1.SendNotificationRequest{
+			Message: &idmv1.SendNotificationRequest_Webpush{
+				Webpush: &idmv1.WebPushNotification{
+					Kind: &idmv1.WebPushNotification_Notification{
+						Notification: &idmv1.ServiceWorkerNotification{
+							Title:               "Tierklinik-Dobersberg",
+							Body:                "{{ .Sender | displayName }} hat einen Urlaubsantrag erstellt",
+							DefaultOperation:    idmv1.Operation_OPERATION_OPEN_WINDOW,
+							DefaultOperationUrl: svc.Config.PublicURL + "/offtimes",
+						},
+					},
+				},
+			},
+			SenderUserId: remoteUser.ID,
+			TargetUsers:  userIds,
+		}))
+	}()
 
 	return connect.NewResponse(&rosterv1.CreateOffTimeRequestResponse{
 		Entry: entry.ToProto(),
@@ -307,7 +343,7 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 	}
 
 	if err := svc.sendApprovalNotice(ctx, remoteUser.ID, models[0]); err != nil {
-		log.L(ctx).Errorf("failed to send approval notice to %q: %w", remoteUser.ID, err)
+		log.L(ctx).Errorf("failed to send approval notice to %q: %s", remoteUser.ID, err)
 	}
 
 	return connect.NewResponse(&rosterv1.ApproveOrRejectResponse{
@@ -552,6 +588,29 @@ func (svc *Service) sendApprovalNotice(ctx context.Context, sender string, entry
 	templateBody, err := fs.ReadFile(svc.Templates, "mails/dist/offtime-notification.html")
 	if err != nil {
 		return fmt.Errorf("failed to read offtime-notification template: %w", err)
+	}
+
+	_, err = svc.Providers.Notify.SendNotification(context.Background(), connect.NewRequest(&idmv1.SendNotificationRequest{
+		Message: &idmv1.SendNotificationRequest_Webpush{
+			Webpush: &idmv1.WebPushNotification{
+				Kind: &idmv1.WebPushNotification_Notification{
+					Notification: &idmv1.ServiceWorkerNotification{
+						Title:               "Tierklinik-Dobersberg",
+						Body:                `Dein Urlaubsantrag von {{ .From }} bis {{ .To }} wurde {{ if .Approved }} genehmigt {{ else }} abgelehnt {{ end }}`,
+						DefaultOperation:    idmv1.Operation_OPERATION_OPEN_WINDOW,
+						DefaultOperationUrl: svc.Config.PublicURL + "/offtimes",
+					},
+				},
+			},
+		},
+		SenderUserId: sender,
+		PerUserTemplateContext: map[string]*structpb.Struct{
+			entry.RequestorId: ctxPb,
+		},
+		TargetUsers: []string{entry.RequestorId},
+	}))
+	if err != nil {
+		log.L(ctx).Errorf("failed to send web-push notification: %s", err)
 	}
 
 	_, err = svc.Notify.SendNotification(ctx, connect.NewRequest(&idmv1.SendNotificationRequest{
