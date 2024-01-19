@@ -119,7 +119,7 @@ func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[roster
 			userIds = []string{remoteUser.ID}
 		}
 	} else {
-		if !remoteUser.Admin && len(userIds) != 1 || userIds[0] != remoteUser.ID {
+		if !remoteUser.Admin && (len(userIds) != 1 || userIds[0] != remoteUser.ID) {
 			return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("you're not allowed to perform this operation"))
 		}
 	}
