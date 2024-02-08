@@ -59,7 +59,7 @@
               <nz-dropdown-menu #menu4="nzDropdownMenu">
                 <ul nz-menu>
                   <li nz-menu-item [routerLink]="['./view', roster.id]">Anzeigen</li>
-                  <li nz-menu-item (click)="sendPreview(roster)">Vorschau senden</li>
+                  <li nz-menu-item (click)="sendPreview(roster)">Per Mail senden</li>
                   <li nz-menu-item [routerLink]="['./plan', roster.id]">Bearbeiten</li>
                   <li nz-menu-item [routerLink]="['./approve', entry.roster.id]">Freigeben</li>
                   <li nz-menu-item (click)="deleteRoster(roster)">Löschen</li>

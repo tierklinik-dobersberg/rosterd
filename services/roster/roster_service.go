@@ -273,14 +273,6 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 		return nil, err
 	}
 
-	// If the roster was already approved and we "re-approve" it, make sure to recalculate the off-time
-	// costs.
-	if roster.IsApproved() {
-		if err := svc.Datastore.DeleteOffTimeCostsByRoster(ctx, roster.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("failed to remove off-time costs bound to the roster: %w", err)
-		}
-	}
-
 	allUserIds, err := svc.FetchAllUserIds(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user ids: %w", err)
@@ -296,6 +288,52 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 	}
 
 	approver := remoteUser.ID
+
+	// Validate off-time costs split first
+	for _, an := range analysis {
+		if an.ExcludeFromTimeTracking {
+			continue
+		}
+
+		diff := an.Overtime.AsDuration()
+
+		if diff < 0 {
+			var split *rosterv1.ApproveRosterWorkTimeSplit
+			for _, splits := range req.Msg.WorkTimeSplit {
+				if splits.UserId == an.UserId {
+					split = splits
+					break
+				}
+			}
+
+			timeOffCosts := diff
+			var vacationCosts time.Duration
+
+			// administrator did not specify how to handle the undertime,
+			// we fall back as normal offtime-costs
+			if split != nil {
+				timeOffCosts = split.TimeOff.AsDuration()
+				vacationCosts = split.Vacation.AsDuration()
+			}
+
+			if timeOffCosts > 0 || vacationCosts > 0 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid off-time cost split"))
+			}
+
+			if (timeOffCosts + vacationCosts) != diff {
+				return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must equal %q", timeOffCosts, vacationCosts, diff)
+			}
+		}
+	}
+
+	// If the roster was already approved and we "re-approve" it, make sure to recalculate the off-time
+	// costs.
+	if roster.IsApproved() {
+		if err := svc.Datastore.DeleteOffTimeCostsByRoster(ctx, roster.ID.Hex()); err != nil {
+			return nil, fmt.Errorf("failed to remove off-time costs bound to the roster: %w", err)
+		}
+	}
+
 	for _, an := range analysis {
 		if an.ExcludeFromTimeTracking {
 			continue
@@ -323,7 +361,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 			}); err != nil {
 				return nil, fmt.Errorf("failed to add off-time credits for user %s: %w", an.UserId, err)
 			}
-		} else {
+		} else if diff < 0 {
 			var split *rosterv1.ApproveRosterWorkTimeSplit
 			for _, splits := range req.Msg.WorkTimeSplit {
 				if splits.UserId == an.UserId {
@@ -332,22 +370,15 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 				}
 			}
 
+			// if administrator did not specify how to handle the undertime,
+			// we fall back as normal offtime-costs
 			timeOffCosts := diff
 			var vacationCosts time.Duration
 
-			// administrator did not specify how to handle the undertime,
-			// we fall back as normal offtime-costs
+			// use the split if specified
 			if split != nil {
 				timeOffCosts = split.TimeOff.AsDuration()
 				vacationCosts = split.Vacation.AsDuration()
-			}
-
-			if timeOffCosts > 0 || vacationCosts > 0 {
-				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid off-time cost split"))
-			}
-
-			if (timeOffCosts + vacationCosts) != diff {
-				return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must equal %q", timeOffCosts, vacationCosts, diff)
 			}
 
 			if timeOffCosts < 0 {
@@ -396,15 +427,6 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 	if err := svc.Datastore.ApproveDutyRoster(ctx, req.Msg.Id, approver); err != nil {
 		return nil, err
 	}
-
-	go func() {
-		ctx := log.WithLogger(context.Background(), log.L(ctx))
-
-		_, err = svc.sendRosterNotification(ctx, remoteUser.ID, roster, false, req.Msg.SendNotificationToUsers)
-		if err != nil {
-			log.L(ctx).Errorf("failed to send roster notification: %s", err)
-		}
-	}()
 
 	return connect.NewResponse(&rosterv1.ApproveRosterResponse{}), nil
 }
@@ -464,7 +486,7 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 			continue
 		}
 
-		log.L(ctx).Infof("checking roster %s (from %s to %s) with type %s", roster.ID.Hex(), roster.From, roster.To, roster.RosterTypeName)
+		log.L(ctx).Debugf("checking roster %s (from %s to %s) with type %s", roster.ID.Hex(), roster.From, roster.To, roster.RosterTypeName)
 
 		for _, shift := range roster.Shifts {
 			def, ok := shiftMap[shift.WorkShiftID.Hex()]
@@ -486,7 +508,7 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 			}
 
 			if !isAllowed {
-				log.L(ctx).Infof("shift %s is filtered. shift-tags=%v rosterType.shiftTags=%v rosterType.onCallTags=%v", shift.WorkShiftID, def.Tags, rosterType.ShiftTags, rosterType.OnCallTags)
+				log.L(ctx).Debugf("shift %s is filtered. shift-tags=%v rosterType.shiftTags=%v rosterType.onCallTags=%v", shift.WorkShiftID, def.Tags, rosterType.ShiftTags, rosterType.OnCallTags)
 
 				continue
 			}
@@ -498,7 +520,7 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 					userIds[user] = struct{}{}
 				}
 			} else {
-				log.L(ctx).Infof("shift is either before or after the requested time")
+				log.L(ctx).Debugf("shift is either before or after the requested time")
 			}
 		}
 	}
@@ -678,7 +700,9 @@ func (svc *RosterService) SendRosterPreview(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	deliveries, err := svc.sendRosterNotification(ctx, remoteUser.ID, roster, true, req.Msg.SendNotificationToUsers)
+	isPreview := !roster.Approved
+
+	deliveries, err := svc.sendRosterNotification(ctx, remoteUser.ID, roster, isPreview, req.Msg.SendNotificationToUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -1371,7 +1395,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 			return nil, nil, nil, fmt.Errorf("failed to get current work-times: %w", err)
 		}
 
-		log.L(ctx).Infof("current work times: %v", currentWorkTimes)
+		log.L(ctx).Debugf("current work times: %v", currentWorkTimes)
 
 		shiftsPerDay, err := svc.Datastore.GetShiftsForDay(ctx, iter.Weekday(), isHoliday)
 		if err != nil {
