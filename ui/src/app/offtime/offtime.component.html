@@ -5,8 +5,21 @@
   </div>
 
   <div class="space-x-2 hidden xl:block">
+    <nz-select name="requestor" [(ngModel)]="filterByUser" (ngModelChange)="loadOffTimeEntries()"
+      [nzOptionHeightPx]="48" [nzMode]="'multiple'" class="w-96" nzPlaceHolder="Nach Mitarbeiter filtern">
+      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!"
+        [nzLabel]="user | displayName">
+        <span class="flex flex-row items-center justify-start w-full gap-2 text-left">
+          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+          </nz-avatar>
+          {{ user | displayName }}
+        </span>
+      </nz-option>
+    </nz-select>
+
     <nz-range-picker [(ngModel)]="rangeFilter" (ngModelChange)="loadOffTimeEntries()"></nz-range-picker>
-    <nz-radio-group [(ngModel)]="filterType">
+
+    <nz-radio-group [(ngModel)]="filterType" (ngModelChange)="loadOffTimeEntries()">
       <label nz-radio-button nzValue="all">Alle</label>
       <label nz-radio-button nzValue="new">Neue</label>
     </nz-radio-group>
