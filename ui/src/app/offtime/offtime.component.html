@@ -30,13 +30,13 @@
 
 <div class="overflow-auto">
   <nz-table class="w-full rounded border border-collapse table-auto border-subtle" [nzData]="entries" #table="nzTable"
-    nzTableLayout="fixed">
+    nzTableLayout="fixed" [nzFrontPagination]="false">
     <thead>
       <tr class="rounded-t bg-subtle">
         <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByUser">Benutzer</th>
         <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByStartDate">Von</th>
         <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByEndDate">Bis</th>
-        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByType">Arg</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByType">Art</th>
         <th class="px-2 py-4 font-normal text-left font-lato">Beschreibung</th>
         <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByApproval">
           Freigegeben</th>
