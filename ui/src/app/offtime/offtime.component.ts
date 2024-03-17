@@ -13,6 +13,7 @@ import { Timestamp } from '@bufbuild/protobuf';
 import {
   ApprovalRequestType,
   OffTimeEntry,
+  OffTimeType,
   Profile,
 } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
@@ -67,6 +68,7 @@ export class OfftimeComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly userService = inject(USER_SERVICE);
   private readonly modalService = inject(NzModalService);
+  readonly types = OffTimeType;
 
   rangeFilter: [Date, Date] | null = null;
   filterType: 'all' | 'new' = 'all';
@@ -118,6 +120,9 @@ export class OfftimeComponent implements OnInit {
 
     return 0;
   };
+
+  sortByType: NzTableSortFn<OffTimeEntry> = (a, b) =>
+    a.type.valueOf() - b.type.valueOf();
 
   trackEntry: TrackByFunction<OffTimeEntry> = (_, e) => e.id;
 
