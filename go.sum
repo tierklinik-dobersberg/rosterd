@@ -635,6 +635,8 @@ github.com/tierklinik-dobersberg/apis v0.0.0-20240116083713-44b9696b59e3 h1:or8G
 github.com/tierklinik-dobersberg/apis v0.0.0-20240116083713-44b9696b59e3/go.mod h1:rNdKmWZP7dR2tQRjDG1RM22SvCAUhLguJXZJZGeShcw=
 github.com/tierklinik-dobersberg/apis v0.0.0-20240116084824-88c009b4b1f0 h1:D8iiNVDhuMp0YabExS/NQ9qivzlv3ppzxKSf4fMjXeg=
 github.com/tierklinik-dobersberg/apis v0.0.0-20240116084824-88c009b4b1f0/go.mod h1:rNdKmWZP7dR2tQRjDG1RM22SvCAUhLguJXZJZGeShcw=
+github.com/tierklinik-dobersberg/apis v0.0.0-20240317063533-e83521b74aa7 h1:FnZ/hCxCjMIJuayXMOOJ3okfNdZ7IAVcCC+zFWZPD9s=
+github.com/tierklinik-dobersberg/apis v0.0.0-20240317063533-e83521b74aa7/go.mod h1:rNdKmWZP7dR2tQRjDG1RM22SvCAUhLguJXZJZGeShcw=
 github.com/tierklinik-dobersberg/cis v1.0.0 h1:PJsbKf7M6F7iZD/esSuFVRijbQtAqGGdv1MZBDjUBbI=
 github.com/tierklinik-dobersberg/cis v1.0.0/go.mod h1:jOjQltGeHDxePGBCjEP28S5NeQ0q4J40UrloIR1NWBE=
 github.com/tierklinik-dobersberg/cis v1.1.0 h1:T0c52+TkOxohkW2tNXOl0exLt/Jow5poa/4h7JGuF1k=

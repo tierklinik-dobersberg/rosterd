@@ -127,7 +127,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 	}
 
 	// load all required shift definitions for this roster
-	_, definitions, users, err := svc.getRequiredShifts(ctx, roster.FromTime(), roster.ToTime(), nil, rosterType.ShiftTags)
+	_, definitions, users, _, err := svc.getRequiredShifts(ctx, roster.FromTime(), roster.ToTime(), nil, rosterType.ShiftTags)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get required shifts for roster: %w", err)
 	}
@@ -224,7 +224,7 @@ func (svc *RosterService) GetRequiredShifts(ctx context.Context, req *connect.Re
 		}
 	}
 
-	requiredShifts, definitions, _, err := svc.getRequiredShifts(ctx, from, to, nil, tags)
+	requiredShifts, definitions, _, workDays, err := svc.getRequiredShifts(ctx, from, to, nil, tags)
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +232,7 @@ func (svc *RosterService) GetRequiredShifts(ctx context.Context, req *connect.Re
 	response := &rosterv1.GetRequiredShiftsResponse{
 		RequiredShifts:       make([]*rosterv1.RequiredShift, len(requiredShifts)),
 		WorkShiftDefinitions: make([]*rosterv1.WorkShift, len(definitions)),
+		Days:                 workDays,
 	}
 
 	for idx, r := range requiredShifts {
@@ -1291,7 +1292,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 				monthTime, _ := time.ParseInLocation("2006-01", month, time.Local)
 
-				daysInMonth := daysIn(ctx, holidays, monthTime.Month(), monthTime.Year(), startTime, until, includeUntil)
+				daysInMonth, _ := daysInMonth(ctx, holidays, monthTime.Month(), monthTime.Year(), startTime, until, includeUntil)
 				overtimeRatio := (wt.OvertimeAllowancePerMonth / time.Duration(daysInMonth)) * time.Duration(monthWorkDays[month])
 
 				diff := plannedTime - expectedTime
@@ -1360,7 +1361,7 @@ func (sw sortWeeks) Less(i, j int) bool {
 }
 func (sw sortWeeks) Swap(i, j int) { sw[i], sw[j] = sw[j], sw[i] }
 
-func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.Time, profiles *[]*idmv1.Profile, allowedTags []string) ([]structs.RequiredShift, []structs.WorkShift, []string, error) {
+func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.Time, profiles *[]*idmv1.Profile, allowedTags []string) ([]structs.RequiredShift, []structs.WorkShift, []string, []*rosterv1.Day, error) {
 	// fetch user profiles
 	if profiles == nil {
 		profiles = new([]*idmv1.Profile)
@@ -1369,15 +1370,17 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		var err error
 		*profiles, err = svc.FetchAllUserProfiles(ctx)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to fetch users: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("failed to fetch users: %w", err)
 		}
 	}
 
 	// fetch all holidays
 	holidays, err := svc.getHolidayLookupMap(ctx, from, to)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
+
+	workDays := getWorkDays(ctx, holidays, from, to)
 
 	// generate a list of required shifts
 	var (
@@ -1392,14 +1395,14 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 
 		currentWorkTimes, err := svc.Datastore.GetCurrentWorkTimes(ctx, iter)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get current work-times: %w", err)
+			return nil, nil, nil, nil, fmt.Errorf("failed to get current work-times: %w", err)
 		}
 
 		log.L(ctx).Debugf("current work times: %v", currentWorkTimes)
 
 		shiftsPerDay, err := svc.Datastore.GetShiftsForDay(ctx, iter.Weekday(), isHoliday)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		for _, shift := range shiftsPerDay {
@@ -1455,7 +1458,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 				approved := true
 				offTimeRequests, err := svc.Datastore.FindOffTimeRequests(ctx, shiftStart, shiftEnd, &approved, []string{profile.User.Id})
 				if err != nil {
-					return nil, nil, nil, fmt.Errorf("failed to load approved off-time requests for user %s: %w", profile.User.Id, err)
+					return nil, nil, nil, nil, fmt.Errorf("failed to load approved off-time requests for user %s: %w", profile.User.Id, err)
 				}
 
 				var violations []*rosterv1.ConstraintViolation
@@ -1500,7 +1503,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		}
 	}
 
-	return results, shiftDefinitions, maps.Keys(eligibleUsers), nil
+	return results, shiftDefinitions, maps.Keys(eligibleUsers), workDays, nil
 }
 
 func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Time, to time.Time) (map[string]*calendarv1.PublicHoliday, error) {
@@ -1529,18 +1532,49 @@ func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Tim
 	return holidayLookupMap, nil
 }
 
-func daysIn(ctx context.Context, holidays map[string]*calendarv1.PublicHoliday, m time.Month, year int, notBefore, notAfter time.Time, includeNotAfter bool) int {
-	firstDayInMonth := time.Date(year, m, 1, 0, 0, 0, 0, time.Local)
+func getWorkDays(_ context.Context, holidays map[string]*calendarv1.PublicHoliday, from time.Time, to time.Time) []*rosterv1.Day {
+	var dayTypes []*rosterv1.Day
 
-	var days int
-	for iter := firstDayInMonth; iter.Month() == m; iter = iter.AddDate(0, 0, 1) {
-		if hd, ok := holidays[iter.Format("2006-01-02")]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
-			// this is a public holiday
+	until := to.Format("2006-01-02")
+	for iter := from; iter.Format("2006-01-02") != until; iter = iter.AddDate(0, 0, 1) {
+		key := iter.Format("2006-01-02")
+
+		if hd, ok := holidays[key]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: key,
+				Type: rosterv1.DayType_DAY_TYPE_HOLIDAY,
+			})
+
 			continue
-		} else if ok {
-			log.L(ctx).Infof("found holiday on %s with type %s", iter, hd.Type.String())
 		}
 
+		switch iter.Weekday() {
+		case time.Saturday, time.Sunday:
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: iter.Format("2206-01-02"),
+				Type: rosterv1.DayType_DAY_TYPE_WEEKEND,
+			})
+		default:
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: iter.Format("2206-01-02"),
+				Type: rosterv1.DayType_DAY_TYPE_WORKDAY,
+			})
+		}
+
+	}
+
+	return dayTypes
+}
+
+func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoliday, m time.Month, year int, notBefore, notAfter time.Time, includeNotAfter bool) (int, []*rosterv1.Day) {
+	firstDayInMonth := time.Date(year, m, 1, 0, 0, 0, 0, time.Local)
+
+	var (
+		numberOfWorkingDays int
+		dayTypes            []*rosterv1.Day
+	)
+
+	for iter := firstDayInMonth; iter.Month() == m; iter = iter.AddDate(0, 0, 1) {
 		if iter.Before(notBefore) {
 			continue
 		}
@@ -1553,14 +1587,36 @@ func daysIn(ctx context.Context, holidays map[string]*calendarv1.PublicHoliday, 
 			continue
 		}
 
+		if hd, ok := holidays[iter.Format("2006-01-02")]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
+			// this is a public holiday
+
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: iter.Format("2206-01-02"),
+				Type: rosterv1.DayType_DAY_TYPE_HOLIDAY,
+			})
+
+			continue
+		} else if ok {
+			log.L(ctx).Infof("found holiday on %s with type %s", iter, hd.Type.String())
+		}
+
 		switch iter.Weekday() {
 		case time.Saturday, time.Sunday: // FIXME(ppacher): should we make saturday configurable?
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: iter.Format("2206-01-02"),
+				Type: rosterv1.DayType_DAY_TYPE_WEEKEND,
+			})
 		default:
-			days++
+			dayTypes = append(dayTypes, &rosterv1.Day{
+				Date: iter.Format("2206-01-02"),
+				Type: rosterv1.DayType_DAY_TYPE_WORKDAY,
+			})
+
+			numberOfWorkingDays++
 		}
 	}
 
-	return days
+	return numberOfWorkingDays, dayTypes
 }
 
 type ShiftDiff struct {
