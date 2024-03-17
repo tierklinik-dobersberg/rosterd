@@ -247,7 +247,7 @@ func (svc *Service) DeleteOffTimeRequest(ctx context.Context, req *connect.Reque
 			return nil, fmt.Errorf("id: %s off-time-entry not found", id)
 		}
 
-		if model.Approval != nil {
+		if model.Approval != nil && !remoteUser.Admin {
 			return nil, fmt.Errorf("id: %s off-time-entry has already been approved/rejected", id)
 		}
 
