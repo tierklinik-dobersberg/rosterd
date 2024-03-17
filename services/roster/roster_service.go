@@ -1551,12 +1551,12 @@ func getWorkDays(_ context.Context, holidays map[string]*calendarv1.PublicHolida
 		switch iter.Weekday() {
 		case time.Saturday, time.Sunday:
 			dayTypes = append(dayTypes, &rosterv1.Day{
-				Date: iter.Format("2206-01-02"),
+				Date: key,
 				Type: rosterv1.DayType_DAY_TYPE_WEEKEND,
 			})
 		default:
 			dayTypes = append(dayTypes, &rosterv1.Day{
-				Date: iter.Format("2206-01-02"),
+				Date: key,
 				Type: rosterv1.DayType_DAY_TYPE_WORKDAY,
 			})
 		}
@@ -1575,6 +1575,8 @@ func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoli
 	)
 
 	for iter := firstDayInMonth; iter.Month() == m; iter = iter.AddDate(0, 0, 1) {
+		key := iter.Format("2006-01-02")
+
 		if iter.Before(notBefore) {
 			continue
 		}
@@ -1587,11 +1589,11 @@ func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoli
 			continue
 		}
 
-		if hd, ok := holidays[iter.Format("2006-01-02")]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
+		if hd, ok := holidays[key]; ok && hd.Type == calendarv1.HolidayType_PUBLIC {
 			// this is a public holiday
 
 			dayTypes = append(dayTypes, &rosterv1.Day{
-				Date: iter.Format("2206-01-02"),
+				Date: key,
 				Type: rosterv1.DayType_DAY_TYPE_HOLIDAY,
 			})
 
@@ -1603,12 +1605,12 @@ func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoli
 		switch iter.Weekday() {
 		case time.Saturday, time.Sunday: // FIXME(ppacher): should we make saturday configurable?
 			dayTypes = append(dayTypes, &rosterv1.Day{
-				Date: iter.Format("2206-01-02"),
+				Date: key,
 				Type: rosterv1.DayType_DAY_TYPE_WEEKEND,
 			})
 		default:
 			dayTypes = append(dayTypes, &rosterv1.Day{
-				Date: iter.Format("2206-01-02"),
+				Date: key,
 				Type: rosterv1.DayType_DAY_TYPE_WORKDAY,
 			})
 
