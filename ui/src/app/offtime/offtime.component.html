@@ -4,13 +4,13 @@
     Urlaubsanträge
   </div>
 
-  <div class="space-x-2 hidden xl:block">
+  <div class="hidden space-x-2 xl:block">
     <nz-select name="requestor" [(ngModel)]="filterByUser" (ngModelChange)="loadOffTimeEntries()"
       [nzOptionHeightPx]="48" [nzMode]="'multiple'" class="w-96" nzPlaceHolder="Nach Mitarbeiter filtern">
       <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!"
         [nzLabel]="user | displayName">
-        <span class="flex flex-row items-center justify-start w-full gap-2 text-left">
-          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+        <span class="flex flex-row gap-2 justify-start items-center w-full text-left">
+          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full ring-1 shadow">
           </nz-avatar>
           {{ user | displayName }}
         </span>
@@ -29,25 +29,27 @@
 </h2>
 
 <div class="overflow-auto">
-  <table class="w-full border border-collapse rounded table-auto border-subtle">
+  <nz-table class="w-full rounded border border-collapse table-auto border-subtle" [nzData]="entries" #table="nzTable">
     <thead>
       <tr class="rounded-t bg-subtle">
-        <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Von</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Bis</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByUser">Benutzer</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByStartDate">Von</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByEndDate">Bis</th>
         <th class="px-2 py-4 font-normal text-left font-lato">Beschreibung</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Freigegeben</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Erstellt am</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByApproval">
+          Freigegeben</th>
+        <th class="px-2 py-4 font-normal text-left font-lato" [nzShowSort]="true" [nzSortFn]="sortByCreated">Erstellt am
+        </th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let e of entries; trackBy: trackEntry"
+      <tr *ngFor="let e of table.data; trackBy: trackEntry"
         class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
         <td class="p-2 text-left font-inter">
-          <span class="flex flex-row items-center justify-start gap-2 text-left"
+          <span class="flex flex-row gap-2 justify-start items-center text-left"
             *ngIf="(e.requestorId | toUser:profiles) as user">
-            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+            <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full ring-1 shadow">
             </nz-avatar>
             {{ user | displayName }}
           </span>
@@ -74,7 +76,7 @@
         </td>
 
         <td style="width: 0; min-width: fit-content; white-space: nowrap">
-          <div class="flex flex-row gap-2 flex-nowrap">
+          <div class="flex flex-row flex-nowrap gap-2">
             <ng-container *ngIf="!e.approval">
             </ng-container>
           </div>
@@ -94,7 +96,7 @@
         </td>
       </tr>
     </tbody>
-  </table>
+  </nz-table>
 </div>
 
 <ng-template #naTemplate>
@@ -106,14 +108,14 @@
   [nzOkDanger]="approvalModalApprove === 'reject'">
   <ng-container *nzModalTitle>Bestätigung erforderlich</ng-container>
   <div *nzModalContent class="flex flex-col gap-4 font-inter">
-    <div class="flex flex-col items-start justify-start gap-2 p-4 rounded bg-subtle" *ngIf="!!approvalModalEntry">
+    <div class="flex flex-col gap-2 justify-start items-start p-4 rounded bg-subtle" *ngIf="!!approvalModalEntry">
       <table>
         <tr>
           <td class="px-3 py-1 text-secondary">Antragsteller</td>
           <td class="px-3 py-1 font-medium">
-            <span class="flex flex-row items-center justify-start gap-2 "
+            <span class="flex flex-row gap-2 justify-start items-center"
               *ngIf="(approvalModalEntry.requestorId | toUser:profiles) as user">
-              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
+              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full ring-1 shadow">
               </nz-avatar>
               {{ user | displayName }}
             </span>
@@ -138,7 +140,7 @@
       Möchtest du den Urlaubsantrag {{ approvalModalApprove === 'approve' ? 'genehmigen' : 'ablehnen'}}?
     </span>
 
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="comment"
+    <input type="text" class="p-1 w-full text-sm border text-normal border-tertiary" name="comment"
       placeholder="Kommentar" [(ngModel)]="approvalComment">
 
   </div>

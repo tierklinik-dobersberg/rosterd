@@ -21,6 +21,7 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { NzTableModule, NzTableSortFn } from 'ng-zorro-antd/table';
 import {
   OFFTIME_SERVICE,
   USER_SERVICE,
@@ -49,6 +50,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
     NzRadioModule,
     NgIconsModule,
     NzSelectModule,
+    NzTableModule,
   ],
   templateUrl: './offtime.component.html',
   styles: [
@@ -75,6 +77,47 @@ export class OfftimeComponent implements OnInit {
   approvalComment = '';
   approvalModalEntry: OffTimeEntry | null = null;
   approvalModalApprove: 'approve' | 'reject' = 'approve';
+
+  // sort functions
+  sortByUser: NzTableSortFn<OffTimeEntry> = (a, b) => {
+    const userA = this.profiles.find(
+      (profile) => profile.user!.id === a.requestorId
+    );
+    const userB = this.profiles.find(
+      (profile) => profile.user!.id === b.requestorId
+    );
+
+    if (!userA) {
+      return -1;
+    }
+
+    if (!userB) {
+      return -1;
+    }
+
+    return userA.user!.username.localeCompare(userB.user!.username);
+  };
+
+  sortByStartDate: NzTableSortFn<OffTimeEntry> = (a, b) =>
+    a.from!.toDate().getSeconds() - b.from!.toDate().getSeconds();
+
+  sortByEndDate: NzTableSortFn<OffTimeEntry> = (a, b) =>
+    a.to!.toDate().getSeconds() - b.to!.toDate().getSeconds();
+
+  sortByCreated: NzTableSortFn<OffTimeEntry> = (a, b) =>
+    a.createdAt!.toDate().getSeconds() - b.createdAt!.toDate().getSeconds();
+
+  sortByApproval: NzTableSortFn<OffTimeEntry> = (a, b) => {
+    if (!a.approval) {
+      return -1;
+    }
+
+    if (!b.approval) {
+      return -1;
+    }
+
+    return 0;
+  };
 
   trackEntry: TrackByFunction<OffTimeEntry> = (_, e) => e.id;
 
