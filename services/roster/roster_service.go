@@ -178,7 +178,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 	}
 
 	// caculate the work-time for the roster
-	analysis, err := svc.analyzeWorkTime(ctx, users, roster.FromTime(), roster.ToTime())
+	analysis, err := svc.analyzeWorkTime(ctx, users, roster.FromTime(), roster.ToTime(), req.Msg.TimeTrackingOnly)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
@@ -282,8 +282,9 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 	fromTime := roster.FromTime()
 	toTime := roster.ToTime()
 
-	// caculate the work-time for the roster
-	analysis, err := svc.analyzeWorkTime(ctx, allUserIds, fromTime, toTime)
+	// caculate the work-time for the roster. The last parameter specified
+	// that we only want work-time analysis for users with time-tracking enabled.
+	analysis, err := svc.analyzeWorkTime(ctx, allUserIds, fromTime, toTime, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
@@ -292,10 +293,6 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 	// Validate off-time costs split first
 	for _, an := range analysis {
-		if an.ExcludeFromTimeTracking {
-			continue
-		}
-
 		diff := an.Overtime.AsDuration()
 
 		if diff < 0 {
@@ -630,7 +627,7 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		}
 
 		// caculate the work-time for the roster
-		analysis, err := svc.analyzeWorkTime(ctx, allUserIds, from, to)
+		analysis, err := svc.analyzeWorkTime(ctx, allUserIds, from, to, req.Msg.TimeTrackingOnly)
 		if err != nil {
 			return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 		}
@@ -676,7 +673,7 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 		userIds = []string{remoteUser.ID}
 	}
 
-	res, err := svc.analyzeWorkTime(ctx, userIds, from, to)
+	res, err := svc.analyzeWorkTime(ctx, userIds, from, to, req.Msg.TimeTrackingOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -863,7 +860,7 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 
 	userIds := maps.Keys(targetUsers)
 
-	workTime, err := svc.analyzeWorkTime(ctx, userIds, roster.FromTime(), roster.ToTime())
+	workTime, err := svc.analyzeWorkTime(ctx, userIds, roster.FromTime(), roster.ToTime(), true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze work time: %w", err)
 	}
@@ -1051,7 +1048,7 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(res), nil
 }
 
-func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string, from, to time.Time) ([]*rosterv1.WorkTimeAnalysis, error) {
+func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string, from, to time.Time, onlyTimeTracking bool) ([]*rosterv1.WorkTimeAnalysis, error) {
 	log.L(ctx).Infof("analyzing work time for users between %s and %s", from, to)
 
 	// fetch all distinct rosters
@@ -1166,7 +1163,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 
 		startTime := from
 
-		excludeFromTimeTracking := false
+		var excludeFromTimeTracking *bool
 
 		for idx, wt := range workTimeHistory {
 			// find out until when the workTimeHistory is effective.
@@ -1188,8 +1185,19 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 				includeUntil = true
 			}
 
-			if wt.ExcludeFromTimeTracking {
-				excludeFromTimeTracking = true
+			// skip this work-time entry if time-tracking is disabled but the caller specified onlyTimeTracking.
+			if onlyTimeTracking && wt.ExcludeFromTimeTracking {
+				if excludeFromTimeTracking == nil {
+					b := true
+					excludeFromTimeTracking = &b
+				}
+
+				continue
+			}
+
+			if !wt.ExcludeFromTimeTracking {
+				b := false
+				excludeFromTimeTracking = &b
 			}
 
 			// skip this entry if it either gets in effect after our requested time period
@@ -1328,7 +1336,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 			startTime = until
 		}
 
-		results[userId].ExcludeFromTimeTracking = excludeFromTimeTracking
+		results[userId].ExcludeFromTimeTracking = *excludeFromTimeTracking
 	}
 
 	for _, userId := range userIds {

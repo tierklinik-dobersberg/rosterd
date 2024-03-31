@@ -105,7 +105,8 @@ export class ApprovalComponent implements OnInit {
             search: {
               case: 'id',
               value: params.get("id")!,
-            }
+            },
+            timeTrackingOnly: true,
           }))
         })
       )

@@ -317,8 +317,8 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 				sl := &rosterv1.AnalyzeVacationSum{
 					WorkTime:            worktimeToProto(iter),
 					EndsAt:              timestamppb.New(endsAt),
-					NumberOfDays:        float32(daysUntilEnd),
-					VacationWeeksPerDay: float32(vacationWeeksPerDay),
+					NumberOfDays:        float64(daysUntilEnd),
+					VacationWeeksPerDay: float64(vacationWeeksPerDay),
 					VacationPerWorkTime: durationpb.New(time.Duration(vacationsPerPeriod)),
 				}
 
