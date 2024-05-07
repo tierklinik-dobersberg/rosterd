@@ -113,7 +113,7 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 			log.L(context.Background()).Errorf("failed to get roster_manager users: %s", err)
 		}
 
-		svc.Providers.Notify.SendNotification(context.Background(), connect.NewRequest(&idmv1.SendNotificationRequest{
+		if res, err := svc.Providers.Notify.SendNotification(context.Background(), connect.NewRequest(&idmv1.SendNotificationRequest{
 			Message: &idmv1.SendNotificationRequest_Webpush{
 				Webpush: &idmv1.WebPushNotification{
 					Kind: &idmv1.WebPushNotification_Notification{
@@ -128,7 +128,17 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 			},
 			SenderUserId: remoteUser.ID,
 			TargetUsers:  userIds,
-		}))
+		})); err == nil {
+
+			for _, d := range res.Msg.Deliveries {
+				if d.Error != "" {
+					log.L(context.Background()).Errorf("failed to notify user %q: %s: %s", d.TargetUser, d.ErrorKind, d.Error)
+				}
+			}
+
+		} else {
+			log.L(context.Background()).Errorf("failed to send off-time notification: %s", err)
+		}
 	}()
 
 	return connect.NewResponse(&rosterv1.CreateOffTimeRequestResponse{

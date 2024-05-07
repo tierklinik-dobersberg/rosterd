@@ -63,6 +63,13 @@ function makeEmptyWorkShift(): LocalWorkShift {
     DurationPipe,
   ],
   templateUrl: './workshifts.component.html',
+  styles: [
+    `
+    :host {
+      @apply block overflow-auto;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkshiftsComponent implements OnInit {

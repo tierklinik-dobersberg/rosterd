@@ -985,6 +985,7 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodePermissionDenied, nil)
 	}
 
+	// validate the request
 	if req.Msg.Timerange == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("missing timerange"))
 	}
@@ -993,8 +994,28 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid from or to time"))
 	}
 
+	// get the time-range for which we want to load user-shifts.
 	from := req.Msg.Timerange.From.AsTime().Local()
 	to := req.Msg.Timerange.To.AsTime().Local()
+
+	// gather all users where we want to return shifts.
+	users := []string{remoteUser.ID}
+	if req.Msg.Users != nil {
+		if req.Msg.Users.AllUsers {
+			log.L(ctx).Infof("user requested working shifts for all users")
+
+			var err error
+			users, err = svc.FetchAllUserIds(ctx)
+
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch users: %w", err))
+			}
+		} else if len(req.Msg.Users.UserIds) > 0 {
+			users = req.Msg.Users.UserIds
+
+			log.L(ctx).Infof("user requested working shifts for specified users: %v", users)
+		}
+	}
 
 	// collect all duty rosters between 'from' and 'to'
 	rosters := make(map[string]structs.DutyRoster)
@@ -1024,7 +1045,20 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 
 	for _, roster := range rosters {
 		for _, shift := range roster.Shifts {
-			if slices.Contains(shift.AssignedUserIds, remoteUser.ID) {
+
+			// filter out shifts that are outside the requested time-range
+			fromInRange := (from.Before(shift.From) || from.Equal(shift.From)) && (to.After(shift.From) || to.Equal(shift.From))
+			toInRange := (from.Before(shift.To) || from.Equal(shift.To)) && (to.After(shift.To) || to.Equal(shift.To))
+			if !fromInRange && !toInRange {
+				continue
+			}
+
+			if data.ElemInBothSlices(shift.AssignedUserIds, users) {
+				// filter out all ids that are not requested
+				shift.AssignedUserIds = slices.DeleteFunc(shift.AssignedUserIds, func(id string) bool {
+					return !slices.Contains(users, id)
+				})
+
 				plannedShifts = append(plannedShifts, shift)
 				key := shift.WorkShiftID.Hex()
 				shiftDefinitions[key] = lm[key]
@@ -1185,6 +1219,13 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 				includeUntil = true
 			}
 
+			// skip this entry if it either gets in effect after our requested time period
+			// or if it's no in effect anymore.
+			if wt.ApplicableFrom.After(to) || until.Before(from) {
+				// not applicable
+				continue
+			}
+
 			// skip this work-time entry if time-tracking is disabled but the caller specified onlyTimeTracking.
 			if onlyTimeTracking && wt.ExcludeFromTimeTracking {
 				if excludeFromTimeTracking == nil {
@@ -1198,13 +1239,6 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 			if !wt.ExcludeFromTimeTracking {
 				b := false
 				excludeFromTimeTracking = &b
-			}
-
-			// skip this entry if it either gets in effect after our requested time period
-			// or if it's no in effect anymore.
-			if wt.ApplicableFrom.After(to) || until.Before(from) {
-				// not applicable
-				continue
 			}
 
 			analysis := &rosterv1.WorkTimeAnalysisStep{
@@ -1334,6 +1368,11 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 			results[userId].Steps = append(results[userId].Steps, analysis)
 
 			startTime = until
+		}
+
+		if excludeFromTimeTracking == nil {
+			b := false
+			excludeFromTimeTracking = &b
 		}
 
 		results[userId].ExcludeFromTimeTracking = *excludeFromTimeTracking

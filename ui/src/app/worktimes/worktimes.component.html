@@ -10,6 +10,9 @@
         <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
         <th class="px-2 py-4 font-normal text-left font-lato">Seit / Eintritt</th>
         <th class="px-2 py-4 font-normal text-left font-lato">Aktuelle Arbeitszeit</th>
+        <th class="px-2 py-4 font-normal text-left font-lato">
+          <span nz-tooltip="Zeit-Erfassung">ZE</span>
+        </th>
         <th class="px-2 py-4 font-normal text-left font-lato">Urlaub / Jahr</th>
         <th class="px-2 py-4 font-normal text-left font-lato">Ended mit</th>
         <th class="px-2 py-4 font-normal leading-3 text-left font-lato">Resturlaub
@@ -37,6 +40,9 @@
           </td>
           <td class="p-2 text-left font-inter">
             {{ current.timePerWeek | duration:'default-hours' }} / Woche
+          </td>
+          <td class="p-2 text-left font-inter">
+            {{ current.excludeFromTimeTracking ? 'Nein' : 'Ja' }}
           </td>
           <td class="p-2 text-left font-inter">{{ current.vacationWeeksPerYear }} Wochen</td>
           <td class="p-2 leading-3 text-left font-inter">
@@ -81,7 +87,7 @@
 </div>
 
 <ng-template #noWtTemplate let-profile>
-  <tr lass="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+  <tr class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
     <td class="p-2 text-left font-inter">
       <span class="flex flex-row items-center justify-start gap-2 text-left">
         <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="profile.user?.avatar" class="rounded-full shadow ring-1">
@@ -89,6 +95,7 @@
         {{ profile | displayName }}
       </span>
     </td>
+    <td class="p-2 text-left font-inter"></td>
     <td class="p-2 text-left font-inter"></td>
     <td class="p-2 text-left font-inter"></td>
     <td class="p-2 text-left font-inter"></td>

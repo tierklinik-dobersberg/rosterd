@@ -14,6 +14,7 @@ import { USER_SERVICE, WORKTIME_SERVICE } from '@tierklinik-dobersberg/angular/c
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { NgIconsModule } from '@ng-icons/core';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 
 interface Model {
   profile: Profile;
@@ -55,6 +56,7 @@ function makeEmptyChangeModel(): ChangeModel {
     NzMessageModule,
     NzCheckboxModule,
     NzTimelineModule,
+    NzToolTipModule,
     NgIconsModule
   ],
   templateUrl: './worktimes.component.html',
