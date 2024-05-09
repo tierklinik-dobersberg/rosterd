@@ -6,27 +6,27 @@
 <div class="overflow-auto">
   <table class="w-full border rounded table-auto border-subtle">
     <thead>
-      <tr class="rounded bg-subtle">
-        <th class="px-2 py-4 font-normal text-left font-lato">Benutzer</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Seit / Eintritt</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Aktuelle Arbeitszeit</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">
+      <tr class="rounded bg-gray-100">
+        <th class="px-2 py-4 font-normal text-left ">Benutzer</th>
+        <th class="px-2 py-4 font-normal text-left ">Seit / Eintritt</th>
+        <th class="px-2 py-4 font-normal text-left ">Aktuelle Arbeitszeit</th>
+        <th class="px-2 py-4 font-normal text-left ">
           <span nz-tooltip="Zeit-Erfassung">ZE</span>
         </th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Urlaub / Jahr</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Ended mit</th>
-        <th class="px-2 py-4 font-normal leading-3 text-left font-lato">Resturlaub
+        <th class="px-2 py-4 font-normal text-left ">Urlaub / Jahr</th>
+        <th class="px-2 py-4 font-normal text-left ">Ended mit</th>
+        <th class="px-2 py-4 font-normal leading-3 text-left ">Resturlaub
           <br>
           <span class="text-xs font-inter">(bis <strong>{{ endOfYear | date:'mediumDate' }}</strong>)</span>
         </th>
-        <th class="px-2 py-4 font-normal text-left font-lato">ZA-Guthaben</th>
+        <th class="px-2 py-4 font-normal text-left ">ZA-Guthaben</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       <ng-container *ngFor="let m of models; trackBy: trackModel">
         <tr *ngIf="(m.current || m.next) as current; else: emptyRow"
-          class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+          class="border-b border-subtle hover:bg-gray-100 hover:bg-opacity-50">
           <td class="p-2 text-left font-inter">
             <span class="flex flex-row items-center justify-start gap-2 text-left">
               <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="m.profile.user?.avatar"
@@ -87,7 +87,7 @@
 </div>
 
 <ng-template #noWtTemplate let-profile>
-  <tr class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+  <tr class="border-b border-subtle hover:bg-gray-100 hover:bg-opacity-50">
     <td class="p-2 text-left font-inter">
       <span class="flex flex-row items-center justify-start gap-2 text-left">
         <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="profile.user?.avatar" class="rounded-full shadow ring-1">

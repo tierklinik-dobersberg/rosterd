@@ -155,7 +155,7 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
       return
     }
 
-    if (!!trigger && this.layout.lg) {
+    if (!!trigger && this.layout.lg()) {
       trigger.elementRef.nativeElement.open = !trigger.elementRef.nativeElement.open;
     } else {
       this.drawerContext = {

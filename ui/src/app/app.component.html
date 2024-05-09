@@ -1,12 +1,12 @@
   <!--
     Menu on Desktop and up
   -->
-  <nav *ngIf="layout.lg && !isRosterView && (isAdmin | async)" class="relative z-10 flex flex-col flex-shrink-0 w-64 h-full bg-white shadow-md print:hidden">
+  <nav *ngIf="layout.lg() && !isRosterView && (isAdmin | async)" class="relative z-10 flex flex-col flex-shrink-0 w-64 h-full bg-white shadow-md print:hidden">
     <!-- Logo -->
     <div class="ml-1 h-16">
       <a class="flex items-center space-x-2" href="https://my.dobersberg.vet">
         <img src="assets/logo.png" class="w-10 h-10" alt="logo">
-        <h1 class="flex flex-col text-base font-semibold leading-4 font-lato">
+        <h1 class="flex flex-col text-base font-semibold leading-4 ">
           <span style="color: #1080cf">Tierklinik</span>
           <span style="color: #15377e">Dobersberg</span>
         </h1>
@@ -25,16 +25,16 @@
   <div class="flex flex-col flex-grow">
     <header class="flex items-center justify-between px-2 py-4 sm:px-4 md:px-8 lg:px-12 shadow-sm border-b border-subtle h-16 w-full">
       <!-- On mobile the logo is put into the header -->
-      <a class="block w-8 h-8 mr-2" *ngIf="!layout.lg" href="https://my.dobersberg.vet">
+      <a class="block w-8 h-8 mr-2" *ngIf="!layout.lg()" href="https://my.dobersberg.vet">
         <img class="w-full h-full" src="assets/logo.png" alt="logo">
       </a>
 
-      <h1 class="text-lg font-lato font-light flex-grow whitespace-nowrap">
+      <h1 class="text-lg  font-light flex-grow whitespace-nowrap">
         Dienstplan & Urlaubs Verwaltung
       </h1>
 
       <div class="flex flex-row justify-between items-center flex-grow-0 gap-4">
-        <ng-icon name="heroBars4" *ngIf="!layout.lg || isRosterView" class="cursor-pointer hover:text-color-primary" (click)="drawerVisible = !drawerVisible"></ng-icon>
+        <ng-icon name="heroBars4" *ngIf="!layout.lg() || isRosterView" class="cursor-pointer hover:text-color-primary" (click)="drawerVisible = !drawerVisible"></ng-icon>
 
         <span *ngIf="(profile | async) as user" class="flex flex-row w-full items-center justify-start gap-2 text-sm ">
           <a [attr.href]="accountServer" target="_blank">
@@ -42,7 +42,7 @@
             </nz-avatar>
           </a>
 
-          <span class="inline-flex flex-col items-start leading-3 font-lato">
+          <span class="inline-flex flex-col items-start leading-3 ">
             <span class="font-semibold">{{ user.user?.username }}</span>
             <span class=" text-sm font-light" *ngIf="(user | displayName) !== user.user?.username">{{ user | displayName }}</span>
           </span>
@@ -64,7 +64,7 @@
         </nz-avatar>
       </a>
 
-      <span class="inline-flex flex-col items-start leading-4 font-lato">
+      <span class="inline-flex flex-col items-start leading-4 ">
         <span class="font-semibold">{{ user.user?.username }}</span>
         <span class=" text-sm font-light" *ngIf="(user | displayName) !== user.user?.username">{{ user | displayName }}</span>
       </span>
@@ -75,7 +75,7 @@
 </ng-template>
 
 <nz-drawer [nzClosable]="false" [nzVisible]="drawerVisible" [nzPlacement]="'right'"
-  (nzOnClose)="closeDrawer()" *ngIf="isAdmin && (!layout.lg || isRosterView)" [nzTitle]="drawerTitle" class="rounded-l">
+  (nzOnClose)="closeDrawer()" *ngIf="isAdmin && (!layout.lg() || isRosterView)" [nzTitle]="drawerTitle" class="rounded-l">
 
   <div *nzDrawerContent class="flex flex-col gap-4 -ml-6 -mr-6">
     <nav class="flex flex-col gap-2 w-full">

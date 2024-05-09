@@ -1,7 +1,7 @@
-<span class="inline-block w-full mb-1 text-xs text-center rounded font-lato text-secondary"
+<span class="inline-block w-full mb-1 text-xs text-center rounded  text-secondary"
   [ngClass]="{'bg-primary text-white':!!holiday}">
   <span>{{ holiday?.localName}}</span>
-  <span *ngIf="!layout.lg && !holiday">
+  <span *ngIf="!layout.lg() && !holiday">
     {{ date | date:'EEEE' }} |
   </span>
   <span>{{ date | date:'dd.MM' }}</span>
@@ -18,7 +18,7 @@
 
       <div
         [nz-tooltip]="shift.definition.name + ' (' + shift.definition.displayName + ') - Von ' + (shift.from?.toDate()| date:'HH:mm') + ' bis ' + (shift.to?.toDate() | date:'HH:mm')"
-        class="flex overflow-hidden flex-col justify-between pr-1.5 text-xs uppercase whitespace-nowrap border-r select-none text-ellipsis text-secondary font-lato w-10"
+        class="flex overflow-hidden flex-col justify-between pr-1.5 text-xs uppercase whitespace-nowrap border-r select-none text-ellipsis text-secondary  w-10"
         [ngStyle]="{borderColor: shift.definition.color + 'aa'}" style="font-size: 0.65rem;">
 
         <span class="transition-all duration-200 ease-in-out translate-y-2 group-hover:translate-y-0"
@@ -60,7 +60,7 @@
 
       <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="trigger"
         [cdkConnectedOverlayOpen]="trigger.elementRef.nativeElement.open"
-        (overlayOutsideClick)="onOverlayOutsideClick($event, trigger)" *ngIf="layout.lg">
+        (overlayOutsideClick)="onOverlayOutsideClick($event, trigger)" *ngIf="layout.lg()">
         <ng-container *ngTemplateOutlet="userSelectionTemplate; context: {
           shift: shift,
           trigger: trigger,
@@ -74,7 +74,7 @@
   <ul class="p-2 bg-white rounded-b" [ngClass]="{'ring-1 shadow w-80': !!trigger, 'w-full': !trigger}" *ngIf="shift">
     <li *ngFor="let user of shift.eligibleUserIds">
       <ng-container *ngIf="(user | toUser:profiles) as userProfile">
-        <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-subtle" [ngClass]="{'cursor-pointer': !readonly}"
+        <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-gray-100" [ngClass]="{'cursor-pointer': !readonly}"
           (click)="onShiftClick(trigger, shift, user)">
 
           <nz-avatar nzIcon="user" [nzSrc]="userProfile.user?.avatar"></nz-avatar>
@@ -100,7 +100,7 @@
   </ul>
 </ng-template>
 
-<nz-drawer *ngIf="!layout.lg" [nzVisible]="drawerVisible" (nzOnClose)="drawerVisible = false" [nzWidth]="(layout.drawerWidth | async) || 'inherit'">
+<nz-drawer *ngIf="!layout.lg()" [nzVisible]="drawerVisible" (nzOnClose)="drawerVisible = false" [nzWidth]="layout.drawerWidth() || 'inherit'">
   <ng-container *nzDrawerContent>
     <ng-container *ngTemplateOutlet="userSelectionTemplate; context: drawerContext"></ng-container>
   </ng-container>

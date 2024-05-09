@@ -32,22 +32,22 @@
 <div class="overflow-auto">
   <table class="w-full border border-collapse rounded table-auto border-subtle">
     <thead>
-      <tr class="rounded-t bg-subtle">
-        <th class="px-2 py-4 font-normal text-left font-lato">Mitarbeiter</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Datum</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Zeit</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Typ</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Grund</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Bemerkung</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Erstellt am</th>
-        <th class="px-2 py-4 font-normal text-left font-lato">Erstellt von</th>
+      <tr class="rounded-t bg-gray-100">
+        <th class="px-2 py-4 font-normal text-left ">Mitarbeiter</th>
+        <th class="px-2 py-4 font-normal text-left ">Datum</th>
+        <th class="px-2 py-4 font-normal text-left ">Zeit</th>
+        <th class="px-2 py-4 font-normal text-left ">Typ</th>
+        <th class="px-2 py-4 font-normal text-left ">Grund</th>
+        <th class="px-2 py-4 font-normal text-left ">Bemerkung</th>
+        <th class="px-2 py-4 font-normal text-left ">Erstellt am</th>
+        <th class="px-2 py-4 font-normal text-left ">Erstellt von</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       <ng-container *ngFor="let u of costs; trackBy: trackUserCosts">
         <tr *ngFor="let c of u.costs; trackBy: trackCosts"
-          class="border-b border-subtle hover:bg-subtle hover:bg-opacity-50">
+          class="border-b border-subtle hover:bg-gray-100 hover:bg-opacity-50">
           <td class="p-2 text-left font-inter">
             <span class="flex flex-row items-center justify-start gap-2 text-left"
               *ngIf="(u.userId| toUser:profiles) as user">

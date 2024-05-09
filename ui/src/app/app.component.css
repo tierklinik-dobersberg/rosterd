@@ -3,7 +3,7 @@
 }
 
 nav {
-  @apply flex flex-col font-lato font-normal text-sm;
+  @apply flex flex-col  font-normal text-sm;
 }
 
 nav a {
@@ -17,7 +17,7 @@ nav a:visited, nav a:active {
 }
 
 nav a.nav__active {
-  @apply border-primary bg-subtle;
+  @apply border-primary bg-gray-100;
 }
 
 ::ng-deep nav a ng-icon {
