@@ -1,9 +1,12 @@
-import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
+import { NgIconsModule } from '@ng-icons/core';
+import { moveInOutAnimation } from '@tierklinik-dobersberg/angular/animations';
+import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
-import { moveInOutAnimation, moveInOutListAnimation } from '@tierklinik-dobersberg/angular/animations';
+import { HlmIconModule } from '@tierklinik-dobersberg/angular/icon';
+import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -11,8 +14,12 @@ import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
 import { environment } from 'src/environments/environment';
+import { TkdContainerSizeDirective } from './common/container/container.directive';
 import { TkdRoster2Module } from './roster2/roster2.module';
-import { NgIconsModule } from '@ng-icons/core';
+import { HlmToasterModule } from '@tierklinik-dobersberg/angular/sonner';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { UserLetterPipe } from 'src/app/common/pipes';
+import { DevSizeOutlineComponent } from './size-outline/size-outline';
 
 @Component({
   selector: 'app-root',
@@ -26,7 +33,14 @@ import { NgIconsModule } from '@ng-icons/core';
     NzMessageModule,
     NzIconModule,
     NgIconsModule,
+    HlmIconModule,
+    HlmButtonModule,
     NzDrawerModule,
+    TkdContainerSizeDirective,
+    HlmToasterModule,
+    HlmAvatarModule,
+    UserLetterPipe,
+    DevSizeOutlineComponent,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
@@ -36,12 +50,12 @@ import { NgIconsModule } from '@ng-icons/core';
   ]
 })
 export class AppComponent implements OnInit {
-  public readonly accountServer = environment.accountService;
-  public readonly mainApplication = environment.mainApplication;
-  public readonly router = inject(Router);
-  public readonly route = inject(ActivatedRoute)
-  public readonly cdr = inject(ChangeDetectorRef);
-  public readonly layout = inject(LayoutService).withAutoUpdate();
+  protected readonly accountServer = environment.accountService;
+  protected readonly mainApplication = environment.mainApplication;
+  protected readonly router = inject(Router);
+  protected readonly route = inject(ActivatedRoute)
+  protected readonly cdr = inject(ChangeDetectorRef);
+  protected readonly layout = inject(LayoutService).withAutoUpdate();
 
   drawerVisible = false;
 

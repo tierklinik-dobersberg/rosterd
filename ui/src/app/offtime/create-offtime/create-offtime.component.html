@@ -1,36 +1,79 @@
-<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-gray-100 border-tertiary" (ngSubmit)="save()">
-  <h1 class="text-lg">Urlaubsantrag {{ model.id ? 'bearbeiten' : 'erstellen' }}</h1>
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Antragsteller</label>
-    <nz-select name="requestor" [(ngModel)]="model.requestorId" [nzOptionHeightPx]="48" [attr.readonly]="!!model.id">
-      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!" [nzLabel]="user | displayName">
-        <span class="flex flex-row items-center justify-start gap-2 text-left">
-          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-          </nz-avatar>
-          {{ user | displayName }}
-        </span>
-      </nz-option>
-    </nz-select>
+<form (ngSubmit)="save()" class="font-normal" #createForm="ngForm">
+
+  <hlm-dialog-header>
+    <h3 hlmDialogTitle>
+      Urlaubsantrag {{ model.id ? 'bearbeiten' : 'erstellen' }}
+    </h3>
+    <p hlmDialogDescription>Erstelle einen neuen Antrag auf Urlaub oder Zeitausgleich</p>
+  </hlm-dialog-header>
+
+  <div class="flex flex-col gap-8 py-4 mt-4">
+
+    <div class="flex flex-col">
+      <label hlmLabel for="requestor">
+        Antragsteller
+      </label>
+
+      @if (_profiles(); as profiles) {
+      <brn-select [(ngModel)]="model.requestorId" [ariaReadOnly]="!!model.id" required class="mt-1" name="requestor">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content class="max-h-[30rem]">
+          @for (user of profiles; track user.user!.id) {
+          <hlm-option [value]="user.user!.id">
+            <hlm-avatar
+              class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-4"
+              variant="small">
+              <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+            </hlm-avatar>
+
+            {{ user | displayName }}
+          </hlm-option>
+          }
+        </hlm-select-content>
+      </brn-select>
+      }
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel>
+        Beschreibung
+        <textarea hlmInput class="w-full h-24" name="comment" [(ngModel)]="model.comment"></textarea>
+      </label>
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="daterange">
+        Zeitraum
+        <nz-range-picker hlmInput required [nzShowTime]="true" name="daterange" [ngModel]="[model.from, model.to]"
+          (ngModelChange)="model.from = $event[0]; model.to = $event[1]"></nz-range-picker>
+      </label>
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="type">
+        Art
+      </label>
+
+      <brn-select [(ngModel)]="model.type" name="type" hlm class="mt-1">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content>
+          <hlm-option value="auto">Automatisch</hlm-option>
+          <hlm-option value="vacation">Urlaub</hlm-option>
+          <hlm-option value="timeoff">Zeitausgleich</hlm-option>
+        </hlm-select-content>
+      </brn-select>
+    </div>
+
+    <hlm-dialog-footer>
+      <button hlmBtn variant="secondary" type="button" (click)="abort()">Abbrechen</button>
+      <button hlmBtn type="submit" [disabled]="createForm.invalid">Antrag erstellen</button>
+    </hlm-dialog-footer>
   </div>
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="comment" [(ngModel)]="model.comment">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Zeitraum</label>
-    <nz-range-picker [nzShowTime]="true" name="daterange" [ngModel]="[model.from, model.to]" (ngModelChange)="model.from = $event[0]; model.to = $event[1]"></nz-range-picker>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Art</label>
-    <nz-radio-group [(ngModel)]="model.type" name="type">
-      <label nz-radio-button nzValue="auto">Automatisch</label>
-      <label nz-radio-button nzValue="vacation">Urlaub</label>
-      <label nz-radio-button nzValue="timeoff">Zeitausgleich</label>
-    </nz-radio-group>
-  </div>
-
-    <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
 </form>

@@ -1,15 +1,53 @@
-import { CommonModule, DatePipe } from '@angular/common';
+import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
+import { toast } from 'ngx-sonner';
+import { CdkRow, CdkRowDef } from '@angular/cdk/table';
+import { CommonModule, NgClass } from '@angular/common';
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   OnInit,
   TrackByFunction,
+  computed,
+  effect,
   inject,
+  signal,
+  untracked
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
+import { NgIconsModule } from '@ng-icons/core';
+import { lucideAlertTriangle, lucideCheckCircle, lucideFilter, lucideListPlus, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2, lucideXCircle } from '@ng-icons/lucide';
+import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
+import { BrnMenuTriggerDirective } from '@spartan-ng/ui-menu-brain';
+import { BrnRadioGroupModule } from '@spartan-ng/ui-radiogroup-brain';
+import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
+import { BrnSheetModule } from '@spartan-ng/ui-sheet-brain';
+import { BrnTableModule } from '@spartan-ng/ui-table-brain';
+import { BrnTooltipModule } from '@spartan-ng/ui-tooltip-brain';
+import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
+import {
+  injectOfftimeService,
+  injectUserService
+} from '@tierklinik-dobersberg/angular/connect';
+import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
+import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
+import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
+import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
+import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
+import {
+  DisplayNamePipe,
+  UserColorPipe,
+  UserContrastColorPipe
+} from '@tierklinik-dobersberg/angular/pipes';
+import { HlmRadioGroupModule } from '@tierklinik-dobersberg/angular/radiogroup';
+import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
+import { HlmSeparatorModule } from '@tierklinik-dobersberg/angular/separator';
+import { HlmSheetModule } from '@tierklinik-dobersberg/angular/sheet';
+import { HlmTableModule } from '@tierklinik-dobersberg/angular/table';
+import { coerceDate } from '@tierklinik-dobersberg/angular/utils/date';
 import {
   ApprovalRequestType,
   OffTimeEntry,
@@ -19,26 +57,99 @@ import {
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { NzTableModule, NzTableSortFn } from 'ng-zorro-antd/table';
-import {
-  OFFTIME_SERVICE,
-  USER_SERVICE,
-} from '@tierklinik-dobersberg/angular/connect';
-import { TkdRoster2Module } from '../roster2/roster2.module';
-import {
-  DisplayNamePipe,
-  ToUserPipe,
-} from '@tierklinik-dobersberg/angular/pipes';
-import { NgIconsModule } from '@ng-icons/core';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
+import { TkdRoster2Module } from '../roster2/roster2.module';
+import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { UserLetterPipe } from 'src/app/common/pipes';
+import { OffTimeFilter, OffTimeFilterComponent, emptyFilter } from './offtime-filter/offtime-filter.component';
+import { ConnectError } from '@connectrpc/connect';
+import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
+import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
+import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
+import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
+import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
+import { CreateOfftimeComponent } from './create-offtime/create-offtime.component';
+import { TkdEmptyTableComponent } from '../common/empty-table';
+
+// Filter function for off-time requests. used in sortFunctions below.
+type OffTimeSortFunc = (a: OffTimeEntry, b: OffTimeEntry, profiles: Profile[]) => number;
+
+// Column names for the data-table.
+enum Columns {
+  User = 'user',
+  From = 'from',
+  To = 'to',
+  Description = 'desc',
+  Type = 'type',
+  Approval = 'approval',
+  CreatedAt = 'createdAt',
+  Actions = 'actions',
+}
+
+// Available sort functions for the data-table
+const sortFunctions: { [key in Columns]?: OffTimeSortFunc } = {
+  [Columns.User]: (a, b, profiles) => {
+    const au = profiles.find(p => p.user!.id === a.creatorId);
+    const bu = profiles.find(p => p.user!.id === b.creatorId);
+
+    const aun = (new DisplayNamePipe).transform(au || null);
+    const bun = (new DisplayNamePipe).transform(bu || null);
+
+    return bun.localeCompare(aun);
+  },
+
+  [Columns.From]: (a, b) => {
+    const at = coerceDate(a.from!).getTime();
+    const bt = coerceDate(b.from!).getTime();
+
+    return bt - at
+  },
+
+  [Columns.To]: (a, b) => {
+    const at = coerceDate(a.to!).getTime();
+    const bt = coerceDate(b.to!).getTime();
+
+    return bt - at
+  },
+
+  [Columns.Type]: (a, b) => {
+    return b.type.valueOf() - a.type.valueOf();
+  },
+
+  [Columns.Approval]: (a, b) => {
+    const an = a.approval ?
+      a.approval.approved ? 2 : 1
+      : 0;
+    const bn = b.approval ?
+      b.approval.approved ? 2 : 1
+      : 0;
+
+    return bn - an;
+  },
+
+  [Columns.Description]: (a, b) => {
+    return (b.description || '').localeCompare(a.description || '')
+  },
+
+  [Columns.CreatedAt]: (a, b) => {
+    const at = coerceDate(a.createdAt!).getTime();
+    const bt = coerceDate(b.createdAt!).getTime();
+
+    return bt - at
+  },
+
+} as const;
 
 @Component({
   selector: 'app-offtime',
   standalone: true,
   imports: [
+    HlmAlertModule,
     CommonModule,
     TkdRoster2Module,
     NzAvatarModule,
@@ -52,7 +163,48 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
     NgIconsModule,
     NzSelectModule,
     NzTableModule,
+    NgClass,
+
+    HlmButtonModule,
+    HlmTableModule,
+    BrnTableModule,
+    BrnSelectModule,
+    HlmSelectModule,
+    HlmInputModule,
+    HlmIconModule,
+    HlmSheetModule,
+    HlmAvatarModule,
+    HlmRadioGroupModule,
+    HlmSeparatorModule,
+    BrnTableModule,
+    HlmTableModule,
+    HlmAlertDialogModule,
+    BrnAlertDialogModule,
+    HlmMenuModule,
+    BrnMenuTriggerDirective,
+    HlmBadgeModule,
+    HlmSpinnerModule,
+    HlmTooltipModule,
+    BrnTooltipModule,
+    BrnDialogModule,
+    HlmDialogModule,
+
+    UserLetterPipe,
+    BrnSheetModule,
+    BrnRadioGroupModule,
+    HlmLabelModule,
+    UserColorPipe,
+    UserContrastColorPipe,
+    TkdTableSortColumnComponent,
+    TkdContainerSizeClassDirective,
+    TkdEmptyTableComponent,
+
+    OffTimeFilterComponent,
+
+    CdkRow,
+    CdkRowDef,
   ],
+  providers: provideIcons({ lucideListPlus, lucideFilter, lucideMoreVertical, lucideXCircle, lucideCheckCircle, lucideSend, lucidePencil, lucideTrash2, lucideAlertTriangle }),
   templateUrl: './offtime.component.html',
   styles: [
     `
@@ -64,126 +216,160 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OfftimeComponent implements OnInit {
-  private readonly offTimeService = inject(OFFTIME_SERVICE);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly userService = inject(USER_SERVICE);
-  private readonly modalService = inject(NzModalService);
-  readonly types = OffTimeType;
+  private readonly offTimeService = injectOfftimeService();
+  private readonly userService = injectUserService();
+  private readonly dialog = inject(HlmDialogService);
 
-  rangeFilter: [Date, Date] | null = null;
-  filterType: 'all' | 'new' = 'all';
-  filterByUser: string[] = [];
+  protected readonly layout = inject(LayoutService);
+  protected readonly types = OffTimeType;
+  protected readonly columns = Columns;
+  protected readonly container = injectContainerSize();
 
-  profiles: Profile[] = [];
-  entries: OffTimeEntry[] = [];
+  protected readonly _filter = signal<OffTimeFilter | null>(null);
+  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _sort = signal<SortColumn<typeof sortFunctions> | null>(null);
+  protected readonly _loading = signal<boolean>(false);
+
+  protected _displayedColumns = computed(() => {
+    const columns: Columns[] = [];
+    const sm = this.container.sm();
+    const md = this.container.md();
+    const lg = this.container.lg();
+    const xl = this.container.xl();
+
+    columns.push(Columns.User)
+    columns.push(Columns.From)
+    columns.push(Columns.To)
+
+    if (md) {
+      columns.push(Columns.Type)
+    }
+
+    if (lg) {
+      columns.push(Columns.Description)
+    }
+
+    if (md || sm) {
+      columns.push(Columns.Approval)
+    }
+
+    if (xl) {
+      columns.push(Columns.CreatedAt)
+    }
+
+    columns.push(Columns.Actions)
+
+    return columns;
+  })
+
+  private readonly _entries = signal<OffTimeEntry[]>([]);
+  protected readonly _totalCount = computed(() => this._entries().length);
+  protected readonly _filteredCount = computed(() => this._filteredAndSortedEntries().length);
+  protected readonly _filteredAndSortedEntries = computed(() => {
+    const filter = this._filter() || emptyFilter;
+
+    const entries = this._entries();
+    const sort = this._sort();
+    const profiles = this._profiles();
+
+    const filtered = entries
+      .filter((value) => {
+        if (filter.state !== 'all') {
+          if (value.approval) {
+            return false;
+          }
+        }
+
+        if (!filter.profiles || filter.profiles.length === 0) {
+          return true;
+        }
+
+        return filter.profiles.includes(value.requestorId);
+      });
+
+    if (!sort) {
+      return filtered;
+    }
+
+    const fn = sortFunctions[sort.column];
+
+    if (!fn) {
+      return filtered;
+    }
+
+    return filtered.sort((a, b) => {
+      const result = fn(a, b, profiles);
+
+      if (sort.direction === 'ASC') {
+        return result * -1;
+      }
+
+      return result;
+    })
+  })
+
   approvalComment = '';
   approvalModalEntry: OffTimeEntry | null = null;
   approvalModalApprove: 'approve' | 'reject' = 'approve';
 
-  // sort functions
-  sortByUser: NzTableSortFn<OffTimeEntry> = (a, b) => {
-    const userA = this.profiles.find(
-      (profile) => profile.user!.id === a.requestorId
-    );
-    const userB = this.profiles.find(
-      (profile) => profile.user!.id === b.requestorId
-    );
-
-    if (!userA) {
-      return -1;
-    }
-
-    if (!userB) {
-      return -1;
-    }
-
-    return userA.user!.username.localeCompare(userB.user!.username);
-  };
-
-  sortByStartDate: NzTableSortFn<OffTimeEntry> = (a, b) =>
-    a.from!.toDate().getSeconds() - b.from!.toDate().getSeconds();
-
-  sortByEndDate: NzTableSortFn<OffTimeEntry> = (a, b) =>
-    a.to!.toDate().getSeconds() - b.to!.toDate().getSeconds();
-
-  sortByCreated: NzTableSortFn<OffTimeEntry> = (a, b) =>
-    a.createdAt!.toDate().getSeconds() - b.createdAt!.toDate().getSeconds();
-
-  sortByApproval: NzTableSortFn<OffTimeEntry> = (a, b) => {
-    if (!a.approval) {
-      return -1;
-    }
-
-    if (!b.approval) {
-      return -1;
-    }
-
-    return 0;
-  };
-
-  sortByType: NzTableSortFn<OffTimeEntry> = (a, b) =>
-    a.type.valueOf() - b.type.valueOf();
-
   trackEntry: TrackByFunction<OffTimeEntry> = (_, e) => e.id;
 
-  ngOnInit() {
-    this.userService.listUsers({}).then((response) => {
-      this.profiles = response.users;
-      this.cdr.markForCheck();
-    });
+  constructor() {
+    effect(() => this.loadOffTimeEntries());
+  }
 
-    this.loadOffTimeEntries();
+  ngOnInit() {
+    this.userService.listUsers({})
+      .then((response) => {
+        this._profiles.set(response.users);
+      })
   }
 
   async loadOffTimeEntries() {
-    if (this.rangeFilter) {
-      if (this.rangeFilter[0]) {
-        this.rangeFilter[0].setUTCHours(0);
-        this.rangeFilter[0].setUTCMinutes(0);
-        this.rangeFilter[0].setUTCSeconds(0);
+    const filter = this._filter() || emptyFilter;
+    const rangeFilter = filter.timeRange;
+
+    untracked(() => {
+      if (rangeFilter) {
+        if (rangeFilter[0]) {
+          rangeFilter[0].setUTCHours(0);
+          rangeFilter[0].setUTCMinutes(0);
+          rangeFilter[0].setUTCSeconds(0);
+        }
+        if (rangeFilter[1]) {
+          rangeFilter[1].setUTCHours(23);
+          rangeFilter[1].setUTCMinutes(59);
+          rangeFilter[1].setUTCSeconds(59);
+        }
       }
-      if (this.rangeFilter[1]) {
-        this.rangeFilter[1].setUTCHours(23);
-        this.rangeFilter[1].setUTCMinutes(59);
-        this.rangeFilter[1].setUTCSeconds(59);
-      }
-    }
 
-    this.offTimeService
-      .findOffTimeRequests({
-        from:
-          this.rangeFilter && this.rangeFilter[0]
-            ? Timestamp.fromDate(this.rangeFilter[0])
-            : undefined,
-        to:
-          this.rangeFilter && this.rangeFilter[1]
-            ? Timestamp.fromDate(this.rangeFilter[1])
-            : undefined,
-      })
-      .then((response) => {
-        this.entries = response.results.filter((value) => {
-          if (this.filterType !== 'all') {
-            if (value.approval) {
-              return false;
-            }
-          }
+      this._loading.set(true);
 
-          if (!this.filterByUser || this.filterByUser.length === 0) {
-            return true;
-          }
-
-          return this.filterByUser.includes(value.requestorId);
-        });
-        this.cdr.markForCheck();
-      });
+      this.offTimeService
+        .findOffTimeRequests({
+          from:
+            rangeFilter && rangeFilter[0]
+              ? Timestamp.fromDate(rangeFilter[0])
+              : undefined,
+          to:
+            rangeFilter && rangeFilter[1]
+              ? Timestamp.fromDate(rangeFilter[1])
+              : undefined,
+        })
+        .then((response) => {
+          this._entries.set(response.results);
+        })
+        .catch((error) => {
+          toast.error(ConnectError.from(error).message)
+        })
+        .finally(() => this._loading.set(false));
+    })
   }
 
   approveOrRejectConfirmation(approve: boolean, entry: OffTimeEntry) {
     this.approvalModalApprove = approve ? 'approve' : 'reject';
     this.approvalComment = '';
     this.approvalModalEntry = entry;
-
-    this.cdr.markForCheck();
   }
 
   async approveOrReject() {
@@ -191,37 +377,49 @@ export class OfftimeComponent implements OnInit {
       return;
     }
 
-    await this.offTimeService.approveOrReject({
-      id: this.approvalModalEntry.id,
-      comment: this.approvalComment,
-      type:
-        this.approvalModalApprove === 'approve'
-          ? ApprovalRequestType.APPROVED
-          : ApprovalRequestType.REJECTED,
-    });
+    try {
+      await this.offTimeService.approveOrReject({
+        id: this.approvalModalEntry.id,
+        comment: this.approvalComment,
+        type:
+          this.approvalModalApprove === 'approve'
+            ? ApprovalRequestType.APPROVED
+            : ApprovalRequestType.REJECTED,
+      })
+
+      toast.success(`Antrag wurde erfolgreich bearbeitet`)
+    } catch (err) {
+      toast.error(`Fehler: ${ConnectError.from(err).message}`)
+    }
 
     this.approvalModalEntry = null;
+
     await this.loadOffTimeEntries();
   }
 
   async deleteEntry(entry: OffTimeEntry) {
-    const username = new DisplayNamePipe().transform(
-      new ToUserPipe().transform(entry.requestorId, this.profiles)
-    );
-    const from = new DatePipe('de-AT').transform(entry.from!.toDate(), 'short');
-    const to = new DatePipe('de-AT').transform(entry.to!.toDate(), 'short');
+    try {
+      await this.offTimeService
+        .deleteOffTimeRequest({ id: [entry.id!] });
 
-    this.modalService.confirm({
-      nzTitle: 'Bestätigung erforderlich',
-      nzContent: `Bist du sicher dass du den Urlaubsantrag "${entry.description}" von ${username} vom ${from} bis ${to} löschen möchtest?`,
-      nzOkDanger: true,
-      nzOkText: 'Ja, löschen',
-      nzCancelText: 'Abbrechen',
-      nzOnOk: () => {
-        this.offTimeService
-          .deleteOffTimeRequest({ id: [entry.id!] })
-          .then(() => this.loadOffTimeEntries());
-      },
-    });
+      toast.success(`Antrag wurde erfolgreich gelöscht`)
+    } catch (err) {
+      toast.error(`Fehler: ${ConnectError.from(err).message}`)
+    }
+
+    this.loadOffTimeEntries();
+  }
+
+  openOfftimeDialog(entry?: OffTimeEntry) {
+    const ref = this.dialog.open(CreateOfftimeComponent, {
+      closeOnBackdropClick: false,
+      closeOnOutsidePointerEvents: false,
+      context: {
+        entry,
+      }
+    })
+
+    ref.closed$
+      .subscribe(() => this.loadOffTimeEntries());
   }
 }

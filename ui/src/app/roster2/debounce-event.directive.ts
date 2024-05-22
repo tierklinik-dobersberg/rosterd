@@ -48,7 +48,7 @@ export class TkdDebounceEventDirective implements OnChanges {
         })
 
         let unlistenStop = () => {}
-        if (!!this.tkdDebounceStopEvent) {
+        if (this.tkdDebounceStopEvent) {
             unlistenStop = this.renderer2.listen(this.elementRef.nativeElement, this.tkdDebounceStopEvent, () => {
                 if (timeout !== undefined) {
                     clearTimeout(timeout)

@@ -1,4 +1,4 @@
-<h2 class="flex flex-row justify-between mb-4 text-lg font-normal font-inter">
+<h2 hlmH3 class="mb-4">
   Dienstplan vom {{ roster?.from }} - {{ roster?.to }} freigeben
 </h2>
 
@@ -14,95 +14,109 @@
     </tr>
   </thead>
   <tbody>
-    <ng-container *ngFor="let wt of timeAnalysis">
-      <ng-container *ngIf="!wt.excludeFromTimeTracking && ((wt.expectedTime && wt.expectedTime.seconds > 0) || (wt.plannedTime && wt.plannedTime.seconds > 0))">
-
+    @for (wt of timeAnalysis; track wt.userId) {
+      @if (!wt.excludeFromTimeTracking && ((wt.expectedTime && wt.expectedTime.seconds > 0) || (wt.plannedTime && wt.plannedTime.seconds > 0))) {
         <tr
           class="{{ !offTimePerUser[wt.userId]?.length ? 'border-b border-subtle' : '' }} hover:bg-gray-100 hover:bg-opacity-50">
+          <td class="p-2 text-left  ">
+            @if ((wt.userId | toUser:profiles); as user) {
+              <span
+                class="flex flex-row items-center justify-start gap-2 text-left">
 
-          <td class="p-2 text-left font-inter">
-            <span *ngIf="(wt.userId | toUser:profiles) as user"
-              class="flex flex-row items-center justify-start gap-2 text-left">
-              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-              </nz-avatar>
-              {{ user | displayName }}
-            </span>
+                <hlm-avatar variant="medium" class="border border-secondary bg-secondary">
+                  <img [attr.src]="user.user?.avatar" hlmAvatarImage>
+                  <span class="bg-[#FD005B] text-white" hlmAvatarFallback>{{ user.user?.username || 'N/A'}}</span>
+                </hlm-avatar>
+
+                {{ user | displayName }}
+              </span>
+            }
           </td>
-          <td class="p-2 text-left font-inter">
+          <td class="p-2 text-left  ">
             {{ wt.expectedTime | duration:'default-hours' }}
           </td>
-          <td class="p-2 text-left font-inter">
+          <td class="p-2 text-left  ">
             {{ wt.plannedTime | duration:'default-hours'}}
           </td>
-          <ng-container *ngIf="num(wt.overtime?.seconds || 0) as diff; else: emptyRowTmpl">
-            <td class="p-2 text-left font-inter">
+          @if (num(wt.overtime?.seconds || 0); as diff) {
+            <td class="p-2 text-left  ">
               <span [ngClass]="{'text-alert-red': diff < 0, 'text-alert-green': diff > 0}">
                 {{ diff > 0 ? '+' : '' }}{{ diff | duration:'default-hours' }}
               </span>
             </td>
-            <td class="p-2 text-left font-inter">
-              <input *ngIf="diff < 0" type="text" class="w-32 p-1 text-sm border text-normal border-tertiary"
-                name="vacation" [ngModelOptions]="{updateOn: 'blur'}"
-                [ngModel]="vacationPerUser[wt.userId] | duration:'default-hours'"
-                (ngModelChange)="updateSplit(wt.userId, $event)">
-              <span class="text-secondary" *ngIf="diff > 0">N/A</span>
+            <td class="p-2 text-left  ">
+              @if (diff < 0) {
+                <input type="text" class="w-32 p-1 text-sm border text-normal border-tertiary"
+                  name="vacation" [ngModelOptions]="{updateOn: 'blur'}"
+                  [ngModel]="vacationPerUser[wt.userId] | duration:'default-hours'"
+                  (ngModelChange)="updateSplit(wt.userId, $event)">
+              }
+              @if (diff > 0) {
+                <span class="text-secondary">N/A</span>
+              }
             </td>
-
-            <td class="p-2 text-left font-inter">
-              <span *ngIf="diff < 0" class="w-32 p-1 text-sm border text-normal border-tertiary"
-                name="timeoff" >
-                {{ (num(wt.overtime!.seconds) + vacationPerUser[wt.userId]) | duration:'default-hours' }}
-              </span>
-
-              <span class="text-secondary" *ngIf="diff > 0">N/A</span>
+            <td class="p-2 text-left  ">
+              @if (diff < 0) {
+                <span class="w-32 p-1 text-sm border text-normal border-tertiary"
+                  name="timeoff" >
+                  {{ (num(wt.overtime!.seconds) + vacationPerUser[wt.userId]) | duration:'default-hours' }}
+                </span>
+              }
+              @if (diff > 0) {
+                <span class="text-secondary">N/A</span>
+              }
             </td>
-          </ng-container>
-
-          <ng-template #emptyRowTmpl>
+          } @else {
             <td></td>
             <td></td>
             <td></td>
-          </ng-template>
-
+          }
         </tr>
-        <tr *ngIf="offTimePerUser[wt.userId]?.length" class="border-b border-subtle">
-          <td class="p-2"></td>
-          <td colspan="5">
-            <table class="w-full rounded table-fixed bg-secondary bg-opacity-5">
-              <thead>
-                <tr class="bg-sublte">
-                  <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Urlaubsantrag</th>
-                  <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Von - Bis</th>
-                  <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Status</th>
-                  <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Erstellt am</th>
-                  <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let oft of offTimePerUser[wt.userId]" class="hover:bg-gray-100 hover:bg-opacity-50">
-                  <td class="p-2 text-left ">{{ oft.description }}</td>
-                  <td class="p-2 text-left ">{{ oft.from?.toDate() | date:'shortDate' }} - {{ oft.to?.toDate()
-                    | date:'shortDate' }}</td>
-                  <td class="p-2 text-left " *ngIf="!!oft.approval">
-                    {{ oft.approval.approved ? 'Bestätigt' : 'Abgelehnt'}}
-                  </td>
-                  <td class="p-2 text-left text-secondary " *ngIf="!oft.approval">
-                    N/A
-                  </td>
-                  <td class="p-2 text-left ">{{ oft.createdAt!.toDate() | date:'shortDate' }}</td>
-                  <td class="p-2 text-left "></td>
-                </tr>
-              </tbody>
-            </table>
-          </td>
-        </tr>
-
-      </ng-container>
-    </ng-container>
+        @if (offTimePerUser[wt.userId]?.length) {
+          <tr class="border-b border-subtle">
+            <td class="p-2"></td>
+            <td colspan="5">
+              <table class="w-full rounded table-fixed bg-secondary bg-opacity-5">
+                <thead>
+                  <tr class="bg-sublte">
+                    <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Urlaubsantrag</th>
+                    <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Von - Bis</th>
+                    <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Status</th>
+                    <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte">Erstellt am</th>
+                    <th class="p-2 text-xs text-left uppercase  text-secondary bg-sublte"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (oft of offTimePerUser[wt.userId]; track oft.id) {
+                    <tr class="hover:bg-gray-100 hover:bg-opacity-50">
+                      <td class="p-2 text-left ">{{ oft.description }}</td>
+                      <td class="p-2 text-left ">{{ oft.from?.toDate() | date:'shortDate' }} - {{ oft.to?.toDate()
+                      | date:'shortDate' }}</td>
+                      @if (!!oft.approval) {
+                        <td class="p-2 text-left ">
+                          {{ oft.approval.approved ? 'Bestätigt' : 'Abgelehnt'}}
+                        </td>
+                      }
+                      @if (!oft.approval) {
+                        <td class="p-2 text-left text-secondary ">
+                          N/A
+                        </td>
+                      }
+                      <td class="p-2 text-left ">{{ oft.createdAt!.toDate() | date:'shortDate' }}</td>
+                      <td class="p-2 text-left "></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        }
+      }
+    }
   </tbody>
 </table>
 
 <div class="flex flex-row items-center justify-end gap-4 mt-4">
-  <button type="submit" class="tkd-btn tkd-secondary tkd-outline" routerLink="/roster/">Abbrechen</button>
-  <button type="submit" class="tkd-btn tkd-primary" (click)="approve()">Freigeben</button>
+  <button type="submit" hlmBtn variant="secondary" routerLink="/roster/">Abbrechen</button>
+  <button type="submit" hlmBtn (click)="approve()">Freigeben</button>
 </div>

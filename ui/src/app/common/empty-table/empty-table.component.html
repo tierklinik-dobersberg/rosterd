@@ -1,0 +1,31 @@
+<div class="h-[335px] w-full p-4 flex flex-row items-center justify-center">
+    @if (!loading() && totalCount() > 0 && filteredCount() === 0) {
+    <div hlmAlert class="w-fit ">
+      <hlm-icon hlmAlertIcon name="lucideAlertTriangle" />
+
+      <p hlmAlertTitle>
+        Es wurden keine Ergebnisse für deinen Filter gefunden!
+      </p>
+
+      @if (filter(); as filter) {
+      <p hlmAlertDesc class="pt-2 flex flex-row justify-end gap-4">
+        <button hlmBtn variant="secondary" (click)="filter.reset()">
+          Filter zurücksetzten
+        </button>
+
+        <button hlmBtn variant="secondary" (click)="filter.open()">
+          Filter bearbeiten
+        </button>
+      </p>
+      }
+    </div>
+
+    } @else {
+      @if (!loading()) {
+        <div class="flex flex-row items-center gap-3 justify-center text-primary">
+          <hlm-icon name="lucideInbox" size="xl" class="text-gray-500" />
+          <h3 class="text-xl font-light">Wow, sooo leer</h3>
+        </div>
+      }
+    }
+</div>

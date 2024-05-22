@@ -10,7 +10,5 @@ export const routes: Routes = [
   { path: 'costs', loadComponent: () => import("./offtimecosts/offtimecosts.component").then(m => m.OfftimecostsComponent) },
   { path: 'costs/create', loadComponent: () => import("./offtimecosts/createcosts/createcosts.component").then(m => m.CreatecostsComponent) },
   { path: 'offtimes', loadComponent: () => import("./offtime/offtime.component").then(m => m.OfftimeComponent) },
-  { path: 'offtimes/create', loadComponent: () => import("./offtime/create-offtime/create-offtime.component").then(m => m.CreateOfftimeComponent), data: {isNewEntry: true} },
-  { path: 'offtimes/edit/:id', loadComponent: () => import("./offtime/create-offtime/create-offtime.component").then(m => m.CreateOfftimeComponent) },
   { path: 'roster', loadChildren: () => import("./roster2/roster2.module").then(m => m.TkdRoster2Module)},
 ];

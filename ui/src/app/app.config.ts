@@ -5,7 +5,8 @@ import { APP_BASE_HREF } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { TkdConnectModule } from '@tierklinik-dobersberg/angular/connect';
-import { TkdLayoutModule } from '@tierklinik-dobersberg/angular/layout';
+import { TkdLayoutModule, provideBreakpoints } from '@tierklinik-dobersberg/angular/layout';
+import { Breakpoints } from '@tierklinik-dobersberg/tailwind/breakpoints';
 import { NZ_DATE_CONFIG, NZ_I18N, de_DE } from 'ng-zorro-antd/i18n';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { environment } from 'src/environments/environment';
@@ -15,6 +16,7 @@ import { provideIcons } from '@ng-icons/core';
 import { heroBars4, heroUser, heroCog6Tooth, heroClock } from '@ng-icons/heroicons/outline';
 import { heroUserMini, heroXMarkMini } from '@ng-icons/heroicons/mini';
 import { ionCalendarOutline, ionAirplaneOutline, ionAlarmOutline } from '@ng-icons/ionicons';
+import { lucideCalendar, lucideCalendarClock, lucideCog, lucideMenu, lucidePlane, lucideUserX } from '@ng-icons/lucide';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,6 +31,14 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(NzModalModule),
     importProvidersFrom(TkdConnectModule.forRoot(environment)),
     importProvidersFrom(TkdLayoutModule),
-    provideIcons({ heroBars4, heroXMarkMini, heroUserMini, heroUser, ionCalendarOutline, ionAirplaneOutline, ionAlarmOutline, heroClock, heroCog6Tooth })
+    provideIcons({
+      heroBars4, heroXMarkMini, heroUserMini, heroUser, ionCalendarOutline, ionAirplaneOutline, ionAlarmOutline, heroClock, heroCog6Tooth, lucideMenu,
+      lucideCalendar,
+      lucidePlane,
+      lucideCalendarClock,
+      lucideUserX,
+      lucideCog
+    }),
+    provideBreakpoints(Breakpoints)
   ],
 };

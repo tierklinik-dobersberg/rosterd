@@ -2,16 +2,15 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnIn
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationStart, ParamMap, Router } from "@angular/router";
 import { PartialMessage, Timestamp } from "@bufbuild/protobuf";
+import { ConnectError } from "@connectrpc/connect";
+import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
+import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 import { GetRosterResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
 import { NzCalendarMode } from "ng-zorro-antd/calendar";
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { Subject, forkJoin, from, of, throwError } from 'rxjs';
 import { debounceTime, filter, switchMap } from "rxjs/operators";
-import { HOLIDAY_SERVICE, OFFTIME_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { toDateString } from "src/utils";
-import { ConnectError } from "@connectrpc/connect";
-import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
-import { formatDate } from "src/duration";
 
 export interface RosterShift extends RequiredShift {
   definition: WorkShift;
@@ -181,7 +180,7 @@ export class TkdRosterPlannerComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
         switchMap(params => {
           const id = params.get("id");
-          if (!!id) {
+          if (id) {
             return from(
               this.rosterService.getRoster({
                 search: {
@@ -189,11 +188,11 @@ export class TkdRosterPlannerComponent implements OnInit {
                   value: id,
                 },
               })
-              .catch(err => {
-                this.nzMessage.error('Dienstplan konnte nicht geladen werden: ' + ConnectError.from(err).rawMessage)
+                .catch(err => {
+                  this.nzMessage.error('Dienstplan konnte nicht geladen werden: ' + ConnectError.from(err).rawMessage)
 
-                return new GetRosterResponse;
-              })
+                  return new GetRosterResponse;
+                })
             )
           }
 
@@ -237,10 +236,10 @@ export class TkdRosterPlannerComponent implements OnInit {
           this.readonly = this.currentRoute.snapshot.data['readonly'] || false;
 
           const _from = new Date(fromDate)
-          const _to  = new Date(toDate);
+          const _to = new Date(toDate);
 
           this.from = new Date(_from.getFullYear(), _from.getMonth(), _from.getDate(), 0, 0, 0)
-          this.to = new Date(_to.getFullYear(), _to.getMonth(), _to.getDate()+1, 0, 0, -1)
+          this.to = new Date(_to.getFullYear(), _to.getMonth(), _to.getDate() + 1, 0, 0, -1)
 
           this.selectedDate = this.from;
 
@@ -298,13 +297,19 @@ export class TkdRosterPlannerComponent implements OnInit {
         // prepare the dates slice for mobile view
         this.dates = [];
         let iter = this.from!;
-        while(iter.toDateString() !== this.to?.toDateString()) {
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
           this.dates.push(iter)
+
+          if (iter.toDateString() === this.to!.toDateString()) {
+            break;
+          }
 
           iter = new Date(iter.getFullYear(), iter.getMonth(), iter.getDate() + 1)
         }
 
-        let allowedRoles = new Set<string>();
+        const allowedRoles = new Set<string>();
         let roster: Roster;
 
         if (result.roster.roster.length) {

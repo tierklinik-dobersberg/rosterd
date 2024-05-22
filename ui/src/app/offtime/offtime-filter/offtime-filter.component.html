@@ -1,0 +1,82 @@
+<hlm-sheet>
+  <button hlmBtn brnSheetTrigger [variant]="_computedButtonVariant()" [side]="_computedSheetSide()" #button>
+    <hlm-icon name="lucideFilter" size="sm" class="mr-2"></hlm-icon>
+    Filter
+  </button>
+
+  <hlm-sheet-content *brnSheetContent="let ctx">
+    <hlm-sheet-header>
+      <h3 hlmSheetTitle class="flex flex-row items-center gap-2 justify-center sm:justify-start">
+        @if (_layout.md()) {
+          <hlm-icon class="text-primary/50" name="lucideFilter"></hlm-icon>
+        }
+        Urlaubsanträge filtern
+      </h3>
+
+      <p hlmSheetDescription>Hier kannst du die Urlaubsanträge filtern.</p>
+      <brn-separator hlmSeparator decorative />
+    </hlm-sheet-header>
+
+    <span hlmSheetClose></span>
+
+    <div class="space-y-4 py-4">
+      <div class="space-y-0.5 py-4">
+        <label for="state" hlmLabel class="text-primary/50 font-semibold">Art</label>
+
+        <brn-radio-group [(ngModel)]="_stateFilter" hlm name="state">
+          <brn-radio hlm value="all">
+            <hlm-radio-indicator indicator />
+            Alle
+          </brn-radio>
+
+          <brn-radio hlm value="new">
+            <hlm-radio-indicator indicator />
+            Nur Neue
+          </brn-radio>
+
+        </brn-radio-group>
+      </div>
+
+      <brn-separator hlmSeparator decorative />
+
+      <div class="space-y-0.5 py-4">
+        <label for="users" hlmLabel class="text-primary/50 font-semibold">Mitarbeiter</label>
+        <brn-select name="users" [multiple]="true" placeholder="Nach Mitarbeitern filtern" [(ngModel)]="_profileFilter">
+
+          <hlm-select-trigger class="w-full">
+            <hlm-select-value />
+          </hlm-select-trigger>
+
+          <hlm-select-content class="max-h-[30rem]">
+            @for (user of profiles(); track user.user!.id) {
+            <hlm-option [value]="user.user!.id" class="group">
+              <hlm-avatar
+                class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-4"
+                variant="small">
+                <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+              </hlm-avatar>
+
+              {{ user | displayName }}
+            </hlm-option>
+            }
+          </hlm-select-content>
+
+        </brn-select>
+      </div>
+
+      <brn-separator hlmSeparator decorative />
+
+      <div class="space-y-0.5 py-4">
+        <label for="range" hlmLabel class="text-primary/50 font-semibold">Zeitraum</label>
+        <nz-range-picker name="range" hlmInput [(ngModel)]="_timeRangeFilter"></nz-range-picker>
+      </div>
+
+      <brn-separator hlmSeparator decorative />
+
+      <div class="flex flex-row items-center justify-end gap-2 pt-8">
+        <button hlmBtn variant="secondary" (click)="reset(); ctx.close()">Zurücksetzen</button>
+        <button hlmBtn variant="default" (click)="emit(); ctx.close()">Anwenden</button>
+      </div>
+    </div>
+  </hlm-sheet-content>
+</hlm-sheet>

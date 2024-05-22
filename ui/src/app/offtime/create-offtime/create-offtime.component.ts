@@ -1,18 +1,28 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DIALOG_DATA } from '@angular/cdk/dialog';
+import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
+import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
+import { toast } from 'ngx-sonner';
+
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
-import { OffTimeType, Profile } from '@tierklinik-dobersberg/apis';
+import { ConnectError } from '@connectrpc/connect';
+import { BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
+import { HlmCardModule } from '@tierklinik-dobersberg/angular/card';
+import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
+import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
+import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
+import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
+import { OffTimeEntry, OffTimeType, Profile } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
-import { NzMessageModule, NzMessageService } from 'ng-zorro-antd/message';
-import { ConnectError } from '@connectrpc/connect';
 
 interface CreateModel {
   id?: string;
@@ -36,7 +46,6 @@ function makeEmptyCreateModel(): CreateModel {
   selector: 'app-create-offtime',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     TkdRoster2Module,
     NzRadioModule,
@@ -44,24 +53,33 @@ function makeEmptyCreateModel(): CreateModel {
     RouterModule,
     NzDatePickerModule,
     NzAvatarModule,
-    NzMessageModule
+    HlmCardModule,
+    HlmButtonModule,
+    HlmAvatarModule,
+    HlmInputModule,
+    HlmLabelModule,
+    BrnSelectModule,
+    HlmSelectModule,
+    HlmDialogModule,
+    BrnDialogModule,
   ],
   templateUrl: './create-offtime.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CreateOfftimeComponent implements OnInit {
-  private readonly offTimeService = inject(OFFTIME_SERVICE);
-  private readonly usersService = inject(USER_SERVICE);
-  private readonly route = inject(ActivatedRoute)
-  private readonly router = inject(Router)
+  private readonly offTimeService = injectOfftimeService();
+  private readonly usersService = injectUserService();
   private readonly destroyRef = inject(DestroyRef);
-  private readonly nzMessage = inject(NzMessageService)
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly data = inject(DIALOG_DATA, { optional: true });
+  private readonly dialogRef = inject(BrnDialogRef);
+
+  readonly editId = input('');
 
   model = makeEmptyCreateModel();
   originalModel = makeEmptyCreateModel();
 
-  profiles: Profile[] = [];
+  protected readonly _profiles = signal<Profile[] | null>(null);
 
   async save() {
     if (this.model.id) {
@@ -87,7 +105,6 @@ export class CreateOfftimeComponent implements OnInit {
         paths.push("request_type")
       }
 
-
       await this.offTimeService.updateOffTimeRequest({
         id: this.model.id,
         description: this.model.comment,
@@ -99,12 +116,14 @@ export class CreateOfftimeComponent implements OnInit {
           paths,
         }
       })
-      .then(() => {
-        this.router.navigate(['/offtimes'])
-      })
-      .catch(err => {
-        this.nzMessage.error(ConnectError.from(err).rawMessage)
-      })
+        .then(() => {
+          toast.success(`Antrag wurde erfolgreich bearbeitet!`)
+          this.dialogRef.close();
+        })
+        .catch((err: unknown) => {
+          toast.error(ConnectError.from(err).rawMessage)
+        })
+
     } else {
       // Create a new entry
       await this.offTimeService.createOffTimeRequest({
@@ -114,12 +133,14 @@ export class CreateOfftimeComponent implements OnInit {
         requestType: this.typeToProto(this.model.type),
         requestorId: this.model.requestorId,
       })
-      .then(() => {
-        this.router.navigate(['/offtimes'])
-      })
-      .catch(err => {
-        this.nzMessage.error(ConnectError.from(err).rawMessage);
-      })
+        .then(() => {
+          toast.success(`Antrag wurde erfolgreich erstellt!`)
+
+          this.dialogRef.close();
+        })
+        .catch(err => {
+          toast.error(ConnectError.from(err).rawMessage);
+        })
     }
   }
 
@@ -137,50 +158,47 @@ export class CreateOfftimeComponent implements OnInit {
   ngOnInit(): void {
     this.usersService.listUsers({})
       .then(response => {
-        this.profiles = response.users;
-        this.cdr.markForCheck();
+        this._profiles.set(response.users);
       })
 
-    this.route
-      .data
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(data => {
-        if (!!data['isNewEntry']) {
-          this.model = makeEmptyCreateModel();
-        } else {
-          this.offTimeService.getOffTimeEntry({
-            ids: [this.route.snapshot.paramMap.get("id")!],
-          }).then(response => {
-            this.model = {
-              id: response.entry[0].id,
-              comment: response.entry[0].description,
-              from: response.entry[0].from!.toDate(),
-              to: response.entry[0].to!.toDate(),
-              type: 'auto',
-              requestorId: response.entry[0].requestorId
-            };
+    if (this.data && 'entry' in this.data && this.data.entry) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.applyToModel((this.data as any).entry)
+    } else {
+      this.model = makeEmptyCreateModel();
+    }
+  }
 
-            switch (response.entry[0].type) {
-              case OffTimeType.UNSPECIFIED:
-                this.model.type = 'auto';
-                break;
-              case OffTimeType.TIME_OFF:
-                this.model.type = 'timeoff';
-                break;
-              case OffTimeType.VACATION:
-                this.model.type = 'vacation';
-                break;
-            }
+  private applyToModel(entry: OffTimeEntry) {
+    this.model = {
+      id: entry.id,
+      comment: entry.description,
+      from: entry.from!.toDate(),
+      to: entry.to!.toDate(),
+      type: 'auto',
+      requestorId: entry.requestorId
+    };
 
-            // clone the model type so we can compare for changes
-            // when updating.
-            this.originalModel = {
-              ...this.model
-            };
+    switch (entry.type) {
+      case OffTimeType.UNSPECIFIED:
+        this.model.type = 'auto';
+        break;
+      case OffTimeType.TIME_OFF:
+        this.model.type = 'timeoff';
+        break;
+      case OffTimeType.VACATION:
+        this.model.type = 'vacation';
+        break;
+    }
 
-            this.cdr.markForCheck();
-          })
-        }
-      })
+    // clone the model type so we can compare for changes
+    // when updating.
+    this.originalModel = {
+      ...this.model
+    };
+  }
+
+  abort() {
+    this.dialogRef.close();
   }
 }

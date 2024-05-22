@@ -1,44 +1,82 @@
-<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-gray-100 border-tertiary" (ngSubmit)="save()" #form="ngForm">
-  <h1 class="text-lg">Abwesenheit eintragen</h1>
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Mitarbeiter</label>
-    <nz-select name="requestor" [(ngModel)]="model.userId" [nzOptionHeightPx]="48" required>
-      <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!" [nzLabel]="user | displayName">
-        <span class="flex flex-row items-center justify-start gap-2 text-left">
-          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-          </nz-avatar>
-          {{ user | displayName }}
-        </span>
-      </nz-option>
-    </nz-select>
+<form (ngSubmit)="save()" #form="ngForm" class="w-full">
+  <hlm-dialog-header>
+    <h3 hlmDialogTitle>
+      Abwesenheit entragen
+    </h3>
+    <p hlmDialogDescription>Erstelle einen neuen Abwesenheits-Eintrag</p>
+  </hlm-dialog-header>
+
+  <div class="p-2 flex flex-col gap-8">
+    <div class="flex flex-col">
+      <label hlmLabel for="requestor">Mitarbeiter *</label>
+
+      <brn-select placeholder="Mitarbeitern auswählen" [(ngModel)]="_userId" name="requestor" class="mt-1">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content class="max-h-[30rem]">
+          @for (user of _profiles(); track user.user!.id) {
+          <hlm-option [value]="user.user!.id" class="group">
+            <hlm-avatar
+              class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-4"
+              variant="small">
+              <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+            </hlm-avatar>
+
+            {{ user | displayName }}
+          </hlm-option>
+          }
+        </hlm-select-content>
+      </brn-select>
+
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="comment">
+        Beschreibung (optional)
+        <input type="text" hlmInput class="w-full" name="comment" [(ngModel)]="_comment">
+      </label>
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="costs">
+        Zeit *
+        <input type="text" hlmInput class="w-full" name="costs" required
+          [ngModel]="_costs() | duration:'default-hours':'s'" (ngModelChange)="updateCosts($event)">
+      </label>
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="date">Datum *
+        <nz-date-picker hlmInput [nzShowTime]="false" name="date" required [(ngModel)]="_date"></nz-date-picker>
+      </label>
+    </div>
+
+    <div class="flex flex-col">
+      <label hlmLabel for="type">
+        Art *
+      </label>
+
+      <nz-radio-group [(ngModel)]="_type" name="type" required class="w-full">
+        <label for="name" nz-radio-button nzValue="vacation">Urlaub</label>
+        <label for="name" nz-radio-button nzValue="timeOff">Zeitausgleich</label>
+      </nz-radio-group>
+    </div>
+
+    @if (_costs() > 0) {
+    <div hlmAlert variant="destructive">
+      <hlm-icon hlmAlertIcon name="lucideAlertTriangle" />
+      <p hlmAlertTitle>Warnung</p>
+      <p hlmAlertDesc>Dieser Eintrag fügt {{ _costs() | duration:'default-hours':'s'}} an {{ _type() ===
+        'vacation' ?
+        'Urlaubsguthaben' : 'ZA-Guthaben' }} hinzu. Bitte überprüfe ob "Zeit" ein negativer Wert sein sollte.</p>
+    </div>
+    }
   </div>
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="comment" [(ngModel)]="model.comment">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Zeit</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="costs" required [ngModel]="model.costs | duration:'default-hours':'s'" (ngModelChange)="updateCosts($event)">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Datum</label>
-    <nz-date-picker [nzShowTime]="false" name="date" required [(ngModel)]="model.date"></nz-date-picker>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Art</label>
-    <nz-radio-group [(ngModel)]="model.type" name="type" required>
-      <label nz-radio-button nzValue="vacation">Urlaub</label>
-      <label nz-radio-button nzValue="timeOff">Zeitausgleich</label>
-    </nz-radio-group>
-  </div>
-
-  <div *ngIf="model.costs > 0" class="p-4 text-white rounded bg-opacity-70 bg-alert-red">
-    <p>Dieser Eintrag fügt {{ model.costs | duration:'default-hours':'s'}} an {{ model.type === 'vacation' ? 'Urlaubsguthaben' : 'ZA-Guthaben' }} hinzu. Bitte überprüfe ob "Zeit" ein negativer Wert sein sollte.</p>
-  </div>
-
-  <button [disabled]="form.invalid" class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
+  <hlm-dialog-footer>
+    <button hlmBtn variant="secondary" (click)="dialogRef.close()">Abbrechen</button>
+    <button [disabled]="form.invalid" hlmBtn type="submit">Speichern</button>
+  </hlm-dialog-footer>
 </form>

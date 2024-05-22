@@ -1,35 +1,131 @@
+import { BrnTooltipModule } from '@spartan-ng/ui-tooltip-brain';
+import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
+import { BrnMenuTriggerDirective } from '@spartan-ng/ui-menu-brain';
+import { lucideListPlus, lucideMoreVertical, lucideTrash2, lucideAlertTriangle } from '@ng-icons/lucide';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { OffTimeCosts, Profile, UserOffTimeCosts } from '@tierklinik-dobersberg/apis';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
-import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
-import { TkdRoster2Module } from '../roster2/roster2.module';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { NzMessageModule, NzMessageService } from 'ng-zorro-antd/message';
 import { ConnectError } from '@connectrpc/connect';
 import { NgIconsModule } from '@ng-icons/core';
+import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
+import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
+import { BrnTableModule } from '@spartan-ng/ui-table-brain';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
+import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
+import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
+import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
+import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
+import { HlmTableModule } from '@tierklinik-dobersberg/angular/table';
+import { OffTimeCosts, Profile, UserOffTimeCosts } from '@tierklinik-dobersberg/apis';
+import { toast } from 'ngx-sonner';
+import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
+import { DisplayNamePipe, DurationPipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { UserLetterPipe } from 'src/app/common/pipes';
+import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
+import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog';
+import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { CreatecostsComponent } from './createcosts/createcosts.component';
+import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
+import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
+import { CostFilter, OffTimeCostFilterComponent, emptyFilter } from './cost-filter/cost-filter.component';
+import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
+import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
+import { TkdEmptyTableComponent } from '../common/empty-table';
+import { sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '../common/behaviors';
+
+type OffTimeCostSortFunc = (a: CostEntry, b: CostEntry, profiles: Profile[]) => number;
+
+interface CostEntry {
+  cost: OffTimeCosts,
+  profile: Profile,
+}
+
+enum Columns {
+  User = 'user',
+  Date = 'date',
+  Duration = 'duration',
+  Type = 'type',
+  Reason = 'reason',
+  Comment = 'comment',
+  CreatedAt = 'createdAt',
+  CreatedBy = 'createdBy',
+  Actions = 'actions'
+}
+
+const sortFunctions: { [key in Columns]?: OffTimeCostSortFunc } = {
+  [Columns.User]: (a, b) => {
+    return sortUserProfile(a.profile, b.profile)
+  },
+
+  [Columns.Date]: (a, b) => {
+    return sortProtoTimestamps(a.cost.date, b.cost.date);
+  },
+
+  [Columns.Duration]: (a, b) => {
+    return sortProtoDuration(a.cost!.costs!, b.cost!.costs!)
+  },
+
+  [Columns.Type]: (a, b) => {
+    const av = a.cost.isVacation ? 1 : 0;
+    const bv = b.cost.isVacation ? 1 : 0;
+
+    return bv - av;
+  },
+
+  [Columns.CreatedAt]: (a, b) => {
+    return sortProtoTimestamps(a.cost.createdAt, b.cost.createdAt);
+  },
+
+  [Columns.CreatedBy]: (a, b, profiles) => {
+    const ua = profiles.find(p => p.user!.id === a.profile.user!.id);
+    const ub = profiles.find(p => p.user!.id === b.profile.user!.id);
+
+    return sortUserProfile(ua!, ub!);
+  }
+} as const;
 
 @Component({
   selector: 'app-offtimecosts',
   standalone: true,
   imports: [
     CommonModule,
-    NzDatePickerModule,
-    NzRadioModule,
-    NzAvatarModule,
-    NzSelectModule,
-    NzModalModule,
-    NzMessageModule,
     FormsModule,
     RouterModule,
-    TkdRoster2Module,
-    NgIconsModule
+    NgIconsModule,
+    HlmAvatarModule,
+
+    HlmIconModule,
+    HlmButtonModule,
+    HlmDialogModule,
+    HlmMenuModule,
+    BrnMenuTriggerDirective,
+    BrnDialogModule,
+    HlmTableModule,
+    HlmAlertModule,
+    HlmAlertDialogModule,
+    BrnAlertDialogModule,
+    BrnTableModule,
+    BrnSelectModule,
+    HlmSelectModule,
+    HlmInputModule,
+    HlmBadgeModule,
+    HlmTooltipModule,
+    BrnTooltipModule,
+    DisplayNamePipe,
+    UserLetterPipe,
+    DurationPipe,
+    ToUserPipe,
+    HlmSpinnerModule,
+    TkdTableSortColumnComponent,
+    TkdContainerSizeClassDirective,
+    TkdEmptyTableComponent,
+    OffTimeCostFilterComponent,
+    TkdEmptyTableComponent,
   ],
+  providers: provideIcons({ lucideListPlus, lucideMoreVertical, lucideTrash2, lucideAlertTriangle }),
   templateUrl: './offtimecosts.component.html',
   styles: [
     `
@@ -41,108 +137,205 @@ import { NgIconsModule } from '@ng-icons/core';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OfftimecostsComponent implements OnInit {
-  private readonly offTimeService = inject(OFFTIME_SERVICE);
-  private readonly usersService = inject(USER_SERVICE);
-  private readonly nzModal = inject(NzModalService)
-  private readonly nzMessageService = inject(NzMessageService);
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly offTimeService = injectOfftimeService();
+  private readonly usersService = injectUserService();
+  private readonly dialog = inject(HlmDialogService);
 
-  timeRange: [Date, Date] | null = null;
-  filterType: 'all' | 'vacation' | 'za' = 'all';
-  filterByUser: string[] = [];
+  protected readonly container = injectContainerSize();
+  protected readonly _displayedColumns = computed(() => {
+    const columns: Columns[] = [
+      Columns.User,
+      Columns.Date,
+      Columns.Duration,
+    ]
 
-  profiles: Profile[] = [];
-  allCosts: UserOffTimeCosts[] = [];
-  costs: UserOffTimeCosts[] = [];
+    if (this.container.sm()) {
+      columns.push(Columns.Type);
+    }
 
-  trackUserCosts: TrackByFunction<UserOffTimeCosts> = (_, u) => u.userId;
-  trackCosts: TrackByFunction<OffTimeCosts> = (_, o) => o.id;
+    if (this.container.md()) {
+      columns.push(Columns.Reason)
+    }
 
-  ngOnInit(): void {
-    this.usersService.listUsers({})
-      .then(res => {
-        this.profiles = res.users;
-        this.cdr.markForCheck();
-      })
+    if (this.container.lg()) {
+      columns.push(Columns.Comment)
+    }
 
-    this.loadCosts()
-  }
+    if (this.container.width() >= 1200) {
+      columns.push(Columns.CreatedAt)
+    }
 
-  filterCosts() {
-    this.costs = this.allCosts
-      .map(c => {
-        const copy = new UserOffTimeCosts(c)
-        copy.costs = copy.costs.filter(cost => {
-          if (this.timeRange) {
-            console.log(cost)
-            const dateSeconds = cost.date?.toDate().getTime() || 0;
+    if (this.container.width() >= 1401/120) {
+      columns.push(Columns.CreatedBy)
+    }
 
-            console.log(dateSeconds, this.timeRange.map(v => v.getTime()))
-            if (!!this.timeRange[0] && this.timeRange[0].getTime() > dateSeconds) {
-              return false;
-            }
+    columns.push(Columns.Actions);
 
-            if (!!this.timeRange[1] && this.timeRange[1].getTime() < dateSeconds) {
-              return false;
-            }
-          }
+    return columns;
+  })
+  protected readonly columns = Columns;
+  protected readonly _loading = signal(false);
+  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _costs = signal<UserOffTimeCosts[]>([]);
+  protected readonly _entries = computed(() => {
+    const result: CostEntry[] = [];
+    const profiles = this._profiles();
 
-          if (this.filterType !== 'all') {
-            switch (this.filterType) {
-              case 'vacation':
-                if (!cost.isVacation) {
-                  return false
-                }
-                break;
-              case 'za':
-                if (cost.isVacation) {
-                  return false;
-                }
-                break;
-            }
-          }
-
-          return true
+    this._costs()
+      .forEach(userCost => {
+        userCost.costs.forEach(cost => {
+          result.push({
+            cost: cost,
+            profile: profiles.find(user => user!.user!.id === userCost.userId)!,
+          })
         })
-
-        return copy
       })
-      .filter(c => {
-        if (this.filterByUser.length > 0) {
-          if (!this.filterByUser.includes(c.userId)) {
-            return false;
-          }
+
+    return result;
+  });
+
+  protected readonly _filter = model<CostFilter>(emptyFilter);
+
+  protected readonly _sort = model<SortColumn<typeof sortFunctions> | null>(null)
+
+  protected readonly _filteredEntries = computed(() => {
+    const filter = this._filter();
+    const entries = this._entries();
+
+    if (!filter) {
+      return entries;
+    }
+
+    return entries.filter((cost) => {
+      if (filter.profiles && filter.profiles.length > 0 && cost.profile) {
+        if (!filter.profiles.includes(cost.profile.user!.id)) {
+          return false
+        }
+      }
+
+      if (filter.type) {
+        switch (filter.type) {
+          case 'all':
+            break;
+
+          case 'timeoff':
+            if (cost.cost.isVacation) {
+              return false
+            }
+            break;
+
+          case 'vacation':
+            if (!cost.cost.isVacation) {
+              return false
+            }
+
+            break;
+        }
+      }
+
+      if (filter.timeRange) {
+        const dateSeconds = cost.cost.date?.toDate().getTime() || 0;
+
+        if (!!filter.timeRange[0] && filter.timeRange[0].getTime() > dateSeconds) {
+          return false;
         }
 
-        return c.costs.length
+        if (!!filter.timeRange[1] && filter.timeRange[1].getTime() < dateSeconds) {
+          return false;
+        }
+      }
+
+      if (filter.reason !== 'all') {
+        switch (filter.reason) {
+          case 'offtime':
+            if (!cost.cost.offtimeId) {
+              return false;
+            }
+            break;
+
+          case 'roster':
+            if (!cost.cost.rosterId) {
+              return false
+            }
+            break;
+        }
+      }
+
+      return true;
+    })
+  })
+
+  protected readonly _filteredAndSorted = computed(() => {
+    const filtered = this._filteredEntries();
+    const sort = this._sort();
+    const profiles = this._profiles();
+
+    if (!sort) {
+      return filtered;
+    }
+
+    const fn = sortFunctions[sort.column];
+    if (!fn) {
+      return filtered
+    }
+
+    return [...filtered].sort((a, b,) => {
+      const result = fn(a, b, profiles);
+
+      if (sort.direction === 'ASC') {
+        return result * -1
+      }
+
+      return result;
+    })
+  })
+  protected readonly _totalCount = computed(() => this._entries().length);
+  protected readonly _filteredCount = computed(() => this._filteredAndSorted().length);
+
+  protected readonly trackEntries: TrackByFunction<CostEntry> = (_, e) => e.cost.id;
+
+
+  ngOnInit(): void {
+    this._loading.set(true);
+
+    this.usersService.listUsers({})
+      .then(res => {
+        this._profiles.set(res.users);
       })
+      .then(() => this.loadCosts())
   }
 
   private loadCosts() {
+    this._loading.set(true);
     this.offTimeService.getOffTimeCosts({})
       .then(res => {
-        this.allCosts = res.results
-        this.filterCosts()
-        this.cdr.markForCheck();
+        this._costs.set(res.results);
       })
+      .catch(err => {
+        toast.error(ConnectError.from(err).message);
+      })
+      .finally(() => this._loading.set(false))
   }
 
   async delete(id: string) {
-    this.nzModal
-      .confirm({
-        nzTitle: 'Bestätigung erforderlich',
-        nzContent: 'Möchtest du den Eintrag wirklich löschen?',
-        nzOkDanger: true,
-        nzOkText: 'Löschen',
-        nzCancelText: 'Abbrechen',
-        nzOnOk: async () => {
-          await this.offTimeService.deleteOffTimeCosts({ids: [id]})
-            .catch(err => {
-              this.nzMessageService.error('Eintrag konnte nicht gelöscht werden: ' + ConnectError.from(err).rawMessage)
-            })
+    try {
+      await this.offTimeService.deleteOffTimeCosts({ ids: [id] })
 
-          this.loadCosts()
-        }
-      })
+      this.loadCosts()
+
+      toast.success('Eintrag wurde erfolgreich gelöscht.')
+    } catch (err) {
+      console.log('wanted to delete id', id)
+      toast.error(`Fehler: ${ConnectError.from(err).message}`)
+    }
+  }
+
+  openCreateDialog() {
+    this.dialog.open(CreatecostsComponent, {
+      closeOnBackdropClick: false,
+      closeOnOutsidePointerEvents: false,
+    })
+      .closed$
+      .subscribe(() => this.loadCosts());
   }
 }

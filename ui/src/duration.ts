@@ -157,7 +157,7 @@ export class Duration {
     return sign + str;
   }
 
-  static parseString(v: string): Duration {
+  static parseString(v: string, throwError = false): Duration {
     let time = 0;
 
     let numberValue = '';
@@ -243,6 +243,10 @@ export class Duration {
 
       return new Duration(parseFactor * time)
     } catch (err) {
+      if (throwError) {
+        throw err;
+      }
+
       return new Duration(0)
     }
   }
@@ -272,7 +276,7 @@ export function formatDate(d: Date | string | null, sep = '-'): string {
   d = new Date(d)
   let month = '' + (d.getMonth() + 1)
   let day = '' + d.getDate()
-  let year = d.getFullYear()
+  const year = d.getFullYear()
 
   if (month.length < 2)
     month = '0' + month;

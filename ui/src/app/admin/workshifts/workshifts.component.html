@@ -1,90 +1,145 @@
-<form class="flex flex-col items-stretch justify-start w-full max-w-4xl gap-8 p-6 m-auto border rounded bg-gray-100 border-tertiary" (ngSubmit)="save()">
+<form class="w-[600px]" #form="ngForm" (ngSubmit)="save()">
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Name</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="name" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.name">
+  <hlm-dialog-header class="pb-4">
+    <h3 hlmDialogTitle>Arbeitschicht bearbeiten</h3>
+    <p hlmDialogDescription>Hier kannst du eine Arbeitsschicht bearbeiten oder erstellen.</p>
+
+    <brn-separator hlm />
+  </hlm-dialog-header>
+
+  <div class="flex flex-col gap-4 overflow-y-auto max-h-[70vh] p-4 w-full">
+
+    <app-error-messages>
+      <label hlmLabel for="name">
+        Name
+      </label>
+      <input type="text" hlmInput name="name" [(ngModel)]="_name" required />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="description">
+        Beschreibung
+      </label>
+      <input type="text" hlmInput name="description" [(ngModel)]="_description" />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="color">
+        Farbe
+      </label>
+      <input type="text" hlmInput name="color" [(ngModel)]="_color" />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="displayName">
+        Anzeige-Name
+      </label>
+      <input type="text" hlmInput name="displayName" [(ngModel)]="_displayName" required />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="from">
+        Startzeit
+      </label>
+      <input type="text" hlmInput name="from" [(ngModel)]="_form" required />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="duration">
+        Dauer
+      </label>
+      <input type="text" hlmInput name="duration" [(ngModel)]="_duration" duration required />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="value">
+        Wert
+      </label>
+      <input type="text" hlmInput name="value" [(ngModel)]="_timeValue" duration />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="count">
+        Anzahl Mitarbeiter
+      </label>
+      <input type="number" hlmInput name="count" required [(ngModel)]="_staffCount" [min]="1" />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="order">
+        Reihenfolge
+      </label>
+      <input type="number" hlmInput name="order" [(ngModel)]="_order" />
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="type">Typ</label>
+
+      <brn-select name="type" class="inline-block col-span-2" placeholder="Bitte auswählen" required
+        [(ngModel)]="_onHoliday">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content class="w-56 max-h-[30rem]">
+          <hlm-option [value]="true"> Urlaub </hlm-option>
+          <hlm-option [value]="false"> Regulär </hlm-option>
+        </hlm-select-content>
+      </brn-select>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="roles">Rollen</label>
+
+      <brn-select name="roles" [multiple]="true" placeholder="Bitte auswählen" [(ngModel)]="_eligibleRoles">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content class="max-h-[30rem]">
+          @for (role of _roles(); track role.id) {
+          <hlm-option [value]="role.id"> {{ role.name }} </hlm-option>
+          }
+        </hlm-select-content>
+      </brn-select>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="days">Wochentage</label>
+
+      <brn-select name="days" [multiple]="true" class="inline-block col-span-2" placeholder="Bitte auswählen"
+        [(ngModel)]="_days">
+        <hlm-select-trigger class="w-full">
+          <hlm-select-value />
+        </hlm-select-trigger>
+
+        <hlm-select-content class="max-h-[30rem]">
+          <hlm-option [value]="1">Montag</hlm-option>
+          <hlm-option [value]="2">Dienstag</hlm-option>
+          <hlm-option [value]="3">Mittwoch</hlm-option>
+          <hlm-option [value]="4">Donnerstag</hlm-option>
+          <hlm-option [value]="5">Freitag</hlm-option>
+          <hlm-option [value]="6">Samstag</hlm-option>
+          <hlm-option [value]="0">Sonntag</hlm-option>
+        </hlm-select-content>
+      </brn-select>
+    </app-error-messages>
+
+    <!-- TODO: tags -->
+
+    @if( _isEdit() ){
+    <label hlmLabel class="flex items-center" for="updateInPlace">
+      <hlm-checkbox [(ngModel)]="_updateInPlace" class="mr-2" name="updateInPlace" />
+      Arbeitsschicht überschreiben
+    </label>
+    }
   </div>
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Beschreibung</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="description" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.description">
-  </div>
+  <brn-separator hlm />
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Farbe</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="color" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.color">
-  </div>
+  <hlm-dialog-footer class="mt-4">
+    <button hlmBtn variant="secondary" type="button" (click)="abort()">Abbrechen</button>
+    <button hlmBtn variant="default" [disabled]="form.invalid" type="submit">Speichern</button>
+  </hlm-dialog-footer>
 
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Anzeige-Name</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="displayName" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.displayName">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Startzeit</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="from" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.from">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Dauer <span class="text-secondary italic">(bis {{ workShift.from | daytime:workShift.duration }})</span></label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="duration" [ngModel]="workShift.duration | duration" (ngModelChange)="workShift.duration = parseDuration($event).toProto(); handleChanges()">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Wert</label>
-    <input type="text" class="w-full p-1 text-sm border text-normal border-tertiary" name="timeWorth" [ngModel]="workShift.timeWorth | duration" (ngModelChange)="workShift.timeWorth = parseDuration($event).toProto(); handleChanges()">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Anzahl Mitarbeiter</label>
-    <input type="number" class="w-full p-1 text-sm border text-normal border-tertiary" name="staffCount" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.requiredStaffCount">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Reihenfolge</label>
-    <input type="number" class="w-full p-1 text-sm border text-normal border-tertiary" name="order" (ngModelChange)="handleChanges()" [(ngModel)]="workShift.order">
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Type</label>
-    <nz-radio-group name="onHoliday" [(ngModel)]="workShift.onHoliday">
-      <label nz-radio-button [nzValue]="true">Feiertag</label>
-      <label nz-radio-button [nzValue]="false">Regulär</label>
-    </nz-radio-group>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Rollen</label>
-    <nz-select name="roles" [(ngModel)]="workShift.eligibleRoleIds" nzMode="multiple">
-      <nz-option *ngFor="let role of roles" [nzValue]="role.id" [nzLabel]="role.name"></nz-option>
-    </nz-select>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Wochentage</label>
-    <nz-select name="days" [(ngModel)]="workShift.days" nzMode="multiple">
-      <nz-option [nzValue]="0" nzLabel="Sonntag"></nz-option>
-      <nz-option [nzValue]="1" nzLabel="Montag"></nz-option>
-      <nz-option [nzValue]="2" nzLabel="Dienstag"></nz-option>
-      <nz-option [nzValue]="3" nzLabel="Mittwoch"></nz-option>
-      <nz-option [nzValue]="4" nzLabel="Donnerstag"></nz-option>
-      <nz-option [nzValue]="5" nzLabel="Freitag"></nz-option>
-      <nz-option [nzValue]="6" nzLabel="Samstag"></nz-option>
-    </nz-select>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Tags</label>
-    <nz-select name="tags" [(ngModel)]="workShift.tags" nzMode="tags"></nz-select>
-  </div>
-
-  <div class="flex flex-col">
-    <label class="text-xs leading-3 uppercase text-secondary">Überschreiben</label>
-    <label nz-checkbox name="updateInPlace" [(ngModel)]="updateInPlace">Arbeitsschicht überschreiben <span class="text-secondary">(Vorsicht!)</span></label>
-  </div>
-
-  <div class="flex flex-row items-stretch w-full gap-2">
-    <button class="w-full tkd-btn tkd-primary" type="submit">Speichern</button>
-    <button class="w-full tkd-btn tkd-outline tkd-danger" type="button" (click)="delete()" *ngIf="!!workShift.id">Löschen</button>
-  </div>
 </form>

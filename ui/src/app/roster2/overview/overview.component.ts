@@ -1,13 +1,53 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, TrackByFunction, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, signal } from '@angular/core';
+import { provideIcons } from '@ng-icons/core';
+import { lucideArrowUpDown, lucideCheck, lucideEye, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2 } from '@ng-icons/lucide';
+import { injectAuthService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
 import { Profile, Role, Roster, RosterType } from '@tierklinik-dobersberg/apis';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { from, share, BehaviorSubject, filter, map } from 'rxjs';
-import { AUTH_SERVICE, ROSTER_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
+import { injectContainerSize } from 'src/app/common/container';
+import { SortColumn } from 'src/app/common/table-sort';
 
 interface RosterWithLink {
   roster: Roster;
   link: string;
 }
+
+const sortFunctions: Record<string, (a: Roster, b: Roster) => number> = {
+  range: (a, b) => {
+    const ad = {
+      from: new Date(a.from).getTime(),
+      to: new Date(a.to).getTime(),
+    }
+
+    const bd = {
+      from: new Date(b.from).getTime(),
+      to: new Date(b.to).getTime(),
+    }
+
+    const diffFrom = bd.from - ad.from;
+    if (diffFrom !== 0) {
+      return diffFrom;
+    }
+
+    return bd.to - ad.to;
+  },
+  type: (a, b) => {
+    return b.rosterTypeName.localeCompare(a.rosterTypeName)
+  },
+  approval: (a, b) => {
+    const aa = a.approved ? 1 : 0;
+    const ab = b.approved ? 1 : 0;
+
+    return ab - aa;
+  },
+  lastEdit: (a, b) => {
+    const at = a.updatedAt!.toDate().getTime();
+    const bt = b.updatedAt!.toDate().getTime();
+
+    return bt - at;
+  }
+} as const;
+
 
 @Component({
   selector: 'app-overview',
@@ -19,37 +59,84 @@ interface RosterWithLink {
     }
     `
   ],
+  providers: provideIcons({
+    lucideEye,
+    lucideSend,
+    lucidePencil,
+    lucideCheck,
+    lucideTrash2,
+    lucideMoreVertical,
+    lucideArrowUpDown
+  }),
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TkdRosterOverviewComponent implements OnInit {
-  rosterService = inject(ROSTER_SERVICE);
-  userService = inject(USER_SERVICE);
-  messageService = inject(NzMessageService)
+  private readonly rosterService = injectRosterService();
+  private readonly userService = injectUserService();
+  private readonly messageService = inject(NzMessageService)
+  private readonly authService = injectAuthService();
+  protected readonly container = injectContainerSize();
 
-  cdr = inject(ChangeDetectorRef);
+  private readonly _rosters = signal<RosterWithLink[]>([]);
 
-  rosters: RosterWithLink[] = [];
-  profiles: Profile[] = [];
-  rosterTypes: RosterType[] = [];
+  protected readonly _displayedColumns = computed(() => {
+    const columns = [
+      'range',
+    ];
+
+    if (this.container.width() > 300) {
+      columns.push('type')
+    }
+
+    if (this.container.width() > 440) {
+      columns.push('approval')
+    }
+
+    if (this.container.md()) {
+      columns.push('editor')
+    }
+
+    if (this.container.sm()) {
+      columns.push('lastEdit')
+    }
+
+    columns.push('actions')
+
+    return columns;
+  })
+
+  protected readonly _sort = signal<SortColumn<typeof sortFunctions> | null>({
+    column: 'range',
+    direction: 'ASC'
+  });
+
+  protected readonly _sortedRosters = computed(() => {
+    const sort = this._sort();
+    const rosters = this._rosters();
+
+    if (!sort) {
+      return [...rosters];
+    }
+
+    const fn = sortFunctions[sort.column];
+
+    return [...rosters]
+      .sort((a, b) => {
+        const result = fn(a.roster, b.roster);
+
+        if (sort.direction === 'ASC') {
+          return result * -1;
+        }
+
+        return result;
+      })
+  })
+
+  profiles = signal<Profile[]>([]);
+  rosterTypes = signal<RosterType[]>([]);
+  isAdmin = signal(false);
 
   trackRoster: TrackByFunction<RosterWithLink> = (_, r) => r.roster.id
-
-  private profile = from(
-    inject(AUTH_SERVICE).introspect({})
-      .then(response => response.profile)
-  ).pipe(
-    share({connector: () => new BehaviorSubject<Profile | undefined>(undefined)}),
-    filter(p => !!p),
-  )
-
-  isAdmin = this.profile
-    .pipe(map(p => {
-      if (p!.roles.find((role: Role) => ['idm_superuser', 'roster_manager'].includes(role.name))) {
-        return true
-      }
-
-      return false
-    }))
 
   nextMonth = (() => {
     const now = new Date();
@@ -64,8 +151,6 @@ export class TkdRosterOverviewComponent implements OnInit {
     })
 
     await this.loadRosters();
-
-    this.cdr.markForCheck();
   }
 
   async sendPreview(roster: Roster) {
@@ -78,7 +163,7 @@ export class TkdRosterOverviewComponent implements OnInit {
   }
 
   async loadRosters() {
-    this.rosters = await this.rosterService
+    await this.rosterService
       .getRoster({
         readMask: {
           paths: ['roster.id', 'roster.from', 'roster.to', 'roster.approved', 'roster.roster_type_name', 'roster.approved_at', 'roster.approver_user_id', 'roster.last_modified_by', 'roster.updated_at'],
@@ -94,24 +179,26 @@ export class TkdRosterOverviewComponent implements OnInit {
         }
       }))
       .then(rosters => {
-        return rosters.sort((a, b) => {
-          return new Date(b.roster.from).getTime() - new Date(a.roster.from).getTime()
-        })
+        this._rosters.set(rosters);
       })
   }
 
   async ngOnInit() {
-    this.profiles = await this.userService.listUsers({})
-      .then(response => response.users);
+    this.userService.listUsers({})
+      .then(response => this.profiles.set(response.users));
 
     this.rosterService.listRosterTypes({})
       .then(response => {
-        this.rosterTypes = response.rosterTypes;
-        this.cdr.markForCheck();
+        this.rosterTypes.set(response.rosterTypes);
       })
 
-    await this.loadRosters();
 
-    this.cdr.markForCheck();
+    this.authService
+      .introspect({})
+      .then(response => {
+        this.isAdmin.set(response.profile!.roles!.find((r: Role) => ['idm_superuser', 'roster_manager'].includes(r.name)) !== undefined);
+      });
+
+    await this.loadRosters();
   }
 }

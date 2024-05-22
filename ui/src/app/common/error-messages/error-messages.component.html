@@ -1,0 +1,27 @@
+<div [class]="_computedClass()">
+  <ng-content />
+</div>
+
+<ul hlmInputError [class]="_computedErrorClass()">
+  @if (_durationFormat()) {
+  <li>Ungültiges Format</li>
+  }
+
+  @if (_required()) {
+  <li>Dieses Feld muss gesetzt sein</li>
+  }
+
+  @if (_min(); as e) {
+  <li>Minimum: {{ e.min }}</li>
+  }
+
+  @if (_max(); as e) {
+  <li>Maximum: {{ e.max }}</li>
+  }
+
+  @if (_unknown()) {
+  @for(entry of _unknown(); track entry.key) {
+  <li>{{ entry.key }} - {{ entry.error | json }}</li>
+  }
+  }
+</ul>

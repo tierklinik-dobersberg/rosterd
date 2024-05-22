@@ -4,8 +4,13 @@
 @tailwind variants;
 @tailwind components;
 
-@layer base {
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400&display=swap");
+@import "~@tierklinik-dobersberg/tailwind/theme.css";
+
+html, body {
+  font-family: "Lexend", sans-serif;
+  font-optical-sizing: auto;
+  font-size: 15px;
+  @apply font-normal;
 }
 
 ::-webkit-scrollbar {

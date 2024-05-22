@@ -1,65 +1,205 @@
-<h2 class="flex flex-row justify-between mb-4 text-lg font-normal">
-  Arbeitsschichten
-  <button class="tkd-btn tkd-primary" [routerLink]="['workshifts', 'new']">Schicht hinzufügen</button>
-</h2>
+<header class="flex flex-row justify-between items-center gap-2 mb-4 text-lg font-normal  ">
+  <h2 class="font-light text-xl 2xl:text-2xl flex flex-row gap-2 items-center">
+    Arbeitsschichten
+    @if (_loading()) {
+    <hlm-spinner />
+    }
+  </h2>
 
-<div class="overflow-auto">
 
-  <table class="w-full border border-collapse rounded table-auto border-subtle">
-    <thead>
-      <tr class="bg-gray-100">
-        <th class="p-4 font-normal text-left ">Name</th>
-        <th class="p-4 font-normal text-left ">Anzeige-Name</th>
-        <th class="p-4 font-normal text-left ">Typ</th>
-        <th class="p-4 font-normal text-left ">Wochentage</th>
-        <th class="p-4 font-normal text-left ">Beschreibung</th>
-        <th class="p-4 font-normal text-left ">Zeit</th>
-        <th class="p-4 font-normal text-left ">Wertung</th>
-        <th class="p-4 font-normal text-left ">Tags</th>
-        <th class="p-4 font-normal text-left ">Mitarbeiter-Anzahl</th>
-        <th class="p-4 font-normal text-left ">Benutzerrollen</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let entry of workShifts; trackBy: trackWs"
-        class="border-b border-subtle hover:bg-gray-100 hover:bg-opacity-50">
-        <td class="p-3 font-inter">
-          <div class="flex flex-row items-center gap-2">
-            <span class="block w-4 h-4 rounded-full" [style.backgroundColor]="entry.color"></span>
-            {{ entry.name }}
-          </div>
-        </td>
-        <td class="p-2 font-inter">{{ entry.displayName }}</td>
-        <td class="p-2 font-inter">{{ entry.onHoliday ? 'Feiertage' : 'Regulär' }}</td>
-        <td class="p-2 font-inter">{{ entry.days | workday }}</td>
-        <td class="p-2 font-inter">{{ entry.description }}</td>
-        <td class="p-2 font-inter">{{ entry.from| daytime }} - {{ entry.from | daytime:entry.duration }} <span
-            class="text-secondary">({{ entry.duration | duration }})</span> </td>
-        <td class="p-2 font-inter">{{ (entry.timeWorth?.seconds ? entry.timeWorth : entry.duration) | duration }}</td>
-        <td class="p-2 font-inter">{{ entry.tags.join(', ') }}</td>
-        <td class="p-2 font-inter">{{ entry.requiredStaffCount }}</td>
-        <td class="p-2 font-inter">{{ entry.eligibleRoleIds | roleList:roles }}</td>
+  <button hlmBtn (click)="editOrCreate()">
+    <hlm-icon name="lucideListPlus" size="sm" class="mr-2"></hlm-icon>
+    Schicht hinzufügen
+  </button>
+</header>
 
-        <td class="p-2">
-          <div class="flex flex-row items-center justify-end gap-2">
 
-            <button class="tkd-btn tkd-primary tkd-outline" nz-dropdown [nzDropdownMenu]="menu">
-              Aktionen
+<brn-table hlm class="@container border mt-4 block min-h-[335px] overflow-auto rounded-md"
+  [dataSource]="_sortedShifts()" [fixedLayout]="true" [trackBy]="trackWs" stickyHeader
+  [displayedColumns]="_displayedColumns()">
+
+  <brn-column-def [name]="columns.Name" class="w-0 flex-[1_0_8rem] whitespace-nowrap overflow-hidden text-ellipsis">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Name
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      <div class="flex flex-row items-center gap-2 overflow-hidden text-ellipsis">
+        <span class="block w-4 h-4 rounded-full" [style.backgroundColor]="e.color"></span>
+        {{ e.name }}
+      </div>
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.DisplayName" class="w-0 flex-[0_0_5rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        AN
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.displayName }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Type" class="w-0 flex-[0_0_7rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Typ
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      @if (e.isHoliday) {
+      <span hlmBadge>Urlaub</span>
+      } @else {
+      <span hlmBadge variant="secondary">Regulär</span>
+      }
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Weekdays" class="w-0 flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      Wochentage
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e" class="gap-1 flex-wrap">
+      @for (day of e.days; track day) {
+      <span hlmBadge variant="outline" class="font-mono">{{ [day] | workday }}</span>
+      }
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Description" class="w-0 flex-[0_0_15rem]">
+    <hlm-th *brnHeaderDef>
+      Beschreibung
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.description }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Time" class="w-0 flex-[0_0_7rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Zeit
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.from | daytime }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Duration" class="w-0 flex-[0_0_5rem]">
+    <hlm-th *brnHeaderDef>
+      Dauer
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.duration | duration:'default-hours'}}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Value" class="w-0 flex-[0_0_7.5rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Wert
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ (e.timeWorth?.seconds ? e.timeWorth : e.duration) | duration:'default-hours' }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Tags" class="w-0 flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      Tags
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e" class="flex-wrap gap-1">
+      @for (tag of e.tags; track tag) {
+      <span hlmBadge variant="outline" class="font-mono">{{ tag }}</span>
+      }
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.EmployeeCount" class="w-0 flex-[0_0_7rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort" class="whitespace-nowrap overflow-hidden text-ellipsis">
+        Anzahl
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.requiredStaffCount }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.EligibleRoles" class="w-0 flex-[0_0_14rem] overflow-hidden flex-wrap text-ellipsis">
+    <hlm-th *brnHeaderDef>
+      Rollen
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.eligibleRoleIds | roleList:_roles() }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Actions" class="w-0 flex-[0_0_3rem]">
+    <hlm-th *brnHeaderDef>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      <button hlmBtn variant="ghost" size="icon" [brnMenuTriggerFor]="menu">
+        <hlm-icon name="lucideMoreVertical" size="sm" />
+      </button>
+
+      <hlm-alert-dialog #alertDialog>
+        <hlm-alert-dialog-content *brnAlertDialogContent="let ctx">
+          <hlm-alert-dialog-header>
+            <h3 hlmAlertDialogTitle>Schicht wirklich löschen?</h3>
+            <p hlmAlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+          </hlm-alert-dialog-header>
+
+          <hlm-alert-dialog-footer>
+            <button hlmAlertDialogCancel (click)="ctx.close()">Abbrechen</button>
+            <button hlmAlertDialogAction class="!bg-destructive !text-destructive-foreground"
+              (click)="delete(e); ctx.close()">Löschen</button>
+          </hlm-alert-dialog-footer>
+        </hlm-alert-dialog-content>
+      </hlm-alert-dialog>
+
+      <ng-template #menu>
+        <hlm-menu>
+          <hlm-menu-label>Aktionen</hlm-menu-label>
+          <hlm-menu-separator />
+          <hlm-menu-group>
+            <button hlmMenuItem (click)="editOrCreate(e)">
+              <hlm-icon name="lucidePencil" hlmMenuIcon />
+              Bearbeiten
             </button>
 
+            <button hlmMenuItem (click)="duplicate(e)">
+              <hlm-icon name="lucideCopy" hlmMenuIcon />
+              Duplizieren
+            </button>
 
-            <nz-dropdown-menu #menu="nzDropdownMenu">
-              <ul nz-menu>
-                <li nz-menu-item [routerLink]="['workshifts', 'edit', entry.id]">Bearbeiten</li>
-                <li nz-menu-item (click)="duplicate(entry)">Duplizieren</li>
-                <li nz-menu-item (click)="delete(entry)" class="text-alert-red-dark">Löschen</li>
-              </ul>
-            </nz-dropdown-menu>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-</div>
+            <hlm-menu-separator />
+            <button hlmMenuItem [brnAlertDialogTriggerFor]="alertDialog" class="!text-destructive">
+              <hlm-icon name="lucideTrash2" hlmMenuIcon />
+              Löschen
+            </button>
+          </hlm-menu-group>
+        </hlm-menu>
+      </ng-template>
+    </hlm-td>
+  </brn-column-def>
+</brn-table>

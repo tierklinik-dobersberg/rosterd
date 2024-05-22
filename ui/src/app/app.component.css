@@ -6,37 +6,16 @@ nav {
   @apply flex flex-col  font-normal text-sm;
 }
 
-nav a {
-  @apply flex items-center gap-3 p-3 pl-4;
-  @apply border-r-2 border-transparent;
+nav button {
+  @apply border-r-2 border-transparent w-full rounded-none text-left font-normal justify-start;
   @apply transition-colors duration-200 ease-in-out;
 }
 
-nav a:visited, nav a:active {
-  @apply text-primary;
+nav button.nav__active {
+  @apply border-primary bg-secondary text-secondary-foreground;
 }
 
-nav a.nav__active {
-  @apply border-primary bg-gray-100;
-}
-
-::ng-deep nav a ng-icon {
-  --ng-icon__size: 1rem !important;
-  @apply text-primary text-opacity-75;
-}
-
-header nav {
-  @apply flex-row;
-}
-
-header nav a {
-  @apply border-r-0 border-b-2;
-}
-
-header nav a ng-icon {
-  display: none;
-}
-
-header nav a.nav__active {
-  background-color: unset;
+nav button hlm-icon {
+  @apply text-primary w-4 h-4 mr-3;
+  --ng-icon__stroke-width: 1.5;
 }

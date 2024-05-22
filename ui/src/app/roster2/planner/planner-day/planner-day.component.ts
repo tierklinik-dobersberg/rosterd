@@ -1,15 +1,15 @@
 import { CdkOverlayOrigin } from "@angular/cdk/overlay";
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from "@angular/core";
 import { PartialMessage } from "@bufbuild/protobuf";
+import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 import { OffTimeEntry, PlannedShift, Profile, PublicHoliday, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { NzModalService } from "ng-zorro-antd/modal";
 import { RosterShift } from "../roster-planner.component";
-import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 
 @Component({
   selector: 'tkd-roster-planner-day',
   templateUrl: './planner-day.html',
-  changeDetection:ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
     :host {
@@ -47,10 +47,10 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
   highlightUserShifts: string | null = null;
 
   @Input()
-  offTimeRequest: {[id: string]: OffTimeEntry[] | undefined } = {}
+  offTimeRequest: { [id: string]: OffTimeEntry[] | undefined } = {}
 
   @Input()
-  workTimeStatus: {[user: string]: WorkTimeAnalysis | undefined } = {}
+  workTimeStatus: { [user: string]: WorkTimeAnalysis | undefined } = {}
 
   assigned: {
     [id: string]: Set<string> | undefined
@@ -71,16 +71,16 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
   constructor(
     private nzModal: NzModalService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   onShiftClick(trigger: CdkOverlayOrigin | null, shift: RosterShift, user = this.selectedUser) {
     if (this.readonly) {
       return;
     }
 
-    if (!!user) {
-      let set = this.assigned[shift.workShiftId!] || new Set();
-      let assign = () => {
+    if (user) {
+      const set = this.assigned[shift.workShiftId!] || new Set();
+      const assign = () => {
         this.assigned[shift.workShiftId!] = set
 
         if (set.has(user)) {
@@ -91,7 +91,7 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
 
         // for CD, we need to make new instances of all sets
         // so the inList pipe will get fired again.
-        let newAssigned: {
+        const newAssigned: {
           [id: string]: Set<string>
         } = {};
 
@@ -110,15 +110,15 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
           const profile = this.profiles.find(p => p.user?.id === user);
           const displayName = profile?.user?.displayName || profile?.user?.username || 'N/A';
 
-          confirmMessage =  `Benutzer ${displayName} ist für die ausgewählte Schicht nicht berechtigt.`;
+          confirmMessage = `Benutzer ${displayName} ist für die ausgewählte Schicht nicht berechtigt.`;
 
-          if (!!shift.violationsPerUserId) {
-            if (!!shift.violationsPerUserId[user]?.violations?.length) {
+          if (shift.violationsPerUserId) {
+            if (shift.violationsPerUserId[user]?.violations?.length) {
               let reason = '';
               shift.violationsPerUserId[user].violations!.forEach(vio => {
                 switch (vio.kind?.case) {
                   case 'evaluation':
-                    reason += 'Evaluation: '  + vio.kind.value.description
+                    reason += 'Evaluation: ' + vio.kind.value.description
                     break;
 
                   case 'offTime':
@@ -141,7 +141,7 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
         }
       }
 
-      if (!!confirmMessage) {
+      if (confirmMessage) {
         this.nzModal.confirm({
           nzTitle: 'Bestätigung erforderlich',
           nzContent: confirmMessage + ' Möchtest du trotzdem fortfahren?',
@@ -171,7 +171,7 @@ export class TkdRosterPlannerDayComponent implements OnChanges {
 
   onOverlayOutsideClick(event: MouseEvent, trigger: CdkOverlayOrigin) {
     let iter: HTMLElement | null = event.target as HTMLElement;
-    while (!!iter) {
+    while (iter) {
       if (iter === trigger.elementRef.nativeElement) {
         return;
       }

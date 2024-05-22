@@ -1,0 +1,82 @@
+<form (ngSubmit)="save()" #form="ngForm" class="w-full">
+  <hlm-dialog-header class="pb-4">
+    <h3 hlmDialogTitle>Arbeitszeit ändern</h3>
+    <p hlmDialogDescription>Hier kannst du die reguläre Arbeitszeit eines Mitarbeiters ändern.</p>
+
+    <brn-separator hlm />
+  </hlm-dialog-header>
+
+  <div class="flex flex-col gap-4">
+    <div class="flex flex-row items-center justify-start gap-4">
+      @if (profile; as user) {
+      <hlm-avatar variant="large">
+        <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+        <span hlmAvatarFallback>{{ user | userLetter }}</span>
+      </hlm-avatar>
+
+      <span class="inline-block leading-3 -mt-3">
+        <span class="block text-sm font-medium text-primary/50 -mb-1">Arbeitszeit ändern für</span>
+        <span class="block text-lg">
+          {{ user | displayName }}
+        </span>
+      </span>
+      }
+    </div>
+
+    <brn-separator hlm />
+
+    <app-error-messages>
+      <label hlmLabel for="workTimePerWeek">
+        Arbeitszeit / Woche *
+        <input hlmInput placeholder="40h" #wt="ngModel" duration [(ngModel)]="_workTimePerWeek" type="text" required
+          name="workTimePerWeek" class="w-full" />
+      </label>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="vacationPerYear">
+        Urlaubswochen / Jahr *
+        <input hlmInput [(ngModel)]="_vacationPerYear" type="number" required [min]="2" name="vacationPerYear"
+          class="w-full" />
+      </label>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="overtimeAllowance">
+        Überstundenpauschale / Monat
+        <input hlmInput placeholder="0h" duration [(ngModel)]="_overtimeAllowance" type="text" name="overtimeAllowance"
+          class="w-full" />
+      </label>
+    </app-error-messages>
+
+
+    <app-error-messages>
+      <label hlmLabel for="from">
+        Gültig ab *
+        <input hlmInput [(ngModel)]="_from" type="date" name="from" required class="w-full" />
+      </label>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="to">
+        Gültig bis
+        <input hlmInput [(ngModel)]="_to" type="date" name="to" class="w-full" />
+      </label>
+    </app-error-messages>
+
+    <app-error-messages>
+      <label hlmLabel for="timeTracking" class="flex items-center">
+        <hlm-checkbox [(ngModel)]="_timeTracking" name="timeTracking" class="mr-2" />
+        Time-Tracking aktivieren
+      </label>
+    </app-error-messages>
+
+    <brn-separator hlm />
+  </div>
+
+  <hlm-dialog-footer class="flex flex-row justify-end gap-2 pt-4">
+    <button hlmBtn variant="secondary" type="button" (click)="abort(); $event.preventDefault()">Abbrechen</button>
+    <button hlmBtn type="submit" [disabled]="form.invalid">Speichern</button>
+  </hlm-dialog-footer>
+
+</form>

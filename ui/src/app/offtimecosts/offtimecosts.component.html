@@ -1,97 +1,211 @@
-<h2 class="flex flex-row justify-between mb-2 text-lg font-normal font-inter">
-  <div class="flex flex-row items-center gap-2">
-    <ng-icon name="ionAlarmOutline" size="1.5rem" class="text-color-secondary"></ng-icon>
+<div class="flex flex-row justify-between mb-2 text-lg font-normal  ">
+  <h2 class="font-light text-xl 2xl:text-2xl flex flex-row items-center gap-4">
     Abwesenheiten
+
+    @if (_loading()) {
+    <hlm-spinner />
+    }
+  </h2>
+
+  <div class="flex flex-row justify-end items-center gap-4">
+    <app-cost-filter [(filter)]="_filter" [profiles]="_profiles()" #filter />
+    <button hlmBtn variant="default" (click)="openCreateDialog()">
+      <hlm-icon name="lucideListPlus" size="sm" class="mr-2"></hlm-icon>
+      Abwesenheit eintragen
+    </button>
   </div>
+</div>
 
+<brn-table hlm class="@container border mt-4 block min-h-[335px] overflow-auto rounded-md"
+  [dataSource]="_filteredAndSorted()" [fixedLayout]="true" [trackBy]="trackEntries" stickyHeader
+  [displayedColumns]="_displayedColumns()">
 
-  <button class="tkd-btn tkd-primary" [routerLink]="['create']">Neuer Eintrag</button>
-</h2>
+  <tkd-empty-table brnNoDataRow [filter]="filter" [totalCount]="_totalCount()" [filteredCount]="_filteredCount()" />
 
-<div class="flex flex-row gap-4 justify-center items-center w-full py-4 mb-2 ">
-  <nz-select name="requestor" [(ngModel)]="filterByUser" [nzOptionHeightPx]="48" [nzMode]="'multiple'" class="w-96"
-    nzPlaceHolder="Nach Mitarbeiter filtern">
-    <nz-option *ngFor="let user of profiles" [nzCustomContent]="true" [nzValue]="user.user!.id!"
-      [nzLabel]="user | displayName">
-      <span class="flex flex-row items-center justify-start w-full gap-2 text-left">
-        <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-        </nz-avatar>
+  <brn-column-def [name]="columns.User" class="flex-[1_1_8rem] w-0 min-w-[8rem] @[934px]:flex-[0_0_240px]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Mitarbeiter
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      @if (e.profile; as user) {
+      <span class="inline-flex flex-row flex-nowrap gap-2 items-center text-ellipsis overflow-hidden">
+
+        <hlm-avatar variant="medium" [class.hidden]="!container.sm()">
+          <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+          <span hlmAvatarFallback>{{ user | userLetter }}</span>
+        </hlm-avatar>
+
         {{ user | displayName }}
       </span>
-    </nz-option>
-  </nz-select>
+      } @else {
+      <span class="font-medium text-primary/50">N/A</span>
+      }
+    </hlm-td>
+  </brn-column-def>
 
-  <nz-range-picker [(ngModel)]="timeRange" [nzAllowClear]="true" (ngModelChange)="filterCosts()"></nz-range-picker>
-  <nz-radio-group [(ngModel)]="filterType" (ngModelChange)="filterCosts()">
-    <label nz-radio-button nzValue="all">Alle</label>
-    <label nz-radio-button nzValue="vacation">Urlaub</label>
-    <label nz-radio-button nzValue="za">ZA</label>
-  </nz-radio-group>
-</div>
+  <brn-column-def [name]="columns.Date" class="flex-[0_0_7rem] w-0 @[450px]:flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Datum
+      </tkd-sort-th>
+    </hlm-th>
 
-<div class="overflow-auto">
-  <table class="w-full border border-collapse rounded table-auto border-subtle">
-    <thead>
-      <tr class="rounded-t bg-gray-100">
-        <th class="px-2 py-4 font-normal text-left ">Mitarbeiter</th>
-        <th class="px-2 py-4 font-normal text-left ">Datum</th>
-        <th class="px-2 py-4 font-normal text-left ">Zeit</th>
-        <th class="px-2 py-4 font-normal text-left ">Typ</th>
-        <th class="px-2 py-4 font-normal text-left ">Grund</th>
-        <th class="px-2 py-4 font-normal text-left ">Bemerkung</th>
-        <th class="px-2 py-4 font-normal text-left ">Erstellt am</th>
-        <th class="px-2 py-4 font-normal text-left ">Erstellt von</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <ng-container *ngFor="let u of costs; trackBy: trackUserCosts">
-        <tr *ngFor="let c of u.costs; trackBy: trackCosts"
-          class="border-b border-subtle hover:bg-gray-100 hover:bg-opacity-50">
-          <td class="p-2 text-left font-inter">
-            <span class="flex flex-row items-center justify-start gap-2 text-left"
-              *ngIf="(u.userId| toUser:profiles) as user">
-              <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full shadow ring-1">
-              </nz-avatar>
-              {{ user | displayName }}
-            </span>
-          </td>
-          <td class="p-2 text-left font-inter">
-            {{ c.date?.toDate() | date:'mediumDate'}}
-          </td>
-          <td class="p-2 text-left font-inter"
-            [ngClass]="{'text-alert-red': c.costs!.seconds < 0, 'text-alert-green': c.costs!.seconds > 0}">
-            {{c.costs!.seconds > 0 ? '+' : ''}}{{ c.costs | duration:'default-hours'}}
-          </td>
-          <td class="p-2 text-left font-inter">
-            {{ c.isVacation ? 'Urlaub' : 'ZA' }}
-          </td>
-          <td class="p-2 text-left font-inter">
-            <ng-container [ngSwitch]="c.rosterId ? 'roster' : (c.offtimeId ? 'offtime' : '')">
-              <a *ngSwitchCase="'roster'">Dienstplan</a>
-              <a *ngSwitchCase="'offtime'">Urlaubsantrag</a>
-              <a *ngSwitchDefault class="text-secondary">N/A</a>
-            </ng-container>
-          </td>
-          <td class="p-2 text-left font-inter">
-            {{ c.comment }}
-          </td>
-          <td class="p-2 text-left font-inter">
-            {{ c.createdAt?.toDate() | date:'mediumDate' }}
-          </td>
-          <td class="p-2 text-left font-inter">
-            {{ c.creatorId | toUser:profiles | displayName }}
-          </td>
-          <td>
-            <button class="tkd-btn tkd-danger tkd-outline"
-              (click)="delete(c.id)">Löschen</button>
-          </td>
-        </tr>
-      </ng-container>
-    </tbody>
-  </table>
-</div>
+    <hlm-td *brnCellDef="let e">
+      {{ e.cost.date?.toDate() | date:'mediumDate'}}
+    </hlm-td>
+  </brn-column-def>
 
-<ng-template #naTemplate>
-  <span class="text-secondary">N/A</span>
-</ng-template>
+  <brn-column-def [name]="columns.Duration" class="flex-[0_0_5rem] w-0 @[450px]:flex-[0_0_7rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Zeit
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{e.cost.costs!.seconds > 0 ? '+' : ''}}{{ e.cost.costs | duration:'default-hours'}}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Type" class="flex-[0_0_7rem] w-0">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Art
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.cost.isVacation ? 'Urlaub' : 'ZA' }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Reason" class="w-0 flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      Grund
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      @switch (e.cost.rosterId ? 'roster' : (e.cost.offtimeId ? 'offtime' : '')) {
+      @case ('roster') {
+      <span hlmBadge variant="default">Dienstplan</span>
+      }
+      @case ('offtime') {
+      <span hlmBadge variant="secondary">Urlaubsantrag</span>
+      }
+      @default {
+      <span hlmBadge variant="outline">
+        N/A
+      </span>
+      }
+      }
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Comment" class="flex-[1_0_8rem] w-0">
+    <hlm-th *brnHeaderDef>
+      Bemerkung
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.cost.comment }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.CreatedAt" class="w-0 flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Erstellt am
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.cost.createdAt?.toDate() | date:'mediumDate' }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.CreatedBy" class="w-0 flex-[0_0_10rem]">
+    <hlm-th *brnHeaderDef>
+      <tkd-sort-th [(current)]="_sort">
+        Erstellt von
+      </tkd-sort-th>
+    </hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      {{ e.cost.creatorId | toUser:_profiles() | displayName }}
+    </hlm-td>
+  </brn-column-def>
+
+  <brn-column-def [name]="columns.Actions" class="flex-[0_0_2rem] p-0">
+    <hlm-th *brnHeaderDef></hlm-th>
+
+    <hlm-td *brnCellDef="let e">
+      <button hlmBtn variant="ghost" size="icon" [brnMenuTriggerFor]="menu4">
+        <hlm-icon name="lucideMoreVertical" size="sm" />
+      </button>
+
+      <hlm-alert-dialog #dialog>
+        <hlm-alert-dialog-content *brnAlertDialogContent="let ctx">
+          <hlm-alert-dialog-header>
+            <h3 hlmAlertDialogTitle>Eintrag wirklich löschen?</h3>
+            <p hlmAlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+          </hlm-alert-dialog-header>
+
+          <hlm-alert-dialog-footer>
+            <button hlmAlertDialogCancel (click)="ctx.close()">Abbrechen</button>
+            <button hlmAlertDialogAction class="!bg-destructive !text-destructive-foreground"
+              (click)="delete(e.cost.id); ctx.close()">Löschen</button>
+          </hlm-alert-dialog-footer>
+        </hlm-alert-dialog-content>
+      </hlm-alert-dialog>
+
+      <ng-template #menu4>
+        <hlm-menu class="w-56">
+          <hlm-menu-label>Aktionen</hlm-menu-label>
+          <hlm-menu-separator />
+          <hlm-menu-group>
+            <button hlmMenuItem class="text-destructive hover:text-destructive" [brnAlertDialogTriggerFor]="dialog">
+              <hlm-icon name="lucideTrash2" hlmMenuIcon />
+              <span>Löschen</span>
+            </button>
+          </hlm-menu-group>
+        </hlm-menu>
+      </ng-template>
+    </hlm-td>
+  </brn-column-def>
+
+</brn-table>
+
+<p class="flex justify-end items-start text-sm text-primary/75 font-medium mt-4 gap-1 w-full">
+  @if (_loading()) {
+  <span hlmBadge variant="secondary">
+    <hlm-spinner size="xs" class="mr-2" />
+    Anträge werden geladen ...
+  </span>
+  } @else {
+  @if (_totalCount() - _filteredCount(); as diff) {
+  <hlm-tooltip>
+    <button hlmTooltipTrigger hlmBadge variant="outline" class="hover:bg-secondary hover:text-secondary-foreground"
+      (click)="filter.reset()">
+      {{ _totalCount() - diff }} gefilterte Ergebnisse von {{ _totalCount() }}
+    </button>
+    <span *brnTooltipContent>
+      Klicke um den Filter zurück zu setzten
+    </span>
+  </hlm-tooltip>
+  } @else {
+  <hlm-tooltip>
+    <button hlmTooltipTrigger hlmBadge variant="outline" class="hover:bg-secondary hover:text-secondary-foreground"
+      (click)="filter.open()">
+      {{ _totalCount() }} Ergebnisse
+    </button>
+
+    <span *brnTooltipContent>Klicke um die Ergbnisse zu filtern</span>
+  </hlm-tooltip>
+  }
+  }
+</p>

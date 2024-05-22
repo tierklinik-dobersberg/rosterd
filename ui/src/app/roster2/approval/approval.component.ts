@@ -71,8 +71,8 @@ export class ApprovalComponent implements OnInit {
           return
         }
 
-        let vacation = this.vacationPerUser[userId];
-        let timeoff = Number(wt.overtime.seconds) + vacation;
+        const vacation = this.vacationPerUser[userId];
+        const timeoff = Number(wt.overtime.seconds) + vacation;
 
         wts[userId] = {
           userId,

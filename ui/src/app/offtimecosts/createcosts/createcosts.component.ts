@@ -1,66 +1,83 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { lucideAlertTriangle } from '@ng-icons/lucide';
+import { BrnDialogModule, BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
+import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
+
+import { ChangeDetectionStrategy, Component, OnInit, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
+import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
+import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
+import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
+import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
+import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
+import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { Profile } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { OFFTIME_SERVICE, USER_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
 
-interface CreateModel {
-  userId: string;
-  comment: string;
-  date: Date;
-  costs: number;
-  type: 'vacation' | 'timeOff' | '';
-}
-
-function makeEmptyCreateModel(): CreateModel {
-  return {
-    userId: '',
-    comment: '',
-    date: new Date(),
-    costs: 0,
-    type: '',
-  }
-}
+export type VacationType = 'vacation' | 'timeoff' | '';
 
 @Component({
   selector: 'app-createcosts',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     TkdRoster2Module,
     NzRadioModule,
     NzSelectModule,
     RouterModule,
     NzDatePickerModule,
-    NzAvatarModule
+    NzAvatarModule,
+    HlmDialogModule,
+    BrnDialogModule,
+    HlmAvatarModule,
+    HlmButtonModule,
+    HlmInputModule,
+    HlmLabelModule,
+    HlmSelectModule,
+    HlmAlertModule,
+    HlmIconModule,
+    BrnSelectModule,
   ],
+  providers: provideIcons({lucideAlertTriangle}),
   templateUrl: './createcosts.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: [
+    `
+    :host {
+      @apply block w-[440px];
+    }
+    `
+  ]
 })
 export class CreatecostsComponent implements OnInit {
-  private readonly offTimeService = inject(OFFTIME_SERVICE);
-  private readonly usersService = inject(USER_SERVICE);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly router = inject(Router);
+  private readonly offTimeService = injectOfftimeService();
+  private readonly usersService = injectUserService();
 
-  profiles: Profile[] = [];
-  model: CreateModel = makeEmptyCreateModel();
+  protected readonly dialogRef = inject(BrnDialogRef);
+  protected readonly _profiles = signal<Profile[]>([]);
+
+  /* Models */
+
+  protected readonly _userId = model('');
+  protected readonly _comment = model('');
+  protected readonly _date = model<Date | null>(null);
+  protected readonly _costs = model(0);
+  protected readonly _type = model<VacationType>('');
 
   ngOnInit() {
     this.usersService.listUsers({})
-    .then(res => {
-      this.profiles = res.users;
-      this.cdr.markForCheck();
-    })
+      .then(res => {
+        this._profiles.set(res.users);
+      })
   }
 
   updateCosts(costs: string) {
@@ -69,22 +86,32 @@ export class CreatecostsComponent implements OnInit {
       return;
     }
 
-    this.model.costs = d.seconds;
+    this._costs.set(d.seconds);
   }
 
   async save() {
+    const date = this._date();
+    const costs = this._costs();
+    const userId = this._userId();
+    const type = this._type();
+    const comment = this._comment();
+
+    if (!date) {
+      return;
+    }
+
     await this.offTimeService.addOffTimeCosts({
       addCosts: [
         {
-          date: Timestamp.fromDate(this.model.date),
-          costs: Duration.seconds(this.model.costs).toProto(),
-          userId: this.model.userId,
-          isVacation: this.model.type === 'vacation',
-          comment: this.model.comment,
+          date: Timestamp.fromDate(date),
+          costs: Duration.seconds(costs).toProto(),
+          userId: userId,
+          isVacation: type === 'vacation',
+          comment: comment,
         }
       ]
     })
 
-    this.router.navigate(['/costs'])
+    this.dialogRef.close();
   }
 }
