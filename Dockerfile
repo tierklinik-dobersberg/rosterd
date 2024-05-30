@@ -5,9 +5,10 @@ ARG CONFIGURATION="production"
 
 WORKDIR /app/ui
 
+RUN npm install -g pnpm
 COPY ui/.npmrc ui/package.json ui/package-lock.json ./
 RUN --mount=type=secret,id=github_token \
-  echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/github_token)" >> ./.npmrc && npm install && rm .npmrc
+  echo "//npm.pkg.github.com/:_authToken=$(cat /run/secrets/github_token)" >> ./.npmrc && npx npm install && rm .npmrc
 
 RUN npx browserslist@latest --update-db
 
@@ -26,7 +27,7 @@ COPY ./mails .
 RUN npm run build
 
 # Build the go binary
-FROM golang:1.21 as gobuild
+FROM golang:1.22 as gobuild
  
 RUN update-ca-certificates
  

@@ -5,8 +5,9 @@ import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { injectHolidayService, injectOfftimeService, injectRosterService, injectUserService } from "@tierklinik-dobersberg/angular/connect";
 import { toDateString } from '@tierklinik-dobersberg/angular/utils/date';
-import { AnalyzeWorkTimeResponse, ConstraintViolationList, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
+import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
+import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
 import { Subject, catchError, debounceTime, filter, from, map, of, switchMap } from "rxjs";
 
@@ -617,6 +618,55 @@ export class RosterPlannerService {
 
       return copy;
     })
+  }
+
+  public exportRoster(type: 'ical' | 'html' | 'pdf', shiftTags: string[] = []) {
+    const id = this._rosterId();
+    if (!id) {
+      return
+    }
+
+    let protoType: ExportRosterType;
+
+    switch (type) {
+      case 'ical':
+        protoType = ExportRosterType.ICAL;
+        break;
+      case 'html':
+        protoType = ExportRosterType.HTML;
+        break;
+      case 'pdf':
+        protoType = ExportRosterType.PDF;
+        break;
+
+      default:
+        console.error('Unsupported roster export type')
+        return;
+    }
+
+    this.rosterService
+      .exportRoster({
+        id: id,
+        type: protoType,
+        includeShiftTags: shiftTags,
+      })
+      .then(response => {
+        return FileSaver.saveAs(new Blob([response.payload], {
+          type: response.contentType,
+        }), response.fileName)
+      })
+      .then(() => {
+        toast.success('Export erfolgreich')
+      })
+      .catch(err => {
+        console.error(err);
+
+        const connectErr = ConnectError.from(err);
+
+        toast.error('Export Fehlgeschlagen', {
+          description: connectErr.message
+        })
+      })
   }
 
   public saveRoster(): Promise<SaveRosterResponse> {

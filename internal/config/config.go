@@ -42,6 +42,8 @@ type (
 		RosterManagerRoleID string `env:"ROSTER_MANAGER_ROLE_ID"`
 		// Path or URL for the rosterd frontend
 		StaticFiles string `env:"STATIC_FILES"`
+		// Gotenberg holds the gotenberg URL
+		Gotenberg string `env:"GOTENBERG"`
 	}
 )
 

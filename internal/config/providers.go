@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -18,6 +19,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/dcaraxes/gotenberg-go-client/v8"
 )
 
 type Providers struct {
@@ -122,4 +125,38 @@ func (p *Providers) FetchAllUserProfiles(ctx context.Context) ([]*idmv1.Profile,
 	}
 
 	return res.Msg.Users, nil
+}
+
+func (p *Providers) RenderHTML(ctx context.Context, index string) (io.ReadCloser, error) {
+	if p.Config.Gotenberg == "" {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no gotenberg server configured"))
+	}
+
+	client := gotenberg.Client{
+		Hostname: p.Config.Gotenberg,
+	}
+
+	indexDocument, err := gotenberg.NewDocumentFromString("index.html", index)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare document: %w", err)
+	}
+
+	req := gotenberg.NewHTMLRequest(indexDocument)
+	req.PaperSize(gotenberg.A4)
+	req.Landscape(true)
+	req.Margins(gotenberg.NoMargins)
+	req.SkipNetworkIdleEvent()
+
+	res, err := client.PostContext(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request to gotenberg: %w", err)
+	}
+
+	if res.StatusCode != 200 {
+		res.Body.Close()
+
+		return nil, fmt.Errorf("unexpected response from gotenberg: %s", res.Status)
+	}
+
+	return res.Body, nil
 }

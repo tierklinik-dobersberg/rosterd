@@ -41,6 +41,6 @@ export const appConfig: ApplicationConfig = {
       lucideCog
     }),
     provideBreakpoints(Breakpoints),
-    AppHeaderOutletService
+    AppHeaderOutletService,
   ],
 };
