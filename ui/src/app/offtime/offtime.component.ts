@@ -1,5 +1,3 @@
-import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
-import { toast } from 'ngx-sonner';
 import { CdkRow, CdkRowDef } from '@angular/cdk/table';
 import { CommonModule, NgClass } from '@angular/common';
 import {
@@ -19,6 +17,7 @@ import { Timestamp } from '@bufbuild/protobuf';
 import { NgIconsModule } from '@ng-icons/core';
 import { lucideAlertTriangle, lucideCheckCircle, lucideFilter, lucideListPlus, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2, lucideXCircle } from '@ng-icons/lucide';
 import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
+import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
 import { BrnMenuTriggerDirective } from '@spartan-ng/ui-menu-brain';
 import { BrnRadioGroupModule } from '@spartan-ng/ui-radiogroup-brain';
 import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
@@ -54,27 +53,21 @@ import {
   OffTimeType,
   Profile,
 } from '@tierklinik-dobersberg/apis';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
-import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
-import { NzModalModule } from 'ng-zorro-antd/modal';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
-import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
-import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
-import { TkdRoster2Module } from '../roster2/roster2.module';
-import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
-import { UserLetterPipe } from 'src/app/common/pipes';
-import { OffTimeFilter, OffTimeFilterComponent, emptyFilter } from './offtime-filter/offtime-filter.component';
+import { toast } from 'ngx-sonner';
+
 import { ConnectError } from '@connectrpc/connect';
+import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
 import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
+import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
-import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
-import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
-import { CreateOfftimeComponent } from './create-offtime/create-offtime.component';
+import { UserLetterPipe } from 'src/app/common/pipes';
+import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
 import { TkdEmptyTableComponent } from '../common/empty-table';
+import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { TkdRoster2Module } from '../roster2/roster2.module';
+import { CreateOfftimeComponent } from './create-offtime/create-offtime.component';
+import { OffTimeFilter, OffTimeFilterComponent, emptyFilter } from './offtime-filter/offtime-filter.component';
 
 // Filter function for off-time requests. used in sortFunctions below.
 type OffTimeSortFunc = (a: OffTimeEntry, b: OffTimeEntry, profiles: Profile[]) => number;
@@ -152,17 +145,12 @@ const sortFunctions: { [key in Columns]?: OffTimeSortFunc } = {
     HlmAlertModule,
     CommonModule,
     TkdRoster2Module,
-    NzAvatarModule,
-    NzModalModule,
+
     FormsModule,
     RouterModule,
-    NzDropDownModule,
-    NzToolTipModule,
-    NzDatePickerModule,
-    NzRadioModule,
+
     NgIconsModule,
-    NzSelectModule,
-    NzTableModule,
+
     NgClass,
 
     HlmButtonModule,

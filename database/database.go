@@ -62,7 +62,7 @@ type (
 	}
 
 	DutyRosterDatabase interface {
-		SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster) (bool, error)
+		SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster, casIndex *uint64) (bool, error)
 		DeleteDutyRoster(ctx context.Context, rosterID string, supersededBy primitive.ObjectID) error
 		ApproveDutyRoster(ctx context.Context, rosterID, approver string) error
 		DutyRosterByID(ctx context.Context, id string) (structs.DutyRoster, error)

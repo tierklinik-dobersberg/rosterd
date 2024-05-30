@@ -79,7 +79,7 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 		until = time.Now()
 	}
 
-	res, err := db.worktime.Aggregate(ctx, bson.A{
+	pipeline := bson.A{
 		bson.M{
 			"$match": bson.M{
 				"applicableFrom": bson.M{
@@ -117,7 +117,9 @@ func (db *DatabaseImpl) GetCurrentWorkTimes(ctx context.Context, until time.Time
 				},
 			},
 		},
-	})
+	}
+
+	res, err := db.worktime.Aggregate(ctx, pipeline)
 
 	if err != nil {
 		return nil, err

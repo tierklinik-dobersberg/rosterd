@@ -8,7 +8,6 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/mennanov/fmutils"
-	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
@@ -659,37 +658,4 @@ func (svc *Service) verifyUsersExists(ctx context.Context, userId string) error 
 	}))
 
 	return err
-}
-
-func (svc *Service) calculateWorkTimeBetween(ctx context.Context, from, to time.Time) (map[string]time.Duration, map[string]structs.WorkTime, error) {
-	res, err := svc.Holidays.NumberOfWorkDays(ctx, connect.NewRequest(&calendarv1.NumberOfWorkDaysRequest{
-		From: timestamppb.New(from),
-		To:   timestamppb.New(to),
-	}))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	currentWorkTimes, err := svc.Datastore.GetCurrentWorkTimes(ctx, from)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	result := make(map[string]time.Duration)
-
-	for user, workTime := range currentWorkTimes {
-		timePerWeekday := workTime.TimePerWeek / 5
-		result[user] = timePerWeekday * time.Duration(res.Msg.NumberOfWorkDays)
-	}
-
-	return result, currentWorkTimes, nil
-}
-
-func (svc *Service) calculateMonthlyWorkTime(ctx context.Context, month time.Month, year int) (map[string]time.Duration, error) {
-	from := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
-	to := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local)
-
-	// find the number of working-days in the given month
-	result, _, err := svc.calculateWorkTimeBetween(ctx, from, to)
-	return result, err
 }

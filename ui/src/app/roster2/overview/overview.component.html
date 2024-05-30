@@ -10,50 +10,50 @@
       Erstellen
     </button>
 
-    <hlm-dialog-content class="sm:max-w-[425px]" *brnDialogContent="let ctx;">
-      <hlm-dialog-header>
-        <h3 hlmDialogTitle>Dienstplan erstellen: {{ ctx.a }}</h3>
-        <p hlmDialogDescription>Bitte wähle den Zeitraum für den du einen Dienstplan erstellen möchtest.</p>
-      </hlm-dialog-header>
+    <form (ngSubmit)="createRoster()" #createForm="ngForm">
+      <hlm-dialog-content class="sm:max-w-[425px]" *brnDialogContent="let ctx;">
+        <hlm-dialog-header>
+          <h3 hlmDialogTitle>Dienstplan erstellen: {{ ctx.a }}</h3>
+          <p hlmDialogDescription>Bitte wähle den Zeitraum für den du einen Dienstplan erstellen möchtest.</p>
+        </hlm-dialog-header>
 
-      <div class="py-4 grid gap-4">
-        <div class="items-center grid grid-cols-3 gap-4">
-          <label hlmLabel for="name" class="text-right whitespace-nowrap">Dienstplan-Art</label>
-          <brn-select class="inline-block col-span-2" placeholder="Bitte auswählen" required>
-            <hlm-select-trigger class="w-full">
-              <hlm-select-value #typeSelect />
-            </hlm-select-trigger>
+        <div class="py-4 grid gap-4">
+          <div class="items-center grid grid-cols-3 gap-4">
+            <label hlmLabel for="createRosterType" class="text-right whitespace-nowrap">Dienstplan-Art</label>
+            <brn-select name="createRosterType" [(ngModel)]="createRosterType" class="inline-block col-span-2"
+              placeholder="Bitte auswählen" required>
+              <hlm-select-trigger class="w-full">
+                <hlm-select-value />
+              </hlm-select-trigger>
 
-            <hlm-select-content class="w-56 max-h-[30rem]">
-              @for (type of rosterTypes(); track type.uniqueName) {
-              <hlm-option [value]="type.uniqueName"> {{ type.uniqueName }}</hlm-option>
-              }
-            </hlm-select-content>
-          </brn-select>
+              <hlm-select-content class="w-56 max-h-[30rem]">
+                @for (type of rosterTypes(); track type.uniqueName) {
+                <hlm-option [value]="type.uniqueName"> {{ type.uniqueName }}</hlm-option>
+                }
+              </hlm-select-content>
+            </brn-select>
 
+          </div>
+          <div class="items-center grid grid-cols-3 gap-4">
+            <label hlmLabel for="createRosterRange" class="text-right">Zeitraum</label>
+            <nz-range-picker name="createRosterRange" hlmInput [(ngModel)]="createRosterRange" [nzShowTime]="false"
+              class="col-span-2" required></nz-range-picker>
+          </div>
         </div>
-        <div class="items-center grid grid-cols-3 gap-4">
-          <label hlmLabel for="username" class="text-right">Zeitraum</label>
-          <nz-range-picker hlmInput #rangePicker [nzShowTime]="false" class="col-span-2" required></nz-range-picker>
-        </div>
-      </div>
 
-      <hlm-dialog-footer>
-        <button hlmBtn variant="secondary" (click)="ctx.close()">Abbrechen</button>
-
-        <button hlmBtn [disabled]="!typeSelect.value() || !rangePicker.inputValue[0] || !rangePicker.inputValue[1]"
-          [routerLink]="['plan', typeSelect.value(), rangePicker.inputValue[0], rangePicker.inputValue[1]]">Erstellen</button>
-
-      </hlm-dialog-footer>
-    </hlm-dialog-content>
+        <hlm-dialog-footer class="gap-2">
+          <button hlmBtn type="button" variant="secondary" (click)="ctx.close()">Abbrechen</button>
+          <button hlmBtn [disabled]="createForm.invalid" type="submit" (click)="createRoster()">Erstellen</button>
+        </hlm-dialog-footer>
+      </hlm-dialog-content>
+    </form>
   </hlm-dialog>
 </header>
 
 <div class="overflow-auto">
 
   <brn-table hlm stickyHeader class="mt-4 block h-[335px] overflow-auto rounded-md border"
-    [dataSource]="_sortedRosters()" [trackBy]="trackRoster"
-    [displayedColumns]="_displayedColumns()">
+    [dataSource]="_sortedRosters()" [trackBy]="trackRoster" [displayedColumns]="_displayedColumns()">
 
     <brn-column-def name="range" class="flex-1">
       <hlm-th *brnHeaderDef>
@@ -64,13 +64,14 @@
 
       <hlm-td *brnCellDef="let e">
         <span class="flex flex-1 flex-row gap-1 flex-wrap">
-          <span class="whitespace-nowrap">{{ e.roster.from }}</span> - <span class="whitespace-nowrap">{{ e.roster.to }}</span>
+          <span class="whitespace-nowrap">{{ e.roster.from }}</span> - <span class="whitespace-nowrap">{{ e.roster.to
+            }}</span>
         </span>
       </hlm-td>
     </brn-column-def>
 
     <brn-column-def name="type" class="w-1/6 min-w-[8rem]">
-      <hlm-th *brnHeaderDef >
+      <hlm-th *brnHeaderDef>
         <tkd-sort-th [(current)]="_sort">
           Type
         </tkd-sort-th>
@@ -85,9 +86,18 @@
       <hlm-th *brnHeaderDef truncate>Bearbeiter</hlm-th>
       <hlm-td *brnCellDef="let e" class="gap-3" truncate>
         @if ((e.roster.lastModifiedBy | toUser:profiles()); as editor) {
-        <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="editor.user?.avatar" class="rounded-full shadow ring-1">
-        </nz-avatar>
-        {{ editor | displayName }}
+
+        <span class="inline-flex flex-row items-center justify-start gap-2">
+          <hlm-avatar size="medium">
+            <img [attr.src]="editor.user!.avatar" hlmAvatarImage [attr.alt]="editor | displayName">
+
+            <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="editor | color"
+              [style.color]="editor | contrastColor">{{ editor | userLetter }}</span>
+          </hlm-avatar>
+
+          {{ editor | displayName }}
+        </span>
+
         } @else {
         <span class="text-secondary">N/A</span>
         }
@@ -95,7 +105,7 @@
     </brn-column-def>
 
     <brn-column-def name="approval" class="w-1/6 min-w-[10rem]">
-      <hlm-th *brnHeaderDef >
+      <hlm-th *brnHeaderDef>
         <tkd-sort-th [(current)]="_sort">
           Freigabe
         </tkd-sort-th>
@@ -104,9 +114,13 @@
       <hlm-td *brnCellDef="let e">
         @if (e.roster.approved) {
         @if ((e.roster.approverUserId | toUser:profiles()); as approver) {
-        <span class="flex flex-row items-center justify-start gap-2 text-left">
-          <nz-avatar [nzSize]="32" nzIcon="user" [nzSrc]="approver.user?.avatar" class="rounded-full shadow ring-1">
-          </nz-avatar>
+        <span class="flex flex-row items-center justify-start gap-2">
+          <hlm-avatar size="medium">
+            <img [attr.src]="approver.user!.avatar" hlmAvatarImage [attr.alt]="approver | displayName">
+
+            <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="approver | color"
+              [style.color]="approver | contrastColor">{{ approver | userLetter }}</span>
+          </hlm-avatar>
           {{ approver | displayName }}
         </span>
         }
@@ -127,71 +141,80 @@
       </hlm-td>
     </brn-column-def>
 
+    <brn-column-def name="casIndex" class="w-[8rem]">
+      <hlm-th *brnHeaderDef>
+        CAS
+      </hlm-th>
+      <hlm-td *brnCellDef="let e">
+        {{ e.roster.casIndex }}
+      </hlm-td>
+    </brn-column-def>
+
     <brn-column-def name="actions" class="w-[20px] {{ !container.sm() ? 'p-0' : ''}}">
       <hlm-th *brnHeaderDef></hlm-th>
       <hlm-td *brnCellDef="let e" class="justify-end">
         @if (isAdmin()) {
-          <button hlmBtn variant="ghost" size="icon" [brnMenuTriggerFor]="menu4">
-            <hlm-icon name="lucideMoreVertical" size="sm" />
-          </button>
+        <button hlmBtn variant="ghost" size="icon" [brnMenuTriggerFor]="menu4">
+          <hlm-icon name="lucideMoreVertical" size="sm" />
+        </button>
 
-          <hlm-alert-dialog #dialog>
-            <hlm-alert-dialog-content *brnAlertDialogContent="let ctx">
-              <hlm-alert-dialog-header>
-                <h3 hlmAlertDialogTitle>Dienstplan wirklich löschen?</h3>
-                <p hlmAlertDialogDescription>
-                  Diese Aktion kann nicht rückgängig gemacht werden.
-                </p>
-              </hlm-alert-dialog-header>
+        <hlm-alert-dialog #dialog>
+          <hlm-alert-dialog-content *brnAlertDialogContent="let ctx">
+            <hlm-alert-dialog-header>
+              <h3 hlmAlertDialogTitle>Dienstplan wirklich löschen?</h3>
+              <p hlmAlertDialogDescription>
+                Diese Aktion kann nicht rückgängig gemacht werden.
+              </p>
+            </hlm-alert-dialog-header>
 
-              <hlm-alert-dialog-footer>
-                <button hlmAlertDialogCancel (click)="ctx.close()">Abbrechen</button>
-                <button hlmAlertDialogAction class="!bg-destructive !text-destructive-foreground"
-                  (click)="deleteRoster(e.roster); ctx.close()">Löschen</button>
-              </hlm-alert-dialog-footer>
-            </hlm-alert-dialog-content>
+            <hlm-alert-dialog-footer>
+              <button hlmAlertDialogCancel (click)="ctx.close()">Abbrechen</button>
+              <button hlmAlertDialogAction class="!bg-destructive !text-destructive-foreground"
+                (click)="deleteRoster(e.roster); ctx.close()">Löschen</button>
+            </hlm-alert-dialog-footer>
+          </hlm-alert-dialog-content>
 
-          </hlm-alert-dialog>
+        </hlm-alert-dialog>
 
-          <ng-template #menu4>
-            <hlm-menu class="w-56">
-              <hlm-menu-label>Aktionen</hlm-menu-label>
-              <hlm-menu-separator />
-              <hlm-menu-group>
-                <button hlmMenuItem [routerLink]="['./view', e.roster.id]">
-                  <hlm-icon name="lucideEye" hlmMenuIcon />
-                  <span>Anzeigen</span>
-                </button>
+        <ng-template #menu4>
+          <hlm-menu class="w-56">
+            <hlm-menu-label>Aktionen</hlm-menu-label>
+            <hlm-menu-separator />
+            <hlm-menu-group>
+              <button hlmMenuItem [routerLink]="['./view', e.roster.id]">
+                <hlm-icon name="lucideEye" hlmMenuIcon />
+                <span>Anzeigen</span>
+              </button>
 
-                <button hlmMenuItem (click)="sendPreview(e.roster)">
-                  <hlm-icon name="lucideSend" hlmMenuIcon />
-                  <span>Per Mail senden</span>
-                </button>
+              <button hlmMenuItem (click)="sendPreview(e.roster)">
+                <hlm-icon name="lucideSend" hlmMenuIcon />
+                <span>Per Mail senden</span>
+              </button>
 
-                <button hlmMenuItem [routerLink]="['./plan', e.roster.id]">
-                  <hlm-icon name="lucidePencil" hlmMenuIcon />
-                  <span>Bearbeiten</span>
-                </button>
+              <button hlmMenuItem [routerLink]="['./plan', e.roster.id]">
+                <hlm-icon name="lucidePencil" hlmMenuIcon />
+                <span>Bearbeiten</span>
+              </button>
 
-                <button hlmMenuItem [routerLink]="['./approve', e.roster.id]">
-                  <hlm-icon name="lucideCheck" hlmMenuIcon />
-                  <span>Freigeben</span>
-                </button>
+              <button hlmMenuItem (click)="approve(e.roster.id)">
+                <hlm-icon name="lucideCheck" hlmMenuIcon />
+                <span>Freigeben</span>
+              </button>
 
-              </hlm-menu-group>
-              <hlm-menu-separator />
-              <hlm-menu-group>
-                <button hlmMenuItem class="text-destructive hover:text-destructive" [brnAlertDialogTriggerFor]="dialog">
-                  <hlm-icon name="lucideTrash2" hlmMenuIcon />
-                  <span>Löschen</span>
-                </button>
-              </hlm-menu-group>
-            </hlm-menu>
-          </ng-template>
+            </hlm-menu-group>
+            <hlm-menu-separator />
+            <hlm-menu-group>
+              <button hlmMenuItem class="text-destructive hover:text-destructive" [brnAlertDialogTriggerFor]="dialog">
+                <hlm-icon name="lucideTrash2" hlmMenuIcon />
+                <span>Löschen</span>
+              </button>
+            </hlm-menu-group>
+          </hlm-menu>
+        </ng-template>
         } @else {
-          <button hlmBtn variant="ghost" size="icon" [routerLink]="['./view', e.roster.id]">
-            <hlm-icon name="lucideEye" size="sm" />
-          </button>
+        <button hlmBtn variant="ghost" size="icon" [routerLink]="['./view', e.roster.id]">
+          <hlm-icon name="lucideEye" size="sm" />
+        </button>
         }
       </hlm-td>
     </brn-column-def>

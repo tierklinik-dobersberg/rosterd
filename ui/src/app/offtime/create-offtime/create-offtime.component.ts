@@ -3,44 +3,26 @@ import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
 import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
 import { toast } from 'ngx-sonner';
 
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
 import { BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import { HlmCardModule } from '@tierklinik-dobersberg/angular/card';
+import { HlmCheckboxModule } from '@tierklinik-dobersberg/angular/checkbox';
 import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { OffTimeEntry, OffTimeType, Profile } from '@tierklinik-dobersberg/apis';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 
-interface CreateModel {
-  id?: string;
-  requestorId?: string;
-  from: Date;
-  to: Date;
-  comment: string;
-  type: 'auto' | 'vacation' | 'timeoff'
-}
-
-function makeEmptyCreateModel(): CreateModel {
-  return {
-    from: new Date(),
-    to: new Date(),
-    comment: '',
-    type: 'auto'
-  }
-}
 
 @Component({
   selector: 'app-create-offtime',
@@ -48,20 +30,19 @@ function makeEmptyCreateModel(): CreateModel {
   imports: [
     FormsModule,
     TkdRoster2Module,
-    NzRadioModule,
-    NzSelectModule,
     RouterModule,
     NzDatePickerModule,
-    NzAvatarModule,
     HlmCardModule,
     HlmButtonModule,
     HlmAvatarModule,
     HlmInputModule,
     HlmLabelModule,
+    HlmCheckboxModule,
     BrnSelectModule,
     HlmSelectModule,
     HlmDialogModule,
     BrnDialogModule,
+    HlmBadgeModule
   ],
   templateUrl: './create-offtime.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -69,49 +50,82 @@ function makeEmptyCreateModel(): CreateModel {
 export class CreateOfftimeComponent implements OnInit {
   private readonly offTimeService = injectOfftimeService();
   private readonly usersService = injectUserService();
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly data = inject(DIALOG_DATA, { optional: true });
+  private readonly data: { entry: OffTimeEntry } = inject(DIALOG_DATA, { optional: true });
   private readonly dialogRef = inject(BrnDialogRef);
 
   readonly editId = input('');
 
-  model = makeEmptyCreateModel();
-  originalModel = makeEmptyCreateModel();
+  protected readonly _range = model<[Date, Date]>();
+  protected readonly _requestor = model<string>();
+  protected readonly _comment = model<string>();
+  protected readonly _type = model<OffTimeType>();
+  protected readonly Types = OffTimeType;
+
+  protected readonly _isEdit = signal(false);
+
+  protected readonly _computedCurrentModel = computed(() => {
+    const description = this._comment();
+    const range = this._range();
+    const requestor = this._requestor();
+    const type = this._type();
+
+    if (!range) {
+      return null;
+    }
+
+    if (!requestor) {
+      return null;
+    }
+
+    const result = {
+      description: description || '',
+      from: Timestamp.fromDate(range[0]),
+      to: Timestamp.fromDate(range[1]),
+      requestorId: requestor,
+      requestType: type || OffTimeType.UNSPECIFIED,
+    }
+
+    return result
+  })
 
   protected readonly _profiles = signal<Profile[] | null>(null);
 
-  async save() {
-    if (this.model.id) {
-      const paths: string[] = [];
+  protected _wholeDays = model(true);
 
-      if (this.model.comment !== this.originalModel.comment) {
+  async save() {
+    const current = this._computedCurrentModel();
+
+    if (!current) {
+      return;
+    }
+
+    if (this.data && this.data.entry) {
+      const paths: string[] = [];
+      const original = this.data.entry;
+
+      if (current.description !== original.description) {
         paths.push("description");
       }
 
-      if (this.model.from.getTime() != this.originalModel.from.getTime()) {
+      if (current.from.toDate().getTime() != original.from?.toDate().getTime()) {
         paths.push("from")
       }
 
-      if (this.model.to.getTime() != this.originalModel.to.getTime()) {
+      if (current.to.toDate().getTime() != original.to?.toDate().getTime()) {
         paths.push("to")
       }
 
-      if (this.model.requestorId != this.originalModel.requestorId) {
+      if (current.requestorId != original.requestorId) {
         paths.push("requestor_id")
       }
 
-      if (this.model.type != this.originalModel.type) {
+      if (current.requestType != original.type) {
         paths.push("request_type")
       }
 
       await this.offTimeService.updateOffTimeRequest({
-        id: this.model.id,
-        description: this.model.comment,
-        from: Timestamp.fromDate(this.model.from),
-        to: Timestamp.fromDate(this.model.to),
-        requestorId: this.model.requestorId,
-        requestType: this.typeToProto(this.model.type),
+        id: this.data.entry.id,
+        ...current,
         fieldMask: {
           paths,
         }
@@ -127,11 +141,7 @@ export class CreateOfftimeComponent implements OnInit {
     } else {
       // Create a new entry
       await this.offTimeService.createOffTimeRequest({
-        description: this.model.comment,
-        from: Timestamp.fromDate(this.model.from),
-        to: Timestamp.fromDate(this.model.to),
-        requestType: this.typeToProto(this.model.type),
-        requestorId: this.model.requestorId,
+        ...current,
       })
         .then(() => {
           toast.success(`Antrag wurde erfolgreich erstellt!`)
@@ -144,17 +154,6 @@ export class CreateOfftimeComponent implements OnInit {
     }
   }
 
-  private typeToProto(rt: CreateModel['type']): OffTimeType {
-    switch (rt) {
-      case 'auto':
-        return OffTimeType.UNSPECIFIED
-      case 'timeoff':
-        return OffTimeType.TIME_OFF
-      case 'vacation':
-        return OffTimeType.VACATION
-    }
-  }
-
   ngOnInit(): void {
     this.usersService.listUsers({})
       .then(response => {
@@ -164,38 +163,16 @@ export class CreateOfftimeComponent implements OnInit {
     if (this.data && 'entry' in this.data && this.data.entry) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.applyToModel((this.data as any).entry)
-    } else {
-      this.model = makeEmptyCreateModel();
     }
   }
 
   private applyToModel(entry: OffTimeEntry) {
-    this.model = {
-      id: entry.id,
-      comment: entry.description,
-      from: entry.from!.toDate(),
-      to: entry.to!.toDate(),
-      type: 'auto',
-      requestorId: entry.requestorId
-    };
+    this._isEdit.set(true);
 
-    switch (entry.type) {
-      case OffTimeType.UNSPECIFIED:
-        this.model.type = 'auto';
-        break;
-      case OffTimeType.TIME_OFF:
-        this.model.type = 'timeoff';
-        break;
-      case OffTimeType.VACATION:
-        this.model.type = 'vacation';
-        break;
-    }
-
-    // clone the model type so we can compare for changes
-    // when updating.
-    this.originalModel = {
-      ...this.model
-    };
+    this._comment.set(entry.description);
+    this._range.set([entry.from!.toDate(), entry.to!.toDate()])
+    this._requestor.set(entry.requestorId)
+    this._type.set(entry.type)
   }
 
   abort() {

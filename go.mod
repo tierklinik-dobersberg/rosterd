@@ -12,11 +12,18 @@ require (
 	github.com/sethvargo/go-envconfig v1.0.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
-	github.com/tierklinik-dobersberg/apis v0.0.0-20240424155313-84d975c1e29a
+	github.com/tierklinik-dobersberg/apis v0.0.0-20240528091424-83fda3cc1a3a
 	github.com/tierklinik-dobersberg/cis v1.1.0
 	go.mongodb.org/mongo-driver v1.13.1
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	google.golang.org/protobuf v1.32.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -35,6 +42,7 @@ require (
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/sebest/xff v0.0.0-20210106013422-671bd2870b3a // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.4
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect

@@ -1,7 +1,7 @@
 import cfg from "@tierklinik-dobersberg/tailwind/config.js";
 
 cfg.content = [
-  "./**/*.{html,ts,css,scss}",
+  "./src/**/*.{html,ts,css,scss}",
   "./node_modules/@tierklinik-dobersberg/angular/**/*.{mjs,js,html,css}"
 ]
 

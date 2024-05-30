@@ -48,6 +48,7 @@ type (
 
 		Deleted      bool               `bson:"deleted,omitempty"`
 		SupersededBy primitive.ObjectID `bson:"supersededBy,omitempty"`
+		CASIndex     uint64             `bson:"cas_index"`
 	}
 )
 
@@ -118,6 +119,7 @@ func (r DutyRoster) ToProto() *rosterv1.Roster {
 		CreatedAt:      timestamppb.New(r.CreatedAt),
 		UpdatedAt:      timestamppb.New(r.UpdatedAt),
 		RosterTypeName: r.RosterTypeName,
+		CasIndex:       r.CASIndex,
 	}
 
 	protoRoster.Shifts = make([]*rosterv1.PlannedShift, len(r.Shifts))

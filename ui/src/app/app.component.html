@@ -25,7 +25,11 @@ Next to the sidebar there's the main content container including the header
 -->
 <div class="flex flex-col flex-grow overflow-x-hidden">
   <header
-    class="flex items-center justify-between px-2 py-4 sm:px-4 md:px-8 lg:px-12 shadow-sm border-b border-subtle h-16 w-full">
+    class="flex items-center justify-between px-2 py-4 sm:px-4 md:px-8 lg:px-12 shadow-sm border-b border-subtle h-16 w-full print:hidden"
+    [ngClass]="{
+      '!pl-4': isRosterView,
+    }">
+
     <!-- On mobile the logo is put into the header -->
     @if (!layout.lg()) {
     <a class="block w-8 h-8 mr-2" href="https://my.dobersberg.vet">
@@ -33,9 +37,15 @@ Next to the sidebar there's the main content container including the header
     </a>
     }
 
-    <h1 class="text-lg  font-light flex-grow whitespace-nowrap">
-      Dienstplan & Urlaubs Verwaltung
-    </h1>
+    <div class="flex flex-col justify-center items-start">
+      @if (outlet(); as outlet) {
+      <ng-container *ngTemplateOutlet="outlet" />
+      } @else {
+      <h1 class="text-lg  font-light flex-grow whitespace-nowrap">
+        Dienstplan & Urlaubs Verwaltung
+      </h1>
+      }
+    </div>
 
     <div class="flex flex-row justify-between items-center flex-grow-0 gap-4">
       @if (!layout.lg() || isRosterView) {
@@ -68,8 +78,8 @@ Next to the sidebar there's the main content container including the header
     </div>
   </header>
 
-  <div class="px-2 py-4 sm:px-4 md:px-8 lg:px-12 print:p-0 overflow-hidden flex flex-col items-stretch" id="content"
-    [ngClass]="{'!p-0': isRosterView}" containerSize>
+  <div class="px-2 py-4 sm:px-4 md:px-8 lg:px-12 print:p-0 overflow-hidden flex flex-col items-stretch flex-grow"
+    id="content" [ngClass]="{'!p-0': isRosterView}" containerSize>
     <router-outlet></router-outlet>
 
     <app-dev-size />
@@ -116,15 +126,15 @@ Next to the sidebar there's the main content container including the header
 <ng-template #navigationTemplate let-drawer>
   @if (isAdmin | async) {
   <button hlmBtn variant="link" role="navigation" routerLink="/roster" [routerLinkActive]="'nav__active'">
-    <hlm-icon name="lucideCalendar" size="none"/>
+    <hlm-icon name="lucideCalendar" size="none" />
     Dienstpläne
   </button>
   <button hlmBtn variant="link" role="navigation" routerLink="/offtimes" [routerLinkActive]="'nav__active'">
-    <hlm-icon name="lucidePlane" size="none"/>
+    <hlm-icon name="lucidePlane" size="none" />
     Urlaubsanträge
   </button>
   <button hlmBtn variant="link" role="navigation" routerLink="/costs" [routerLinkActive]="'nav__active'">
-    <hlm-icon name="lucideUserX" size="none"/>
+    <hlm-icon name="lucideUserX" size="none" />
     Abwesenheiten
   </button>
   <button hlmBtn variant="link" role="navigation" routerLink="/worktimes" [routerLinkActive]="'nav__active'">
@@ -132,7 +142,7 @@ Next to the sidebar there's the main content container including the header
     Arbeitszeiten
   </button>
   <button hlmBtn variant="link" role="navigation" routerLink="/admin/" [routerLinkActive]="'nav__active'">
-    <hlm-icon name="lucideCog" size="none"/>
+    <hlm-icon name="lucideCog" size="none" />
     Administration
   </button>
   }

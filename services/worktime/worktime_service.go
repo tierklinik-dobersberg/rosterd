@@ -42,17 +42,27 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 	}
 
 	for idx, wt := range req.Msg.WorkTimes {
+		applicableFrom, err := time.ParseInLocation("2006-01-02", wt.ApplicableAfter, time.Local)
+		if err != nil {
+			merr.Errors = append(merr.Errors, fmt.Errorf("invalid value for field 'applicable_after': %w", err))
+		}
+
 		model := structs.WorkTime{
 			UserID:                    wt.UserId,
 			TimePerWeek:               wt.TimePerWeek.AsDuration(),
-			ApplicableFrom:            wt.ApplicableAfter.AsTime(),
+			ApplicableFrom:            applicableFrom,
 			VacationWeeksPerYear:      wt.VacationWeeksPerYear,
 			OvertimeAllowancePerMonth: wt.OvertimeAllowancePerMonth.AsDuration(),
 			ExcludeFromTimeTracking:   wt.ExcludeFromTimeTracking,
 		}
 
-		if wt.EndsWith.IsValid() {
-			model.EndsWith = wt.EndsWith.AsTime()
+		if wt.EndsWith != "" {
+			var err error
+			model.EndsWith, err = time.ParseInLocation("2006-01-02", wt.EndsWith, time.Local)
+
+			if err != nil {
+				merr.Errors = append(merr.Errors, fmt.Errorf("invalid value for field 'ends_with': %w", err))
+			}
 		}
 
 		if !wt.OvertimeAllowancePerMonth.IsValid() {
@@ -64,11 +74,6 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 			merr.Errors = append(merr.Errors, fmt.Errorf("user_id %q: failed to fetch user record: %w", wt.UserId, err))
 
 			continue
-		}
-
-		// if not "ApplicableFrom" is set we default to now.
-		if model.ApplicableFrom.IsZero() || !wt.ApplicableAfter.IsValid() {
-			model.ApplicableFrom = time.Now()
 		}
 
 		// finally store the work-time record in the database.
@@ -399,8 +404,12 @@ func (svc *Service) UpdateWorkTime(ctx context.Context, req *connect.Request[ros
 	for _, p := range paths {
 		switch p {
 		case "ends_with":
-			if req.Msg.EndsWith.IsValid() {
-				wt.EndsWith = req.Msg.EndsWith.AsTime()
+			if req.Msg.EndsWith != "" {
+				var err error
+				wt.EndsWith, err = time.ParseInLocation("2006-01-02", req.Msg.EndsWith, time.Local)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid value for field 'ends_with': %w", err))
+				}
 			} else {
 				wt.EndsWith = time.Time{}
 			}
@@ -427,14 +436,14 @@ func worktimeToProto(wt structs.WorkTime) *rosterv1.WorkTime {
 		Id:                        wt.ID.Hex(),
 		UserId:                    wt.UserID,
 		TimePerWeek:               durationpb.New(wt.TimePerWeek),
-		ApplicableAfter:           timestamppb.New(wt.ApplicableFrom),
+		ApplicableAfter:           wt.ApplicableFrom.Local().Format("2006-01-02"),
 		VacationWeeksPerYear:      wt.VacationWeeksPerYear,
 		OvertimeAllowancePerMonth: durationpb.New(wt.OvertimeAllowancePerMonth),
 		ExcludeFromTimeTracking:   wt.ExcludeFromTimeTracking,
 	}
 
 	if !wt.EndsWith.IsZero() {
-		wtpb.EndsWith = timestamppb.New(wt.EndsWith)
+		wtpb.EndsWith = wt.EndsWith.Local().Format("2006-01-02")
 	}
 
 	return wtpb

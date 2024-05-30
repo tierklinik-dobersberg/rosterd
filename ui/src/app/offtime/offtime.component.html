@@ -20,7 +20,8 @@
 
   <tkd-empty-table brnNoDataRow [totalCount]="0" [filteredCount]="_filteredCount()" />
 
-  <brn-column-def [name]="columns.User" class="w-0 flex-[1_1_8rem] min-w-[8rem] @[934px]:flex-[0_0_12rem] @[1010px]:flex-[0_0_15rem]">
+  <brn-column-def [name]="columns.User"
+    class="w-0 flex-[1_1_8rem] min-w-[8rem] @[934px]:flex-[0_0_12rem] @[1010px]:flex-[0_0_15rem]">
     <hlm-th *brnHeaderDef truncate>
       <tkd-sort-th [(current)]="_sort">
         Benutzer
@@ -244,7 +245,7 @@
     @if (!!approvalModalEntry) {
     <brn-separator hlmSeparator decorative class="mt-8" />
 
-    <table class="w-full">
+    <table class="w-full text-sm">
       <tr>
         <td class="px-3 py-1 text-primary/50">Antragsteller</td>
         <td class="px-3 py-1 font-medium">

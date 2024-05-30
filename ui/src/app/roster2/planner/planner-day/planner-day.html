@@ -1,125 +1,92 @@
-<span class="inline-block w-full mb-1 text-xs text-center rounded  text-primary/70 space-x-1"
-  [ngClass]="{'bg-secondary':!!holiday}">
-  <span>{{ holiday?.localName}}</span>
-  @if (!layout.lg() && !holiday) {
-  <span>
-    {{ date | date:'EEEE' }} |
+<span class="inline-flex flex-row w-full mb-1 text-xs justify-center items-center rounded text-primary gap-1">
+  @if (!_loading()) {
+  <span hlmBadge [variant]="_holiday() ? 'default' : 'outline'"
+    class="transform scale-[90%] inline-flex flex-row gap-1 items-center border-none overflow-hidden">
+    @if (layout.lg()) {
+    <span>{{ date() | date:'dd.MM' }}</span>
+    } @else {
+    <span class="font-medium">{{ date() | date:'EEEE, dd.MM' }}</span>
+    }
+
+    @if (_holiday(); as holiday) {
+    <brn-separator hlm decorative orientation="vertical" class="w-[1px] h-[10px]" />
+
+    <span class="overflow-hidden text-ellipsis whitespace-nowrap">
+      {{ holiday.localName }}
+    </span>
+    }
   </span>
+  } @else {
+  <hlm-skeleton class="h-4 w-8" />
   }
-  <span>{{ date | date:'dd.MM' }}</span>
 </span>
 
-@if (!disabled) {
-<ul class="flex overflow-auto flex-col flex-grow gap-1 px-0.5 py-0.5 group">
-  @for (shift of requiredShifts; track shift) {
-  <li cdkOverlayOrigin #trigger="cdkOverlayOrigin" (click)="onShiftClick(trigger, shift)"
-    [ngStyle]="{backgroundColor: shift.definition.color + '40'}"
-    class="flex overflow-hidden relative flex-row gap-1 justify-start items-center px-1.5 py-1 text-xs shadow-sm transition-all duration-200 ease-in-out hover:ring-1 text-primary"
-    [ngClass]="{'cursor-not-allowed opacity-40': !!selectedUser && !(selectedUser|inList:shift.eligibleUserIds) && !(selectedUser|inList:assigned[shift.workShiftId]), 'opacity-50': highlightUserShifts !== null && !(highlightUserShifts | inList:assigned[shift.workShiftId]), 'ring-1': highlightUserShifts | inList:assigned[shift.workShiftId], 'rounded': !trigger.elementRef.nativeElement.open, 'rounded-t ring-1 shadow-inner': trigger.elementRef.nativeElement.open, 'cursor-pointer': !readonly }">
 
-    <div
-      [nz-tooltip]="shift.definition.name + ' (' + shift.definition.displayName + ') - Von ' + (shift.from?.toDate()| date:'HH:mm') + ' bis ' + (shift.to?.toDate() | date:'HH:mm')"
-      class="flex overflow-hidden flex-col justify-between pr-1.5 text-xs uppercase whitespace-nowrap border-r select-none text-ellipsis text-primary w-10"
-      [ngStyle]="{borderColor: shift.definition.color + 'aa'}" style="font-size: 0.65rem;">
+<ul class="flex overflow-auto flex-col flex-grow gap-1 px-0.5 py-0.5 group print:p-0.5">
+  @if (_loading()) {
+  <li>
+    <hlm-skeleton class="h-10 rounded-md" />
+  </li>
+  <li>
+    <hlm-skeleton class="h-10 rounded-md" />
+  </li>
+  <li>
+    <hlm-skeleton class="h-10 rounded-md" />
+  </li>
+  } @else {
 
-      <span class="transition-all duration-200 ease-in-out translate-y-2 group-hover:translate-y-0"
-        [class.font-semibold]="highlightUserShifts|inList:assigned[shift.workShiftId]">
-        {{ shift.definition.displayName }}
-      </span>
+  @for (shift of _shifts(); track shift.uniqueId) {
 
-      <span class="transition-all duration-200 ease-in-out -translate-x-full group-hover:translate-x-0">
-        {{ assigned[shift.workShiftId]?.size || 0 }}/{{ shift.definition.requiredStaffCount }}
-      </span>
-    </div>
+  @if (shift.workShiftId|inList:_shiftsToShow()) {
 
-    @if (!!selectedUser && !(selectedUser|inList:shift.eligibleUserIds)) {
-    <span
-      class="absolute flex items-center justify-center w-4 h-4 text-white rounded-full top-3 right-3 bg-opacity-light bg-alert-red"
-      [nz-tooltip]="violationTemplate">!</span>
+  <li
+    class="flex overflow-hidden rounded-md print:rounded-none print:shadow-none relative flex-row gap-1 justify-start items-center text-xs shadow-sm transition-all duration-200 ease-in-out hover:ring-1 text-primary"
+    [ngStyle]="{
+      backgroundColor: shift.color + '40'
+    }" [ngClass]="{
+      'cursor-not-allowed opacity-40': !!_selectedUser() && !(_selectedUser()|inList:shift.eligibleUsers) && !(_selectedUser()|inList:shift.assignedUsers),
+    }">
+
+    @if (layout.md()) {
+    <brn-select [ngModel]="shift.assignedUsers"
+      (ngModelChange)="_service.setShiftAssignments(date(), shift.uniqueId, $event)" [multiple]="true" class="w-full"
+      [disabled]="_readonly()">
+      <tkd-shift-select [shift]="shift" brnSelectTrigger class="w-full px-1.5 py-1 print:p-0.5" />
+
+      <hlm-select-content class="max-h-[30rem]">
+        @for (userId of (shift.eligibleUsers|joinLists:shift.assignedUsers); track userId) {
+        @if (userId | toUser:_profiles(); as user) {
+        <hlm-option [value]="user.user!.id">
+          <hlm-avatar
+            class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-4"
+            variant="small">
+            <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+            <span hlmAvatarFallback>{{ user | userLetter }}</span>
+          </hlm-avatar>
+
+          <span class="inline-flex flex-grow flex-col leading-3 items-start justify-start py-0.5">
+            <span>{{ user | displayName }}</span>
+            <span class="text-primary/70 text-[0.7rem]">
+              @if (_workTimes()[userId]; as work) {
+              <span [ngClass]="{'text-alert-red': work.expectedTime!.seconds < work.plannedTime!.seconds}">
+                {{ work.plannedTime | duration:'default-hours' }}
+              </span>
+              <span>/{{ work.expectedTime | duration:'default-hours' }}</span>
+              }
+            </span>
+          </span>
+        </hlm-option>
+        }
+        }
+      </hlm-select-content>
+    </brn-select>
+    } @else {
+    <tkd-shift-select [shift]="shift" class="w-full px-1.5 py-1" />
     }
 
-    <ng-template #violationTemplate>
-      <ul>
-        @for (violation of shift.violationsPerUserId[selectedUser || ''] | constraintViolation; track violation) {
-        <li>
-          {{ violation }}
-        </li>
-        }
-      </ul>
-    </ng-template>
-
-    <div class="flex flex-row flex-wrap items-center flex-grow gap-1">
-      @for (user of assigned[shift.workShiftId]; track user) {
-      <div>
-        @if ((user|toUser:profiles); as profile) {
-        <span class="block px-0.5 rounded border border-subtle"
-          [ngStyle]="{backgroundColor: (profile | color) + 'aa', color: (profile | contrastColor), borderColor: (profile|color)}">
-          <span>{{ (profile | displayName).substr(0, 2) }}</span>
-        </span>
-        } @else {
-        <span class="block px-0.5 rounded border border-subtle" [nz-tooltip]="'User-ID: ' + user">
-          N/A
-        </span>
-        }
-      </div>
-      }
-    </div>
-
-    @if (layout.lg()) {
-    <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="trigger"
-      [cdkConnectedOverlayOpen]="trigger.elementRef.nativeElement.open"
-      (overlayOutsideClick)="onOverlayOutsideClick($event, trigger)">
-      <ng-container *ngTemplateOutlet="userSelectionTemplate; context: {
-          shift: shift,
-          trigger: trigger,
-        }"></ng-container>
-    </ng-template>
-    }
   </li>
   }
-</ul>
-}
 
-<ng-template #userSelectionTemplate let-shift="shift" let-trigger="trigger">
-  @if (shift) {
-  <ul class="p-2 bg-white rounded-b" [ngClass]="{'ring-1 shadow w-80': !!trigger, 'w-full': !trigger}">
-    @for (user of shift.eligibleUserIds; track user) {
-    <li>
-      @if ((user | toUser:profiles); as userProfile) {
-      <div class="flex flex-row items-center gap-2 p-2 rounded hover:bg-gray-100"
-        [ngClass]="{'cursor-pointer': !readonly}" (click)="onShiftClick(trigger, shift, user)">
-        <nz-avatar nzIcon="user" [nzSrc]="userProfile.user?.avatar"></nz-avatar>
-        <div class="flex flex-col justify-start gap-1">
-          <span>{{ userProfile | displayName }}</span>
-          @if (workTimeStatus[user]; as work) {
-          <span class="text-xs leading-3 text-muted">
-            <span [ngClass]="{'text-alert-red': work.expectedTime!.seconds < work.plannedTime!.seconds}">{{
-              work.plannedTime | duration:'default-hours' }}</span>
-            <span>/{{ work.expectedTime | duration:'default-hours' }}</span>
-          </span>
-          }
-        </div>
-        <div class="flex-grow"></div>
-        @if (user|inList:assigned[shift.workShiftId]) {
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-          <path fill-rule="evenodd"
-            d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-            clip-rule="evenodd" />
-        </svg>
-        }
-      </div>
-      }
-    </li>
-    }
-  </ul>
   }
-</ng-template>
-
-@if (!layout.lg()) {
-<nz-drawer [nzVisible]="drawerVisible" (nzOnClose)="drawerVisible = false"
-  [nzWidth]="layout.drawerWidth() || 'inherit'">
-  <ng-container *nzDrawerContent>
-    <ng-container *ngTemplateOutlet="userSelectionTemplate; context: drawerContext"></ng-container>
-  </ng-container>
-</nz-drawer>
-}
+  }
+</ul>

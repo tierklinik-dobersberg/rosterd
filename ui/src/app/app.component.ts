@@ -1,24 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { NgIconsModule } from '@ng-icons/core';
 import { moveInOutAnimation } from '@tierklinik-dobersberg/angular/animations';
+import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { HlmIconModule } from '@tierklinik-dobersberg/angular/icon';
 import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
+import { HlmToasterModule } from '@tierklinik-dobersberg/angular/sonner';
 import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { BehaviorSubject, filter, from, map, share } from 'rxjs';
+import { UserLetterPipe } from 'src/app/common/pipes';
 import { environment } from 'src/environments/environment';
 import { TkdContainerSizeDirective } from './common/container/container.directive';
+import { AppHeaderOutletDirective, AppHeaderOutletService } from './header-outlet.directive';
 import { TkdRoster2Module } from './roster2/roster2.module';
-import { HlmToasterModule } from '@tierklinik-dobersberg/angular/sonner';
-import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
-import { UserLetterPipe } from 'src/app/common/pipes';
 import { DevSizeOutlineComponent } from './size-outline/size-outline';
 
 @Component({
@@ -41,6 +42,7 @@ import { DevSizeOutlineComponent } from './size-outline/size-outline';
     HlmAvatarModule,
     UserLetterPipe,
     DevSizeOutlineComponent,
+    AppHeaderOutletDirective,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
@@ -57,6 +59,12 @@ export class AppComponent implements OnInit {
   protected readonly cdr = inject(ChangeDetectorRef);
   protected readonly layout = inject(LayoutService).withAutoUpdate();
 
+  protected readonly outlet = (() => {
+    const service = inject(AppHeaderOutletService);
+
+    return computed(() => service.outlet());
+  })();
+
   drawerVisible = false;
 
   closeDrawer() {
@@ -69,7 +77,7 @@ export class AppComponent implements OnInit {
     inject(AUTH_SERVICE).introspect({})
       .then(response => response.profile)
   ).pipe(
-    share({connector: () => new BehaviorSubject<Profile | undefined>(undefined)}),
+    share({ connector: () => new BehaviorSubject<Profile | undefined>(undefined) }),
     filter(p => !!p),
   )
 

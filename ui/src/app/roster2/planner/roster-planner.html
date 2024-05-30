@@ -1,78 +1,269 @@
-<div class="relative flex flex-row overflow-hidden w-full">
-  @if (layout.lg() && !readonly) {
+<!-- App Header -->
+<div *appHeader class="flex flex-row justify-start items-center gap-1">
+  <hlm-icon name="lucideCalendar" size="lg" class="text-emerald-500" />
+
+  <div class="flex flex-col items-start justify-end leading-3 h-full mt-5">
+    <h2 class="pl-3 font-medium flex flex-row items-center gap-2">
+      @if (!_loading()) {
+      <span>
+        {{ _from() | date:'mediumDate' }} - {{ _to() | date:'mediumDate' }}
+      </span>
+      } @else {
+      <hlm-skeleton class="h-5 w-64" />
+      }
+
+      @if (_service.approved()) {
+      <span hlmBadge variant="outline"
+        class="flex items-center gap-2 text-green-700 border-green-700 hover:bg-green-700/10">
+        <hlm-icon name="lucideCheckCircle" size="sm" />
+        {{ _service.approvedBy() | displayName }}
+      </span>
+      }
+    </h2>
+
+    <hlm-menu-bar class="border-none bg-transparent -mt-0.5">
+      <button hlmMenuBarItem [brnMenuTriggerFor]="rosterMenu">Dienstplan</button>
+      <button hlmMenuBarItem [brnMenuTriggerFor]="editMenu">Bearbeiten</button>
+      <button hlmMenuBarItem [brnMenuTriggerFor]="settingsMenu">Ansicht</button>
+    </hlm-menu-bar>
+
+    <ng-template #editMenu>
+      <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+        <hlm-menu-group>
+          <button hlmMenuItem [disabled]="true">
+            <hlm-icon name="lucideUndo2" hlmMenuIcon />
+            Rückgängig
+          </button>
+          <button hlmMenuItem [disabled]="true">
+            <hlm-icon name="lucideRedo2" hlmMenuIcon />
+            Wiederherstellen
+          </button>
+        </hlm-menu-group>
+      </hlm-menu>
+    </ng-template>
+
+    <ng-template #rosterMenu>
+      <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+        <hlm-menu-group>
+          @if (_readonly()) {
+          <button hlmMenuItem (click)="_service.toggleReadonly()">
+            <hlm-icon name="lucidePenicl" hlmMenuIcon />
+            Bearbeiten
+          </button>
+          } @else {
+          <button hlmMenuItem [disabled]="!_dirty() || _readonly()" (click)="_service.saveRoster()">
+            <hlm-icon name="lucideSave" hlmMenuIcon />
+
+            Speichern
+          </button>
+          }
+
+          <button hlmMenuItem [disabled]="_readonly() || _dirty()" (click)="approve()">
+            <hlm-icon name="lucideCheckCircle" hlmMenuIcon />
+
+            Freigeben
+          </button>
+
+          <hlm-menu-separator />
+
+        </hlm-menu-group>
+
+        <hlm-menu-group>
+
+          <button hlmMenuItem [brnMenuTriggerFor]="shareMenu">
+            <hlm-icon name="lucideDownload" hlmMenuIcon />
+
+            Export
+            <hlm-menu-item-sub-indicator />
+          </button>
+
+          <button hlmMenuItem (click)="print()">
+            <hlm-icon name="lucidePrinter" hlmMenuIcon />
+            Drucken ...
+          </button>
+
+          <hlm-menu-separator />
+
+          <button hlmMenuItem (click)="close()">
+            <hlm-icon name="lucideX" hlmMenuIcon />
+            Schließen
+          </button>
+
+        </hlm-menu-group>
+      </hlm-menu>
+    </ng-template>
+
+    <ng-template #shareMenu>
+      <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+        <hlm-menu-group>
+          <button hlmMenuItem [disabled]="true">
+            Als iCal downloaden
+          </button>
+          <button hlmMenuItem [disabled]="true">
+            Als PDF downloaden
+          </button>
+        </hlm-menu-group>
+        <hlm-menu-separator />
+        <hlm-menu-group>
+          <button hlmMenuItem disabled>
+            Als Link verschicken
+          </button>
+          <button hlmMenuItem disabled>
+            Als E-Mail verschicken
+          </button>
+        </hlm-menu-group>
+      </hlm-menu>
+    </ng-template>
+
+    <ng-template #settingsMenu>
+      <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+        <hlm-menu-group>
+          <button hlmMenuItemCheckbox (click)="_showAllUsers.set(!_showAllUsers())" [checked]="_showAllUsers()">
+            <hlm-menu-item-check />
+
+            Alle Mitarbeiter anzeigen
+          </button>
+        </hlm-menu-group>
+
+        <hlm-menu-separator />
+
+        <hlm-menu-group>
+          <button inset hlmMenuItem (click)="settings?.open()">
+            Mehr ...
+
+            <hlm-menu-item-sub-indicator />
+          </button>
+        </hlm-menu-group>
+      </hlm-menu>
+    </ng-template>
+
+  </div>
+</div>
+
+<div class="relative flex flex-row overflow-hidden w-full h-full">
+  @if (layout.lg() && !_readonly()) {
   <div
     class="flex flex-col items-center flex-shrink-0 w-24 gap-2 bg-white border-r shadow-sm border-subtle print:hidden">
     <ng-container *ngTemplateOutlet="userSelectionTemplate"></ng-container>
+
+    <tkd-planner-settings />
   </div>
+  } @else {
+  <tkd-planner-settings class="hidden" />
   }
 
   <!-- Desktop View -->
   @if (layout.lg()) {
-  <nz-calendar [nzDisabledDate]="dateDisabled" [nzValue]="selectedDate!" nzMode="month" [nzFullscreen]="true"
-    (nzPanelChange)="onPanelChange($event)" (nzSelectChange)="onDateSelected($event)" class="flex-grow overflow-auto"
-    [ngClass]="{'cursor-default': readonly}">
-    <div *nzDateFullCell="let date">
-      @if ((date|date:'yyyy-MM-dd'); as key) {
-      <tkd-roster-planner-day [requiredShifts]="shifts[key]" (rosterShiftChange)="setRosterShifts(date, $event)"
-        class="overflow-hidden" [offTimeRequest]="offTimeEntries" [workTimeStatus]="workTimeByUser" [date]="date"
-        [holiday]="publicHolidays[key]" [profiles]="allProfiles" [selectedUser]="selectedUser"
-        [plannedShifts]="plannedShifts[key]" [readonly]="readonly" [style.height.px]="maxShifts * 50"
-        [disabled]="dateDisabled(date)" [highlightUserShifts]="highlightUserShifts"
-        [attr.data-key]="key"></tkd-roster-planner-day>
-      }
-    </div>
-  </nz-calendar>
-  } @else {
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-stretch gap-4 w-full overflow-auto">
-    @for (date of dates; track date) {
-    @if ((date|date:'yyyy-MM-dd'); as key) {
-    <tkd-roster-planner-day [requiredShifts]="shifts[key]" (rosterShiftChange)="setRosterShifts(date, $event)"
-      class="border-b border-primary" [offTimeRequest]="offTimeEntries" [workTimeStatus]="workTimeByUser" [date]="date"
-      [holiday]="publicHolidays[key]" [profiles]="allProfiles" [selectedUser]="selectedUser"
-      [plannedShifts]="plannedShifts[key]" [readonly]="readonly" [style.height.px]="maxShifts * 50"
-      [disabled]="dateDisabled(date)" [highlightUserShifts]="highlightUserShifts"
-      [attr.data-key]="key"></tkd-roster-planner-day>
-    }
-    }
-  </div>
-  }
 
-  <!-- Mobile and Table View-->
+  @defer {
+  <div class="flex flex-col w-full min-h-full print:h-screen">
+    <ol
+      class="grid grid-cols-7 w-full h-10 items-center  gap-2 p-2 justify-items-center realtive z-50 shadow-md bg-white print:gap-0 print:p-0 print:h-6">
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Montag
+      </li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Dienstag
+      </li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Mittwoch
+      </li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">
+        Donnerstag</li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Freitag
+      </li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Samstag
+      </li>
+      <li hlmBadge variant="outline" class="flex items-center justify-center w-full h-full print:rounded-none">Sonntag
+      </li>
+    </ol>
+
+    <ol class="grid grid-cols-7 w-full flex-grow overflow-auto gap-2 p-2 print:gap-0 print:p-0" role="list">
+      @for (date of _dates(); track trackDate(date)) {
+      @if ((date|date:'yyyy-MM-dd'); as key) {
+      <tkd-roster-planner-day role="listitem" [date]="key" [ngClass]="{
+          'opacity-50 cursor-not-allowed pointer-events-none bg-gray-100 shadow-inner': dateDisabled(date) && !_loading()
+        }"
+        class="bg-card border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring rounded-lg shadow-sm text-card-foreground p-2 print:rounded-none print:p-0" />
+      }
+      }
+    </ol>
+  </div>
+  } @loading {
+  <hlm-spinner />
+  }
+  } @else {
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-stretch gap-2 w-full overflow-auto py-4 px-2">
+    @for (week of _dates()|groupISOWeek; track $index) {
+
+    <div [attr.data-week]="week.week" class="space-y-2">
+      <h1 inView #inView="inView" class="w-full text-center {{ inView.visible() ? 'bg-red' : ''}}">
+        KW {{ week.week }}
+      </h1>
+
+      <brn-separator hlmSeparator />
+
+      @for (date of week.dates; track trackDate(date)) {
+      @if(!dateDisabled(date) || _loading()) {
+      @if ((date|date:'yyyy-MM-dd'); as key) {
+      <tkd-roster-planner-day [attr.id]="'date-' + key" [date]="key"
+        class="bg-card border border-border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring rounded-lg shadow-sm text-card-foreground p-2" />
+      }
+      }
+      }
+
+      <brn-separator hlmSeparator />
+
+    </div>
+    }
+
+  </div>
+
+  }
 
 </div>
 
 <ng-template #userSelectionTemplate>
+  @if(_loading()) {
   <div class="flex flex-col items-center flex-grow w-full overflow-auto">
-    @for (user of profiles; track user) {
-    @if (user.user?.id; as userId) {
-    <div (click)="setSelectedUser(userId)" [nz-tooltip]="user | displayName" nzTooltipPlacement="right"
-      [ngClass]="{'bg-secondary shadow-inner': selectedUser === userId}"
-      class="relative flex flex-col items-center w-full gap-1 p-2 transition-colors duration-200 ease-out border-b cursor-pointer border-gray-100 group hover:bg-secondary hover:bg-opacity-25">
+    <hlm-skeleton class="h-[70px] rounded-none w-full p-1 border-b border-gray-200 opacity-80" />
+    <hlm-skeleton class="h-[70px] rounded-none w-full p-1 border-b border-gray-200 opacity-80" />
+    <hlm-skeleton class="h-[70px] rounded-none w-full p-1 border-b border-gray-200 opacity-80" />
+  </div>
 
+  } @else {
+  <div class="flex flex-col items-center flex-grow w-full overflow-auto">
+    @for (user of _profiles(); track user.user!.id) {
+    @if (user.user?.id; as userId) {
+    <div (click)="_service.selectOrClearUser(userId)" (keypress.enter)="_service.selectOrClearUser(userId)" tabindex="0"
+      [nz-tooltip]="user | displayName" nzTooltipPlacement="right"
+      [ngClass]="{'bg-primary/40 text-primary shadow-inner': _selectedUser() === userId}"
+      class="relative flex flex-col items-center w-full gap-1 p-2 transition-colors duration-200 ease-out border-b cursor-pointer border-gray-100 group hover:bg-primary/40 hover:text-primary">
+
+      @if (_workTimes()[userId]; as work) {
       <hlm-avatar
-        class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2"
+        class="transition-shadow bg-white duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2"
         [ngClass]="{
-                'ring-2 ring-alert-red': ((workTimeByUser[userId]?.overtime?.seconds || 0) > 0),
-                'ring-2': selectedUser === userId
-          }">
-        <img [attr.src]="user.user!.avatar" hlmAvatarImage>
+                'ring-2 ring-red-500': ((work.overtime?.seconds || 0) > 0),
+                  'ring-2 ring-white': _selectedUser() === userId
+            }">
+
+        <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
 
         <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="user | color"
           [style.color]="user | contrastColor">{{ user | userLetter }}</span>
       </hlm-avatar>
 
-      @if (workTimeByUser[userId]; as work) {
-      <span class="text-xs whitespace-nowrap text-primary">
-        <span class="text-alert-red" [nz-tooltip]="'Überstunden: ' + (work.overtime | duration:'default-hours')"
-          [class.!text-alert-green-dark]="(work.overtime?.seconds || 0) !== 0 ">{{ work.plannedTime |
-          duration:'default-hours' }}</span>/{{ work.expectedTime | duration:'default-hours'}}
+      <span class="text-xs whitespace-nowrap" [ngClass]="{
+        'text-red-500': (work.overtime?.seconds || 0) > 0,
+        'text-green-800': (work.overtime?.seconds || 0) < 0,
+      }">
+        <span [nz-tooltip]="'Überstunden: ' + (work.overtime | duration:'default-hours')">
+          {{ work.plannedTime | duration:'default-hours' }}
+        </span> / {{ work.expectedTime | duration:'default-hours'}}
       </span>
       }
 
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
-        class="absolute hidden w-4 h-4 top-1 right-1 text-color-primary text-opacity-light hover:text-color-primary group-hover:block"
-        tkdDebounceEvent="mouseenter" tkdDebounceStopEvent="mouseleave" tkdDebounceEventTime="500"
-        (tkdOnEvent)="highlightUserShifts = userId" (mouseleave)="highlightUserShifts = null">
+        class="absolute hidden w-4 h-4 top-1 right-1 text-color-primary text-opacity-light hover:text-color-primary group-hover:block">
         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
         <path fill-rule="evenodd"
           d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
@@ -82,40 +273,5 @@
     }
     }
   </div>
+  }
 </ng-template>
-
-@if (!layout.lg() && !readonly) {
-<nz-drawer [nzVisible]="drawerVisible" (nzOnClose)="drawerVisible = false" [nzWidth]="layout.drawerWidth() || 'inherit'"
-  nzPlacement="left">
-  <ng-container *nzDrawerContent>
-    <ng-container *ngTemplateOutlet="userSelectionTemplate"></ng-container>
-  </ng-container>
-</nz-drawer>
-}
-
-@if (!layout.lg() && !readonly) {
-<div class="fixed bottom-4 left-4">
-  <button
-    class="transiton-[width] ease-in-out duration-300 flex flex-row items-center gap-2 rounded-full bg-primary hover:bg-primary-dark cursor-pointer text-white"
-    (click)="drawerVisible = true" [ngClass]="{'p-3': !selectedUser, 'py-1.5 px-3': selectedUser}">
-    @if (!selectedUser) {
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-      class="w-6 h-6">
-      <path stroke-linecap="round" stroke-linejoin="round"
-        d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-    </svg>
-    }
-    @if (((selectedUser||'') | toUser:allProfiles); as user) {
-    @if (selectedUser) {
-    <nz-avatar [nzSize]="36" nzIcon="user" [nzSrc]="user.user!.avatar">
-    </nz-avatar>
-    }
-    @if (!!selectedUser) {
-    <span>
-      {{ user | displayName }}
-    </span>
-    }
-    }
-  </button>
-</div>
-}

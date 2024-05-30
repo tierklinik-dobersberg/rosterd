@@ -50,7 +50,7 @@
 
     <hlm-td *brnCellDef="let e">
       @if (e.current?.applicableAfter; as date) {
-      {{ date | toDate | date: 'mediumDate' }}
+      {{ date | toDate | date:'mediumDate' }}
       } @else {
       <span class="text-primary/50 font-medium">N/A</span>
       }
@@ -224,8 +224,7 @@
       @for (step of analyze?.slices; track step) {
       <nz-timeline-item>
         <p class="font-medium  ">
-          {{ step.workTime!.applicableAfter! | toDate | date:'mediumDate' }} - {{ step.endsAt! | toDate |
-          date:'mediumDate' }}
+          {{ step.workTime!.applicableAfter }} - {{ step.endsAt }}
         </p>
         <p class="text-secondary">
           Arbeitszeit:

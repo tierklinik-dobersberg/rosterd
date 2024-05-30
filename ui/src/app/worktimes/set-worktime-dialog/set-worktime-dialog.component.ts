@@ -1,7 +1,6 @@
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, Component, ViewChild, computed, inject, model } from "@angular/core";
 import { FormGroup, FormsModule, NgForm } from '@angular/forms';
-import { Timestamp } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
 import { BrnDialogModule, BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { BrnSeparatorModule } from '@spartan-ng/ui-separator-brain';
@@ -61,7 +60,7 @@ export class SetWorktimeDialogComponent {
   protected readonly _to = model<string | null>();
   protected readonly _timeTracking = model<boolean>();
 
-  protected readonly _computedCurrentModel  = computed(() => {
+  protected readonly _computedCurrentModel = computed(() => {
     const timePerWeek = this._workTimePerWeek();
     const vacation = this._vacationPerYear();
     const overtime = this._overtimeAllowance();
@@ -86,31 +85,18 @@ export class SetWorktimeDialogComponent {
     }
 
     try {
-      const fromDate = Date.parse(from);
-      if (isNaN(fromDate)) {
-        return null;
-      }
-
-      let toDate: number | null = null;
-      if (to) {
-        toDate = Date.parse(to);
-        if (isNaN(toDate)) {
-          return null;
-        }
-      }
-
       const workTime = new WorkTime({
         userId: this.profile.user?.id,
         timePerWeek: Duration.parseString(timePerWeek).toProto(),
-        applicableAfter: Timestamp.fromDate(new Date(fromDate)),
+        applicableAfter: from,
         vacationWeeksPerYear: vacation,
         overtimeAllowancePerMonth: overtime ? Duration.parseString(overtime).toProto() : undefined,
         excludeFromTimeTracking: !timeTracking,
-        endsWith: toDate ? Timestamp.fromDate(new Date(toDate)) : undefined,
+        endsWith: to ? to : undefined,
       })
 
       return workTime
-    } catch(err: unknown) {
+    } catch (err: unknown) {
       console.error(err);
 
       return null;

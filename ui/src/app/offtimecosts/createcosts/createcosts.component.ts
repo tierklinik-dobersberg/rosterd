@@ -16,10 +16,7 @@ import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { Profile } from '@tierklinik-dobersberg/apis';
-import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { NzRadioModule } from 'ng-zorro-antd/radio';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
 
@@ -31,11 +28,8 @@ export type VacationType = 'vacation' | 'timeoff' | '';
   imports: [
     FormsModule,
     TkdRoster2Module,
-    NzRadioModule,
-    NzSelectModule,
     RouterModule,
     NzDatePickerModule,
-    NzAvatarModule,
     HlmDialogModule,
     BrnDialogModule,
     HlmAvatarModule,
@@ -47,7 +41,7 @@ export type VacationType = 'vacation' | 'timeoff' | '';
     HlmIconModule,
     BrnSelectModule,
   ],
-  providers: provideIcons({lucideAlertTriangle}),
+  providers: provideIcons({ lucideAlertTriangle }),
   templateUrl: './createcosts.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [

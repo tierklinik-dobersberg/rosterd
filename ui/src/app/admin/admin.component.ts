@@ -17,8 +17,6 @@ import { DaytimePipe, RoleListPipe, WorkDayPipe } from '@tierklinik-dobersberg/a
 import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTableModule } from '@tierklinik-dobersberg/angular/table';
 import { CreateWorkShiftRequest, Role, WorkShift } from '@tierklinik-dobersberg/apis';
-import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
-import { NzModalModule } from 'ng-zorro-antd/modal';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
 import { sortProtoDaytime, sortProtoDuration } from '../common/behaviors';
@@ -67,8 +65,6 @@ const sortFns: {
     DaytimePipe,
     WorkDayPipe,
     RoleListPipe,
-    NzDropDownModule,
-    NzModalModule,
     HlmButtonDirective,
     HlmMenuModule,
     HlmIconModule,

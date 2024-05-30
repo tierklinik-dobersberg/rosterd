@@ -1,0 +1,45 @@
+<hlm-sheet>
+  <button hlmBtn brnSheetTrigger [side]="_computedSheetSide()" variant="ghost" size="icon" #button class="mb-2">
+    <hlm-icon name="lucideCog" size="sm"></hlm-icon>
+  </button>
+
+  <hlm-sheet-content *brnSheetContent="let ctx">
+    <hlm-sheet-header>
+      <h3 hlmSheetTitle class="flex flex-row items-center gap-2 justify-center sm:justify-start">
+        Einstellungen
+      </h3>
+
+      <p hlmSheetDescription>Einstellungen für die Dienstplan-Ansicht</p>
+      <brn-separator hlmSeparator decorative />
+    </hlm-sheet-header>
+
+    <span hlmSheetClose></span>
+
+    <brn-select [multiple]="true" hlm [(ngModel)]="_shiftsToShow" name="shiftsToShow" placeholder="Alle">
+      <label for="shiftsToShow" hlmLabel>Arbeitsschichten anzeigen:</label>
+
+      <hlm-select-trigger class="w-full">
+        <hlm-select-value />
+      </hlm-select-trigger>
+
+      <hlm-select-content>
+        @for (item of _shifts(); track item.id) {
+        <hlm-option [value]="item.id">{{ item.name }}</hlm-option>
+        }
+      </hlm-select-content>
+    </brn-select>
+
+    @if (_shiftsToShow().length > 0) {
+    <div class="w-full flex justify-end">
+      <button hlmBtn variant="link" (click)="_shiftsToShow.set([])">Alle anzeigen</button>
+    </div>
+    }
+
+    <brn-separator hlmSeparator decorative />
+
+    <div class="flex flex-row items-center justify-end gap-2 pt-8">
+      <button hlmBtn variant="secondary" (click)="reset(); ctx.close()">Zurücksetzen</button>
+      <button hlmBtn variant="default" (click)="apply(); ctx.close()">Anwenden</button>
+    </div>
+  </hlm-sheet-content>
+</hlm-sheet>

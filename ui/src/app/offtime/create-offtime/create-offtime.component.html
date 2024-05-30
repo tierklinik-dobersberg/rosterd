@@ -2,7 +2,7 @@
 
   <hlm-dialog-header>
     <h3 hlmDialogTitle>
-      Urlaubsantrag {{ model.id ? 'bearbeiten' : 'erstellen' }}
+      Urlaubsantrag {{ _isEdit() ? 'bearbeiten' : 'erstellen' }}
     </h3>
     <p hlmDialogDescription>Erstelle einen neuen Antrag auf Urlaub oder Zeitausgleich</p>
   </hlm-dialog-header>
@@ -15,7 +15,7 @@
       </label>
 
       @if (_profiles(); as profiles) {
-      <brn-select [(ngModel)]="model.requestorId" [ariaReadOnly]="!!model.id" required class="mt-1" name="requestor">
+      <brn-select [(ngModel)]="_requestor" [ariaReadOnly]="_isEdit()" required class="mt-1" name="requestor">
         <hlm-select-trigger class="w-full">
           <hlm-select-value />
         </hlm-select-trigger>
@@ -40,15 +40,26 @@
     <div class="flex flex-col">
       <label hlmLabel>
         Beschreibung
-        <textarea hlmInput class="w-full h-24" name="comment" [(ngModel)]="model.comment"></textarea>
+        <textarea hlmInput class="w-full h-24" name="comment" [(ngModel)]="_comment"></textarea>
       </label>
     </div>
 
     <div class="flex flex-col">
+    </div>
+
+    <div class="flex flex-col">
       <label hlmLabel for="daterange">
-        Zeitraum
-        <nz-range-picker hlmInput required [nzShowTime]="true" name="daterange" [ngModel]="[model.from, model.to]"
-          (ngModelChange)="model.from = $event[0]; model.to = $event[1]"></nz-range-picker>
+        <span class="flex items-center justify-between">
+          <span>
+            Zeitraum
+          </span>
+          <label hlmBadge variant="secondary" for="wholeDays" class="flex items-center gap-2 text-primary/70 text-xs">
+            Ganze Tage
+            <hlm-checkbox name="wholeDays" [(ngModel)]="_wholeDays" />
+          </label>
+        </span>
+        <nz-range-picker hlmInput required [nzShowTime]="!_wholeDays()" name="daterange"
+          [(ngModel)]="_range"></nz-range-picker>
       </label>
     </div>
 
@@ -57,22 +68,22 @@
         Art
       </label>
 
-      <brn-select [(ngModel)]="model.type" name="type" hlm class="mt-1">
+      <brn-select [(ngModel)]="_type" name="type" hlm class="mt-1">
         <hlm-select-trigger class="w-full">
           <hlm-select-value />
         </hlm-select-trigger>
 
         <hlm-select-content>
-          <hlm-option value="auto">Automatisch</hlm-option>
-          <hlm-option value="vacation">Urlaub</hlm-option>
-          <hlm-option value="timeoff">Zeitausgleich</hlm-option>
+          <hlm-option [value]="Types.UNSPECIFIED">Automatisch</hlm-option>
+          <hlm-option [value]="Types.VACATION">Urlaub</hlm-option>
+          <hlm-option [value]="Types.TIME_OFF">Zeitausgleich</hlm-option>
         </hlm-select-content>
       </brn-select>
     </div>
 
-    <hlm-dialog-footer>
+    <hlm-dialog-footer class="gap-2">
       <button hlmBtn variant="secondary" type="button" (click)="abort()">Abbrechen</button>
-      <button hlmBtn type="submit" [disabled]="createForm.invalid">Antrag erstellen</button>
+      <button hlmBtn type="submit" [disabled]="createForm.invalid" (clicK)="save()">Antrag erstellen</button>
     </hlm-dialog-footer>
   </div>
 

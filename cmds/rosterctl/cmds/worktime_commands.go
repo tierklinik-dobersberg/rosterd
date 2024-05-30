@@ -57,22 +57,19 @@ func SetWorkTimeCommand(root *cli.Root) *cobra.Command {
 			}
 
 			if endsWith != "" {
-				t, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
+				_, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
 				if err != nil {
 					logrus.Fatalf("failed to parse --ends-with value: %s", err)
 				}
 
-				wt.EndsWith = timestamppb.New(t)
+				wt.EndsWith = endsWith
 			}
 
-			if applicableFrom != "" {
-				t, err := time.ParseInLocation("2006-01-02", applicableFrom, time.Local)
-				if err != nil {
-					logrus.Fatalf("failed to parse --from value: %s", err)
-				}
-
-				wt.ApplicableAfter = timestamppb.New(t)
+			_, err := time.ParseInLocation("2006-01-02", applicableFrom, time.Local)
+			if err != nil {
+				logrus.Fatalf("failed to parse --from value: %s", err)
 			}
+			wt.ApplicableAfter = applicableFrom
 
 			res, err := root.WorkTime().SetWorkTime(context.Background(), connect.NewRequest(&rosterv1.SetWorkTimeRequest{
 				WorkTimes: []*rosterv1.WorkTime{wt},
@@ -115,12 +112,12 @@ func UpdateWorkTimeCommand(root *cli.Root) *cobra.Command {
 			}
 
 			if endsWith != "" {
-				t, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
+				_, err := time.ParseInLocation("2006-01-02", endsWith, time.Local)
 				if err != nil {
 					logrus.Fatalf("failed to parse --ends-with value: %s", err)
 				}
 
-				wt.EndsWith = timestamppb.New(t)
+				wt.EndsWith = endsWith
 			}
 
 			wt.FieldMask = &fieldmaskpb.FieldMask{}
@@ -266,7 +263,7 @@ func GetVacationCreditsLeftCommand(root *cli.Root) *cobra.Command {
 					creditsLeft := perWorkTime + anal.CostsSum.AsDuration()
 
 					tbl.AppendRow(table.Row{
-						anal.WorkTime.ApplicableAfter.AsTime().Format("2006-01-02"),
+						anal.WorkTime.ApplicableAfter,
 						anal.EndsAt.AsTime().Format("2006-01-02"),
 						anal.NumberOfDays,
 						anal.WorkTime.TimePerWeek.AsDuration().String(),

@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/structs"
 	"go.mongodb.org/mongo-driver/bson"
@@ -65,7 +67,7 @@ func (db *DatabaseImpl) GetRosterTypes(ctx context.Context) ([]structs.RosterTyp
 	return result, nil
 }
 
-func (db *DatabaseImpl) SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster) (bool, error) {
+func (db *DatabaseImpl) SaveDutyRoster(ctx context.Context, roster *structs.DutyRoster, casIndex *uint64) (bool, error) {
 	if roster.ID.IsZero() {
 		roster.ID = primitive.NewObjectID()
 	}
@@ -74,9 +76,31 @@ func (db *DatabaseImpl) SaveDutyRoster(ctx context.Context, roster *structs.Duty
 		"_id": roster.ID,
 	}
 
-	res, err := db.dutyRosters.ReplaceOne(ctx, filter, roster, options.Replace().SetUpsert(true))
+	// increase roster CAS index everytime we attempt to save it
+	roster.CASIndex++
+
+	opts := options.Replace()
+	if casIndex != nil {
+		filter["$or"] = bson.A{
+			bson.M{"cas_index": *casIndex},
+			bson.M{"cas_index": bson.M{
+				"$exists": false,
+			}},
+		}
+	} else {
+		// If there's no CAS index given we enable upsert support.
+		opts.SetUpsert(true)
+	}
+
+	res, err := db.dutyRosters.ReplaceOne(ctx, filter, roster, opts)
 	if err != nil {
 		return false, err
+	}
+
+	if casIndex != nil {
+		if res.MatchedCount == 0 {
+			return false, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("CAS index conflict"))
+		}
 	}
 
 	if res.ModifiedCount == 0 && res.UpsertedCount == 0 {
@@ -213,11 +237,6 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 	to := time.Date(t.Year(), t.Month(), t.Day()+1, 0, 0, 0, -1, t.Location())
 
-	log.L(ctx).
-		WithField("from", from).
-		WithField("to", to).
-		Infof("searching for duty rosters by time")
-
 	res, err := db.dutyRosters.Aggregate(ctx, mongo.Pipeline{
 		{
 			{
@@ -261,16 +280,37 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 		},
 	})
 	if err != nil {
+
+		log.L(ctx).
+			WithField("from", from).
+			WithField("to", to).
+			WithError(err).
+			Errorf("failed to search for duty rosters by time")
+
 		return nil, err
 	}
 
 	if res.Err() != nil {
+		log.L(ctx).
+			WithField("from", from).
+			WithField("to", to).
+			WithError(res.Err()).
+			Errorf("failed to search for duty rosters by time")
+
 		return nil, res.Err()
 	}
 
 	var results []structs.DutyRoster
 	if err := res.All(ctx, &results); err != nil {
 		return nil, err
+	}
+
+	if len(results) == 0 {
+		log.L(ctx).
+			WithField("from", from).
+			WithField("to", to).
+			WithError(err).
+			Errorf("failed to search for duty rosters by time")
 	}
 
 	return results, nil

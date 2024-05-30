@@ -1,0 +1,104 @@
+<div class="flex flex-row overflow-hidden realtive gap-1 justify-start items-center text-xs">
+  <!-- Shift Information -->
+  <div
+    class="flex overflow-hidden flex-col justify-between pr-1.5 text-[0.65rem] uppercase whitespace-nowrap border-r select-none text-ellipsis text-primary w-10 print:p-0.5 print:w-auto print:border-none"
+    [ngStyle]="{
+        borderColor: _color + 'aa'
+    }">
+
+    <span class="transition-all duration-200 ease-in-out translate-y-2 group-hover:translate-y-0 print:translate-y-0">
+      {{ _displayName() }}
+      <span class="hidden print:inline">:</span>
+    </span>
+
+    <span class="transition-all duration-200 ease-in-out -translate-x-full group-hover:translate-x-0 print:hidden">
+      {{ value().length }}/{{ _staffCount() }}
+    </span>
+  </div>
+
+  <!-- The actual list of selected users -->
+  <ul class="flex flex-row gap-0.5 flex-nowrap items-center overflow-hidden list-none print:flex-wrap flex-grow">
+    @for (item of value(); track item) {
+    @if (item | toUser:_profiles(); as user) {
+    <li
+      class="flex-shrink-0 flex-grow-0 text-xs border border-border font-medium inline-flex items-center px-1.5 py-0.5 rounded-lg text-foreground"
+      [ngStyle]="{
+        backgroundColor: user | color,
+        color: user | contrastColor,
+        printColorAdjust: 'exact'
+      }">
+      {{ user | userLetter }}
+    </li>
+    }
+    }
+  </ul>
+
+  <!-- User Constraints -->
+  @if (_selectedUserConstraints().length > 0; as list) {
+  <brn-hover-card class="justify-self-end print:hidden">
+    <hlm-icon name="lucideAlertTriangle" brnHoverCardTrigger size="sm" class="text-destructive mr-1.5" />
+
+    <hlm-hover-card-content *brnHoverCardContent class="w-80 text-sm">
+      <div class="flex flex-col justify-start items-start">
+        <ul class="list-disc list-inside">
+          @for (item of _selectedUserConstraints(); track $index) {
+          <li>
+            @switch (item.kind.case) {
+            @case ('offTime') {
+            Urlaubsantrag
+            }
+            @case ('NoWorkTime') {
+            Kein Arbeitsverhältnis
+            }
+            @case ('evaluation') {
+            @if (item.kind.value.description === 'TimeTrackingDisabled') {
+            Keine Zeiterfassung
+            } @else {
+            {{ item.kind.value.description }}
+            }
+            }
+            }
+          </li>
+          }
+        </ul>
+      </div>
+    </hlm-hover-card-content>
+  </brn-hover-card>
+  }
+</div>
+
+<hlm-sheet #sheet>
+  <hlm-sheet-content *brnSheetContent="let ctx" class="p-0">
+    <brn-cmd class="w-full border-none" hlm>
+      <hlm-cmd-input-wrapper>
+        <hlm-icon name="lucideSearch" />
+        <input placeholder="Mitarbeiter suchen" brnCmdInput hlm />
+      </hlm-cmd-input-wrapper>
+
+      <div *brnCmdEmpty hlmCmdEmpty>No results found.</div>
+
+      <brn-cmd-list hlm>
+        <brn-cmd-group hlm label="Mitarbeiter">
+          @for (user of shift().eligibleUsers; track user) {
+          @if(user | toUser:_profiles(); as profile) {
+          <button brnCmdItem hlm (click)="onSheetUserClick(user); $event.preventDefault(); $event.stopPropagation();">
+            <hlm-avatar hlmCmdIcon variant="small">
+              <img [attr.src]="profile.user!.avatar" hlmAvatarImage [attr.alt]="profile | displayName">
+              <span hlmAvatarFallback>{{ profile | userLetter }}</span>
+            </hlm-avatar>
+
+            <span class="flex w-full flex-row justify-between items-center">
+              {{ profile | displayName }}
+
+              @if (user | inList:shift().assignedUsers) {
+              <hlm-icon name="lucideCheck" hlmCmdIcon />
+              }
+            </span>
+          </button>
+          }
+          }
+        </brn-cmd-group>
+      </brn-cmd-list>
+    </brn-cmd>
+  </hlm-sheet-content>
+</hlm-sheet>

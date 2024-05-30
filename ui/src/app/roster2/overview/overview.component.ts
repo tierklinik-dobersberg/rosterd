@@ -1,11 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, isDevMode, model, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ConnectError } from '@connectrpc/connect';
 import { provideIcons } from '@ng-icons/core';
 import { lucideArrowUpDown, lucideCheck, lucideEye, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2 } from '@ng-icons/lucide';
 import { injectAuthService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { Profile, Role, Roster, RosterType } from '@tierklinik-dobersberg/apis';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { toast } from 'ngx-sonner';
+import { filter } from 'rxjs';
 import { injectContainerSize } from 'src/app/common/container';
 import { SortColumn } from 'src/app/common/table-sort';
+import { toDateString } from 'src/utils';
+import { ApprovalComponent } from '../approval/approval.component';
 
 interface RosterWithLink {
   roster: Roster;
@@ -75,7 +82,10 @@ export class TkdRosterOverviewComponent implements OnInit {
   private readonly userService = injectUserService();
   private readonly messageService = inject(NzMessageService)
   private readonly authService = injectAuthService();
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute)
   protected readonly container = injectContainerSize();
+  private readonly dialog = inject(HlmDialogService)
 
   private readonly _rosters = signal<RosterWithLink[]>([]);
 
@@ -98,6 +108,10 @@ export class TkdRosterOverviewComponent implements OnInit {
 
     if (this.container.sm()) {
       columns.push('lastEdit')
+    }
+
+    if (isDevMode()) {
+      columns.push('casIndex')
     }
 
     columns.push('actions')
@@ -136,14 +150,41 @@ export class TkdRosterOverviewComponent implements OnInit {
   rosterTypes = signal<RosterType[]>([]);
   isAdmin = signal(false);
 
+  createRosterType = model<string>();
+  createRosterRange = model<[Date, Date]>();
+
   trackRoster: TrackByFunction<RosterWithLink> = (_, r) => r.roster.id
 
   nextMonth = (() => {
     const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth()+1, 1)
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
-    return [next.getFullYear(), next.getMonth()+1]
+    return [next.getFullYear(), next.getMonth() + 1]
   })()
+
+  createRoster() {
+    const rosterType = this.createRosterType();
+    const range = this.createRosterRange();
+
+    if (!rosterType || !range || range.length !== 2) {
+      return;
+    }
+
+    this.rosterService
+      .saveRoster({
+        from: toDateString(range[0]),
+        to: toDateString(range[1]),
+        rosterTypeName: rosterType,
+      })
+      .then((response) => {
+        this.router.navigate(['./plan', response.roster!.id], {
+          relativeTo: this.route,
+        })
+      })
+      .catch(err => {
+        toast.error(`Unbekannter Fehler: ${ConnectError.from(err).message}`)
+      })
+  }
 
   async deleteRoster(roster: Roster) {
     await this.rosterService.deleteRoster({
@@ -157,16 +198,30 @@ export class TkdRosterOverviewComponent implements OnInit {
     await this.rosterService.sendRosterPreview({
       id: roster.id,
     })
-    .then(() => {
-      this.messageService.success("Alle mails wurden erfolgreich versandt.")
+      .then(() => {
+        this.messageService.success("Alle mails wurden erfolgreich versandt.")
+      })
+  }
+
+  approve(id: string) {
+    this.dialog.open(ApprovalComponent, {
+      contentClass: 'max-w-[90vw]',
+      context: {
+        id: id,
+      },
+      closeOnBackdropClick: false,
+      closeOnOutsidePointerEvents: false,
     })
+      .closed$
+      .pipe(filter((val: string) => val === 'approve'))
+      .subscribe(() => this.loadRosters());
   }
 
   async loadRosters() {
     await this.rosterService
       .getRoster({
         readMask: {
-          paths: ['roster.id', 'roster.from', 'roster.to', 'roster.approved', 'roster.roster_type_name', 'roster.approved_at', 'roster.approver_user_id', 'roster.last_modified_by', 'roster.updated_at'],
+          paths: ['roster.id', 'roster.cas_index', 'roster.from', 'roster.to', 'roster.approved', 'roster.roster_type_name', 'roster.approved_at', 'roster.approver_user_id', 'roster.last_modified_by', 'roster.updated_at'],
         }
       })
       .then(response => response.roster)

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, model, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Timestamp } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
@@ -27,7 +27,7 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
-import { sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '../common/behaviors';
+import { sortProtoDuration, sortUserProfile } from '../common/behaviors';
 import { injectContainerSize } from '../common/container';
 import { UserLetterPipe } from '../common/pipes';
 import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
@@ -63,7 +63,10 @@ const sortFns: { [key in Columns]?: SortFunc } = {
   },
 
   [Columns.Since]: (a, b) => {
-    return sortProtoTimestamps(a.current?.applicableAfter, b.current?.applicableAfter)
+    const ad = new Date(a.current?.applicableAfter || 0);
+    const bd = new Date(b.current?.applicableAfter || 0);
+
+    return bd.getTime() - ad.getTime();
   },
 
   [Columns.Current]: (a, b) => {
@@ -156,12 +159,12 @@ export class WorktimesComponent implements OnInit {
         // FIXME(ppacher): there are some bugs below!
 
         // FIXME(ppacher): this actually needs to be sorted first
-        const realNext = wt?.history.find(h => h.applicableAfter!.seconds > (wt.current?.applicableAfter?.seconds || 0));
+        const realNext = wt?.history.find(h => new Date(h.applicableAfter!).getTime() > new Date(wt.current?.applicableAfter || 0).getTime());
 
         let current = wt?.current;
         let ended = false;
         // FIXME(ppacher): make sure to check against mighnight in UTC here!
-        if (current && current.endsWith && current.endsWith.toDate().getTime() < (new Date()).getTime()) {
+        if (current && current.endsWith && new Date(current.endsWith).getTime() < (new Date()).getTime()) {
           current = undefined;
           ended = true;
         }
@@ -186,10 +189,6 @@ export class WorktimesComponent implements OnInit {
 
         return 0
       })
-
-    untracked(() => {
-      this._loading.set(false);
-    })
 
     if (!sort) {
       return models;
@@ -255,13 +254,6 @@ export class WorktimesComponent implements OnInit {
       .then(response => this._profiles.set(response.users))
       .catch(err => toast.error(ConnectError.from(err).message));
 
-    this.workTimeService
-      .getVacationCreditsLeft({ until: Timestamp.fromDate(this.endOfYear), forUsers: {} })
-      .then(response => {
-        this._credits.set(response.results);
-      })
-      .catch(err => toast.error(ConnectError.from(err).message));
-
 
     await this.loadWorkTimes()
 
@@ -270,10 +262,21 @@ export class WorktimesComponent implements OnInit {
   async loadWorkTimes() {
     this._loading.set(true);
 
-    this.workTimeService.getWorkTime({})
+    const credits = this.workTimeService
+      .getVacationCreditsLeft({ until: Timestamp.fromDate(this.endOfYear), forUsers: {} })
+      .then(response => {
+        this._credits.set(response.results);
+      })
+      .catch(err => toast.error("Resturlaub konnte nicht geladen werden", { description: ConnectError.from(err).message }));
+
+    const worktime = this.workTimeService.getWorkTime({})
       .then(response => this._workTimes.set(response.results))
       .catch(err => {
-        toast.error(ConnectError.from(err).message);
+        toast.error("Arbeitszeiten konnten nicht geladen werden", { description: ConnectError.from(err).message });
+      });
+
+    Promise.all([credits, worktime])
+      .finally(() => {
         this._loading.set(false);
       });
   }

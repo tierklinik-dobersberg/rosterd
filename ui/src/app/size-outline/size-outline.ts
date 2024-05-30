@@ -10,14 +10,14 @@ import { injectContainerSize } from "../common/container";
   ],
   template: `
     @if (isDevMode) {
-      <span hlmBadge variant="outline" class="rounded-sm border-green-600 block w-full">Layout: {{ _computedLayoutBreakpoint() }}</span>
-      <span hlmBadge variant="outline" class="rounded-sm border-green-600 block w-full">Container: {{ _computedContainerBreakpoint() }}</span>
+      <span hlmBadge variant="outline" class="rounded-sm border-green-600 block w-full print:hidden">Layout: {{ _computedLayoutBreakpoint() }}</span>
+      <span hlmBadge variant="outline" class="rounded-sm border-green-600 block w-full print:hidden">Container: {{ _computedContainerBreakpoint() }}</span>
     }
   `,
   styles: [
     `
     :host {
-      @apply flex-col justify-start items-start absolute bottom-1 right-1 w-fit gap-1;
+      @apply flex-col justify-start items-start absolute bottom-1 right-1 w-fit gap-1 print:hidden;
     }
     `
   ],

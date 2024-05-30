@@ -1,10 +1,12 @@
+import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
+import { BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { injectOfftimeService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
 import { ApproveRosterWorkTimeSplit, OffTimeEntry, Profile, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
-import { from, switchMap } from 'rxjs';
+import { from, map, of, switchMap } from 'rxjs';
 import { Duration } from 'src/duration';
 
 @Component({
@@ -28,11 +30,14 @@ export class ApprovalComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
 
+  private readonly dialogRef = inject(BrnDialogRef, { optional: true });
+  private readonly dialogData: { id: string } = inject(DIALOG_DATA, { optional: true })
+
   profiles: Profile[] = [];
 
   roster: Roster | null = null;
   timeAnalysis: WorkTimeAnalysis[] = [];
-  offTimePerUser: {[userId: string]: (undefined | OffTimeEntry[])} = {};
+  offTimePerUser: { [userId: string]: (undefined | OffTimeEntry[]) } = {};
 
   vacationPerUser: {
     [userId: string]: number
@@ -60,8 +65,16 @@ export class ApprovalComponent implements OnInit {
     }
   }
 
+  abort() {
+    if (this.dialogRef) {
+      this.dialogRef.close('abort')
+    } else {
+      this.router.navigate(['/roster'])
+    }
+  }
+
   async approve() {
-    const wts: {[userId: string]: PartialMessage<ApproveRosterWorkTimeSplit>} = {};
+    const wts: { [userId: string]: PartialMessage<ApproveRosterWorkTimeSplit> } = {};
 
     Object.keys(this.vacationPerUser)
       .forEach(userId => {
@@ -86,7 +99,11 @@ export class ApprovalComponent implements OnInit {
       workTimeSplit: wts,
     })
 
-    this.router.navigate(['/roster'])
+    if (this.dialogRef) {
+      this.dialogRef.close('approve')
+    } else {
+      this.router.navigate(['/roster'])
+    }
   }
 
   ngOnInit() {
@@ -96,15 +113,19 @@ export class ApprovalComponent implements OnInit {
         this.cdr.markForCheck();
       });
 
-    this.currentRoute
-      .paramMap
+    let id$ = this.currentRoute.paramMap.pipe(map(params => params.get('id')));
+    if (this.dialogData) {
+      id$ = of(this.dialogData.id);
+    }
+
+    id$
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        switchMap(params => {
+        switchMap(id => {
           return from(this.rosterService.getRoster({
             search: {
               case: 'id',
-              value: params.get("id")!,
+              value: id!,
             },
             timeTrackingOnly: true,
           }))
@@ -124,9 +145,9 @@ export class ApprovalComponent implements OnInit {
         })
 
         this.offTimeService.findOffTimeRequests({
-            from: Timestamp.fromDate(new Date(this.roster.from)),
-            to: Timestamp.fromDate(new Date(this.roster.from)),
-          })
+          from: Timestamp.fromDate(new Date(this.roster.from)),
+          to: Timestamp.fromDate(new Date(this.roster.from)),
+        })
           .then(response => {
             this.offTimePerUser = {}
             response.results.forEach(entry => {

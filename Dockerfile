@@ -1,6 +1,6 @@
 
 # Build the frontend
-FROM node:16 as uibuild
+FROM node:20 as uibuild
 ARG CONFIGURATION="production"
 
 WORKDIR /app/ui
