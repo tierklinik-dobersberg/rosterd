@@ -6,7 +6,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

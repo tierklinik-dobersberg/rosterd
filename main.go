@@ -21,11 +21,11 @@ import (
 	"github.com/tierklinik-dobersberg/apis/pkg/privacy"
 	apisrv "github.com/tierklinik-dobersberg/apis/pkg/server"
 	"github.com/tierklinik-dobersberg/apis/pkg/spa"
-	"github.com/tierklinik-dobersberg/rosterd/config"
-	"github.com/tierklinik-dobersberg/rosterd/services/offtime"
-	"github.com/tierklinik-dobersberg/rosterd/services/roster"
-	"github.com/tierklinik-dobersberg/rosterd/services/workshift"
-	"github.com/tierklinik-dobersberg/rosterd/services/worktime"
+	"github.com/tierklinik-dobersberg/rosterd/internal/config"
+	"github.com/tierklinik-dobersberg/rosterd/internal/services/offtime"
+	"github.com/tierklinik-dobersberg/rosterd/internal/services/roster"
+	"github.com/tierklinik-dobersberg/rosterd/internal/services/workshift"
+	"github.com/tierklinik-dobersberg/rosterd/internal/services/worktime"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 

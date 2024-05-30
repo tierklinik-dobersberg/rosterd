@@ -14,7 +14,7 @@ import (
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1/idmv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/overlayfs"
-	"github.com/tierklinik-dobersberg/rosterd/database"
+	"github.com/tierklinik-dobersberg/rosterd/internal/database"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"

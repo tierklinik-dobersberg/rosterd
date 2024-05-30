@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

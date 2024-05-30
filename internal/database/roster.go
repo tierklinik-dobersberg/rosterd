@@ -7,7 +7,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

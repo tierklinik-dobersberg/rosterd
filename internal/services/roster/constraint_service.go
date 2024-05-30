@@ -10,8 +10,8 @@ import (
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
-	"github.com/tierklinik-dobersberg/rosterd/config"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/config"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )

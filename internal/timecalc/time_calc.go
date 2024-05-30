@@ -7,7 +7,7 @@ import (
 
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"golang.org/x/exp/maps"
 )
 

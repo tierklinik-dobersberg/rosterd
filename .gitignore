@@ -10,3 +10,4 @@ templates/node_modules
 /rosterctl
 .angulardoc.json
 .vscode/
+ui/.nx

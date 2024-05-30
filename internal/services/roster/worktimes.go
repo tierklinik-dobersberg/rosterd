@@ -9,8 +9,8 @@ import (
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
-	"github.com/tierklinik-dobersberg/rosterd/timecalc"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/timecalc"
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/durationpb"
 )

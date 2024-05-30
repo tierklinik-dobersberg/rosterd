@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 	"github.com/tierklinik-dobersberg/cis/pkg/daytime"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
-	"github.com/tierklinik-dobersberg/rosterd/timecalc"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/timecalc"
 )
 
 func Test_GatherWorkDaysByMonth(t *testing.T) {

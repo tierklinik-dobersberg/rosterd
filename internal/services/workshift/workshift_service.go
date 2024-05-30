@@ -11,8 +11,8 @@ import (
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
-	"github.com/tierklinik-dobersberg/rosterd/config"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/config"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

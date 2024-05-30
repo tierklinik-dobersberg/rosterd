@@ -13,7 +13,7 @@ import (
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
-	"github.com/tierklinik-dobersberg/rosterd/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
