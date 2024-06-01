@@ -124,7 +124,7 @@ export class TkdRosterOverviewComponent implements OnInit {
 
   protected readonly _sort = signal<SortColumn<typeof sortFunctions> | null>({
     column: 'range',
-    direction: 'ASC'
+    direction: 'DESC'
   });
 
   protected readonly _sortedRosters = computed(() => {
