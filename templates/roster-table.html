@@ -101,6 +101,26 @@
       </tr>
       {{ end }}
     </tbody>
+
+    <tfoot class="table-footer-group">
+      <tr>
+        <td colspan="7">
+          <div class="p-3 w-full flex flex-row justify-between items-center fixed bottom-0">
+            <div class="flex flex-row gap-4 items-center">
+              <img src="https://tierklinikdobersberg.at/assets/images/logo.png" class="h-8" />
+              <div class="text-lg font-medium flex flex-row items-center gap-2">
+                <span class="flex pr-2 border-r border-gray-300">Tierklinik Dobersberg</span> 
+                <span class="font-light">IT</span>
+              </div>
+            </div>
+
+            <div class="hidden print:block font-light">
+              <span class="pageNumber"></span> von <span class="totalPages"></span>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 
 </body>
