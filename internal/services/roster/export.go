@@ -7,6 +7,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/muesli/gamut"
@@ -111,6 +112,9 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 		rosterToTime := roster.ToTime()
 
 		toTime := timecalc.EndOfWeek(rosterToTime)
+
+		var rosterWeek = new(templates.RosterWeek)
+
 		for iter := timecalc.StartOfWeek(rosterFromTime); iter.Before(toTime) || iter.Equal(toTime); iter = iter.AddDate(0, 0, 1) {
 			day := templates.RosterDay{
 				DayTitle: iter.Format("02.01"),
@@ -145,7 +149,12 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 			}
 
 			rosterContext.Days = append(rosterContext.Days, day)
+			rosterWeek.Days = append(rosterWeek.Days, day)
 
+			if iter.Weekday() == time.Sunday {
+				rosterContext.Weeks = append(rosterContext.Weeks, *rosterWeek)
+				rosterWeek = new(templates.RosterWeek)
+			}
 		}
 
 		buf, err := templates.RenderRosterTemplate(ctx, rosterContext)

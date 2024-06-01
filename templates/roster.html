@@ -43,6 +43,7 @@
 
     <!-- Actual roster -->
     <ol class="grid grid-cols-7 list-none w-full flex-grow gap-0.5 bg-gray-200">
+      {{ range .Weeks }}
       {{ range .Days }}
       <li class="flex flex-col p-2  h-full {{ if .Disabled }} bg-gray-100 {{ else }} bg-white {{ end }} break-inside-avoid">
         <div class="text-center w-full mb-2">
@@ -73,6 +74,7 @@
           {{ end }}
         </ul>
       </li>
+      {{ end }}
       {{ end }}
     </ol>
   </body>

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 
 	"github.com/Masterminds/sprig"
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
@@ -36,8 +35,13 @@ type RosterDay struct {
 	Disabled bool
 }
 
-type RosterContext struct {
+type RosterWeek struct {
 	Days []RosterDay
+}
+
+type RosterContext struct {
+	Days  []RosterDay
+	Weeks []RosterWeek
 }
 
 var temp *template.Template
@@ -48,14 +52,12 @@ func init() {
 	if err != nil {
 		panic("Failed to parse HTML templates: " + err.Error())
 	}
-
-	log.Printf("parsed html templates: %s", temp.Lookup("roster"))
 }
 
 func RenderRosterTemplate(ctx context.Context, renderContext RosterContext) (io.Reader, error) {
 	// render
 	buf := new(bytes.Buffer)
-	if err := temp.ExecuteTemplate(buf, "roster", renderContext); err != nil {
+	if err := temp.ExecuteTemplate(buf, "roster-table", renderContext); err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
 

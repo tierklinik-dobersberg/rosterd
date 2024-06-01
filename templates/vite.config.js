@@ -6,6 +6,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 roster: resolve(__dirname, 'roster.html'),
+                rosterTable: resolve(__dirname, 'roster-table.html'),
             }
         }
     }
