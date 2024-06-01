@@ -1,7 +1,7 @@
 <!--
 Menu on Desktop and up
 -->
-@if (layout.lg() && !isRosterView && (isAdmin | async)) {
+@if (layout.lg() && !_isRosterView() && _isAdmin()) {
 <nav class="relative z-10 flex flex-col flex-shrink-0 w-64 h-full bg-white shadow-md print:hidden">
   <!-- Logo -->
   <div class="h-16 flex flex-row items-center justify-start pl-2">
@@ -27,7 +27,7 @@ Next to the sidebar there's the main content container including the header
   <header
     class="flex items-center justify-between px-2 py-4 sm:px-4 md:px-8 lg:px-12 shadow-sm border-b border-subtle h-16 w-full print:hidden"
     [ngClass]="{
-      '!pl-4': isRosterView,
+      '!pl-4': _isRosterView(),
     }">
 
     <!-- On mobile the logo is put into the header -->
@@ -38,7 +38,7 @@ Next to the sidebar there's the main content container including the header
     }
 
     <div class="flex flex-col justify-center items-start">
-      @if (outlet(); as outlet) {
+      @if (_outlet(); as outlet) {
       <ng-container *ngTemplateOutlet="outlet" />
       } @else {
       <h1 class="text-lg  font-light flex-grow whitespace-nowrap">
@@ -48,19 +48,19 @@ Next to the sidebar there's the main content container including the header
     </div>
 
     <div class="flex flex-row justify-between items-center flex-grow-0 gap-4">
-      @if (!layout.lg() || isRosterView) {
+      @if (!layout.lg() || _isRosterView()) {
       <button hlmBtn variant="ghost" size="icon">
         <hlm-icon name="lucideMenu" size="sm" (click)="drawerVisible = !drawerVisible"></hlm-icon>
       </button>
       }
 
-      @if ((profile | async); as user) {
+      @if (_profile(); as user) {
       <span class="flex flex-row w-full items-center justify-start gap-2 text-sm ">
         <a [attr.href]="accountServer" target="_blank">
           <hlm-avatar
             class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-2"
             variant="medium">
-            <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+            <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
             <span hlmAvatarFallback>{{ user | userLetter }}</span>
           </hlm-avatar>
         </a>
@@ -79,7 +79,7 @@ Next to the sidebar there's the main content container including the header
   </header>
 
   <div class="px-2 py-4 sm:px-4 md:px-8 lg:px-12 print:p-0 overflow-hidden flex flex-col items-stretch flex-grow"
-    id="content" [ngClass]="{'!p-0': isRosterView}" containerSize>
+    id="content" [ngClass]="{'!p-0': _isRosterView()}" containerSize>
     <router-outlet></router-outlet>
 
     <app-dev-size />
@@ -88,12 +88,17 @@ Next to the sidebar there's the main content container including the header
 
 <ng-template #drawerTitle>
   <div class="flex flex-row justify-between items-center w-full">
-    @if ((profile | async); as user) {
+    @if (_profile(); as user) {
     <span class="flex flex-row w-full items-center justify-start gap-2 text-sm ">
       <a [attr.href]="accountServer" target="_blank">
-        <nz-avatar [nzSize]="36" nzIcon="user" [nzSrc]="user.user?.avatar" class="rounded-full border border-subtle">
-        </nz-avatar>
+          <hlm-avatar
+            class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-2"
+            variant="medium">
+            <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
+            <span hlmAvatarFallback>{{ user | userLetter }}</span>
+          </hlm-avatar>
       </a>
+
       <span class="inline-flex flex-col items-start leading-4 ">
         <span class="font-semibold">{{ user.user?.username }}</span>
         @if ((user | displayName) !== user.user?.username) {
@@ -107,7 +112,7 @@ Next to the sidebar there's the main content container including the header
   </div>
 </ng-template>
 
-@if (isAdmin && (!layout.lg() || isRosterView)) {
+@if (_isAdmin() && (!layout.lg() || _isRosterView())) {
 <nz-drawer [nzClosable]="false" [nzVisible]="drawerVisible" [nzPlacement]="'right'" (nzOnClose)="closeDrawer()"
   [nzTitle]="drawerTitle" class="rounded-l">
   <div *nzDrawerContent class="flex flex-col gap-4 -ml-6 -mr-6">
@@ -124,7 +129,7 @@ Next to the sidebar there's the main content container including the header
 }
 
 <ng-template #navigationTemplate let-drawer>
-  @if (isAdmin | async) {
+  @if (_isAdmin()) {
   <button hlmBtn variant="link" role="navigation" routerLink="/roster" [routerLinkActive]="'nav__active'">
     <hlm-icon name="lucideCalendar" size="none" />
     Dienstpläne

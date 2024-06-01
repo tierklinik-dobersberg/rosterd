@@ -3,7 +3,6 @@ import { CommonModule, NgClass } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  OnInit,
   TrackByFunction,
   computed,
   effect,
@@ -28,8 +27,7 @@ import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog
 import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import {
-  injectOfftimeService,
-  injectUserService
+  injectOfftimeService
 } from '@tierklinik-dobersberg/angular/connect';
 import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
@@ -61,7 +59,8 @@ import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
-import { UserLetterPipe } from 'src/app/common/pipes';
+import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
+import { injectUserProfiles } from '../common/behaviors';
 import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
 import { TkdEmptyTableComponent } from '../common/empty-table';
 import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
@@ -186,6 +185,7 @@ const sortFunctions: { [key in Columns]?: OffTimeSortFunc } = {
     TkdTableSortColumnComponent,
     TkdContainerSizeClassDirective,
     TkdEmptyTableComponent,
+    UserAvatarPipe,
 
     OffTimeFilterComponent,
 
@@ -203,9 +203,8 @@ const sortFunctions: { [key in Columns]?: OffTimeSortFunc } = {
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OfftimeComponent implements OnInit {
+export class OfftimeComponent {
   private readonly offTimeService = injectOfftimeService();
-  private readonly userService = injectUserService();
   private readonly dialog = inject(HlmDialogService);
 
   protected readonly layout = inject(LayoutService);
@@ -214,7 +213,7 @@ export class OfftimeComponent implements OnInit {
   protected readonly container = injectContainerSize();
 
   protected readonly _filter = signal<OffTimeFilter | null>(null);
-  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _profiles = injectUserProfiles();
   protected readonly _sort = signal<SortColumn<typeof sortFunctions> | null>(null);
   protected readonly _loading = signal<boolean>(false);
 
@@ -304,13 +303,6 @@ export class OfftimeComponent implements OnInit {
 
   constructor() {
     effect(() => this.loadOffTimeEntries());
-  }
-
-  ngOnInit() {
-    this.userService.listUsers({})
-      .then((response) => {
-        this._profiles.set(response.users);
-      })
   }
 
   async loadOffTimeEntries() {

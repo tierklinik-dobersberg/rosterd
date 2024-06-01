@@ -35,7 +35,11 @@ export const validateDuration: ValidatorFn = (ctrl: AbstractControl<string>) => 
   }
 
   try {
-    Duration.parseString(ctrl.value, true)
+    const duration = Duration.parseString(ctrl.value, true)
+
+    if (duration.seconds === 0) {
+      return {'required': true}
+    }
 
     return null;
   } catch (err) {

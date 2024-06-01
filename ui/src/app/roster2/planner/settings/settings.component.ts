@@ -24,7 +24,7 @@ export class TkdRosterPlannerSettingsComponent {
 
   constructor() {
     effect(() => {
-      const shiftsToShow = this._service.shiftIdsToShow();
+      const shiftsToShow = this._service.settings().shiftIdsToShow;
       this._shiftsToShow.set(shiftsToShow);
     }, {
       allowSignalWrites: true,
@@ -38,7 +38,11 @@ export class TkdRosterPlannerSettingsComponent {
   }
 
   apply() {
-    this._service.shiftIdsToShow.set(this._shiftsToShow());
+    this._service.settings.update((current) => {
+      const copy = {...current};
+      copy.shiftIdsToShow = this._shiftsToShow();
+      return copy
+    })
   }
 
   open() {

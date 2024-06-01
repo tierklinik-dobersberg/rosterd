@@ -5,8 +5,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { injectOfftimeService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
-import { ApproveRosterWorkTimeSplit, OffTimeEntry, Profile, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
+import { ApproveRosterWorkTimeSplit, OffTimeEntry, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
 import { from, map, of, switchMap } from 'rxjs';
+import { injectUserProfiles } from 'src/app/common/behaviors';
 import { Duration } from 'src/duration';
 
 @Component({
@@ -33,7 +34,7 @@ export class ApprovalComponent implements OnInit {
   private readonly dialogRef = inject(BrnDialogRef, { optional: true });
   private readonly dialogData: { id: string } = inject(DIALOG_DATA, { optional: true })
 
-  profiles: Profile[] = [];
+  public readonly profiles = injectUserProfiles();
 
   roster: Roster | null = null;
   timeAnalysis: WorkTimeAnalysis[] = [];
@@ -107,12 +108,6 @@ export class ApprovalComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.userService.listUsers({})
-      .then(response => {
-        this.profiles = response.users;
-        this.cdr.markForCheck();
-      });
-
     let id$ = this.currentRoute.paramMap.pipe(map(params => params.get('id')));
     if (this.dialogData) {
       id$ = of(this.dialogData.id);

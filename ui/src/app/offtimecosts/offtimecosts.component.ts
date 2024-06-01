@@ -1,40 +1,40 @@
-import { BrnTooltipModule } from '@spartan-ng/ui-tooltip-brain';
-import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
-import { BrnMenuTriggerDirective } from '@spartan-ng/ui-menu-brain';
-import { lucideListPlus, lucideMoreVertical, lucideTrash2, lucideAlertTriangle } from '@ng-icons/lucide';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, TrackByFunction, computed, inject, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ConnectError } from '@connectrpc/connect';
 import { NgIconsModule } from '@ng-icons/core';
+import { lucideAlertTriangle, lucideListPlus, lucideMoreVertical, lucideTrash2 } from '@ng-icons/lucide';
+import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
 import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
+import { BrnMenuTriggerDirective } from '@spartan-ng/ui-menu-brain';
 import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
 import { BrnTableModule } from '@spartan-ng/ui-table-brain';
+import { BrnTooltipModule } from '@spartan-ng/ui-tooltip-brain';
+import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
+import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog';
 import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
+import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
-import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { injectOfftimeService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
+import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
+import { DisplayNamePipe, DurationPipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipes';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
+import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTableModule } from '@tierklinik-dobersberg/angular/table';
+import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
 import { OffTimeCosts, Profile, UserOffTimeCosts } from '@tierklinik-dobersberg/apis';
 import { toast } from 'ngx-sonner';
+import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
+import { injectUserProfiles, sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '../common/behaviors';
 import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
-import { DisplayNamePipe, DurationPipe, ToUserPipe } from '@tierklinik-dobersberg/angular/pipes';
-import { UserLetterPipe } from 'src/app/common/pipes';
-import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
-import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog';
-import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
-import { CreatecostsComponent } from './createcosts/createcosts.component';
-import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
-import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
-import { CostFilter, OffTimeCostFilterComponent, emptyFilter } from './cost-filter/cost-filter.component';
-import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
-import { HlmAlertModule } from '@tierklinik-dobersberg/angular/alert';
 import { TkdEmptyTableComponent } from '../common/empty-table';
-import { sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '../common/behaviors';
+import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { CostFilter, OffTimeCostFilterComponent, emptyFilter } from './cost-filter/cost-filter.component';
+import { CreatecostsComponent } from './createcosts/createcosts.component';
 
 type OffTimeCostSortFunc = (a: CostEntry, b: CostEntry, profiles: Profile[]) => number;
 
@@ -124,6 +124,7 @@ const sortFunctions: { [key in Columns]?: OffTimeCostSortFunc } = {
     TkdEmptyTableComponent,
     OffTimeCostFilterComponent,
     TkdEmptyTableComponent,
+    UserAvatarPipe,
   ],
   providers: provideIcons({ lucideListPlus, lucideMoreVertical, lucideTrash2, lucideAlertTriangle }),
   templateUrl: './offtimecosts.component.html',
@@ -138,7 +139,6 @@ const sortFunctions: { [key in Columns]?: OffTimeCostSortFunc } = {
 })
 export class OfftimecostsComponent implements OnInit {
   private readonly offTimeService = injectOfftimeService();
-  private readonly usersService = injectUserService();
   private readonly dialog = inject(HlmDialogService);
 
   protected readonly container = injectContainerSize();
@@ -175,7 +175,7 @@ export class OfftimecostsComponent implements OnInit {
   })
   protected readonly columns = Columns;
   protected readonly _loading = signal(false);
-  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _profiles = injectUserProfiles();
   protected readonly _costs = signal<UserOffTimeCosts[]>([]);
   protected readonly _entries = computed(() => {
     const result: CostEntry[] = [];
@@ -298,11 +298,7 @@ export class OfftimecostsComponent implements OnInit {
   ngOnInit(): void {
     this._loading.set(true);
 
-    this.usersService.listUsers({})
-      .then(res => {
-        this._profiles.set(res.users);
-      })
-      .then(() => this.loadCosts())
+    this.loadCosts();
   }
 
   private loadCosts() {

@@ -89,7 +89,7 @@
 
         <span class="inline-flex flex-row items-center justify-start gap-2">
           <hlm-avatar size="medium">
-            <img [attr.src]="editor.user!.avatar" hlmAvatarImage [attr.alt]="editor | displayName">
+            <img [attr.src]="editor | avatar" hlmAvatarImage [attr.alt]="editor | displayName">
 
             <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="editor | color"
               [style.color]="editor | contrastColor">{{ editor | userLetter }}</span>
@@ -116,7 +116,7 @@
         @if ((e.roster.approverUserId | toUser:profiles()); as approver) {
         <span class="flex flex-row items-center justify-start gap-2">
           <hlm-avatar size="medium">
-            <img [attr.src]="approver.user!.avatar" hlmAvatarImage [attr.alt]="approver | displayName">
+            <img [attr.src]="approver | avatar" hlmAvatarImage [attr.alt]="approver | displayName">
 
             <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="approver | color"
               [style.color]="approver | contrastColor">{{ approver | userLetter }}</span>
@@ -153,7 +153,6 @@
     <brn-column-def name="actions" class="w-[20px] {{ !container.sm() ? 'p-0' : ''}}">
       <hlm-th *brnHeaderDef></hlm-th>
       <hlm-td *brnCellDef="let e" class="justify-end">
-        @if (isAdmin()) {
         <button hlmBtn variant="ghost" size="icon" [brnMenuTriggerFor]="menu4">
           <hlm-icon name="lucideMoreVertical" size="sm" />
         </button>
@@ -176,6 +175,31 @@
 
         </hlm-alert-dialog>
 
+        <ng-template #exportMenu>
+          <hlm-menu class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+            <hlm-menu-group>
+              <button hlmMenuItem (click)="_service.exportRoster('ical', e.roster.id)">
+                Als iCal herunterladen
+              </button>
+              <button hlmMenuItem (click)="_service.exportRoster('pdf', e.roster.id)">
+                Als PDF herunterladen
+              </button>
+              <button hlmMenuItem (click)="_service.exportRoster('html', e.roster.id)">
+                Als HTML herunterladen
+              </button>
+            </hlm-menu-group>
+            <hlm-menu-separator />
+            <hlm-menu-group>
+              <button hlmMenuItem disabled>
+                Als Link verschicken
+              </button>
+              <button hlmMenuItem disabled>
+                Als E-Mail verschicken
+              </button>
+            </hlm-menu-group>
+          </hlm-menu>
+        </ng-template>
+
         <ng-template #menu4>
           <hlm-menu class="w-56">
             <hlm-menu-label>Aktionen</hlm-menu-label>
@@ -186,6 +210,17 @@
                 <span>Anzeigen</span>
               </button>
 
+              <button hlmMenuItem [brnMenuTriggerFor]="exportMenu">
+                <hlm-icon name="lucideDownload" hlmMenuIcon />
+
+                Exportieren...
+                <hlm-menu-item-sub-indicator />
+              </button>
+            </hlm-menu-group>
+
+            <hlm-menu-separator />
+            @if (_isAdmin()) {
+            <hlm-menu-group>
               <button hlmMenuItem (click)="sendPreview(e.roster)">
                 <hlm-icon name="lucideSend" hlmMenuIcon />
                 <span>Per Mail senden</span>
@@ -200,22 +235,15 @@
                 <hlm-icon name="lucideCheck" hlmMenuIcon />
                 <span>Freigeben</span>
               </button>
-
-            </hlm-menu-group>
-            <hlm-menu-separator />
-            <hlm-menu-group>
+              <hlm-menu-separator />
               <button hlmMenuItem class="text-destructive hover:text-destructive" [brnAlertDialogTriggerFor]="dialog">
                 <hlm-icon name="lucideTrash2" hlmMenuIcon />
                 <span>Löschen</span>
               </button>
             </hlm-menu-group>
+            }
           </hlm-menu>
         </ng-template>
-        } @else {
-        <button hlmBtn variant="ghost" size="icon" [routerLink]="['./view', e.roster.id]">
-          <hlm-icon name="lucideEye" size="sm" />
-        </button>
-        }
       </hlm-td>
     </brn-column-def>
 

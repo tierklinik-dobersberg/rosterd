@@ -53,7 +53,7 @@
               <hlm-avatar
                 class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2 mr-4"
                 variant="small">
-                <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+                <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
               </hlm-avatar>
 
               {{ user | displayName }}

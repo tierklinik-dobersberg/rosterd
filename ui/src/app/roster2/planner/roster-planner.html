@@ -30,11 +30,11 @@
     <ng-template #editMenu>
       <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
         <hlm-menu-group>
-          <button hlmMenuItem [disabled]="true">
+          <button hlmMenuItem [disabled]="_service.undoStack().length === 0" (click)="_service.undo()">
             <hlm-icon name="lucideUndo2" hlmMenuIcon />
             Rückgängig
           </button>
-          <button hlmMenuItem [disabled]="true">
+          <button hlmMenuItem [disabled]="_service.redoStack().length === 0" (click)="_service.redo()">
             <hlm-icon name="lucideRedo2" hlmMenuIcon />
             Wiederherstellen
           </button>
@@ -44,6 +44,7 @@
 
     <ng-template #rosterMenu>
       <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
+        @if (_service.isAdmin()) {
         <hlm-menu-group>
           @if (_readonly()) {
           <button hlmMenuItem (click)="_service.toggleReadonly()">
@@ -67,13 +68,14 @@
           <hlm-menu-separator />
 
         </hlm-menu-group>
+        }
 
         <hlm-menu-group>
 
           <button hlmMenuItem [brnMenuTriggerFor]="shareMenu">
             <hlm-icon name="lucideDownload" hlmMenuIcon />
 
-            Export
+            Exportieren...
             <hlm-menu-item-sub-indicator />
           </button>
 
@@ -121,7 +123,7 @@
     <ng-template #settingsMenu>
       <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
         <hlm-menu-group>
-          <button hlmMenuItemCheckbox (click)="_showAllUsers.set(!_showAllUsers())" [checked]="_showAllUsers()">
+          <button hlmMenuItemCheckbox (click)="toggleShowAll()" [checked]="_service.showAllUsers()" [disabled]="!_service.isAdmin()">
             <hlm-menu-item-check />
 
             Alle Mitarbeiter anzeigen
@@ -249,7 +251,7 @@
                   'ring-2 ring-white': _selectedUser() === userId
             }">
 
-        <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+        <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
 
         <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="user | color"
           [style.color]="user | contrastColor">{{ user | userLetter }}</span>

@@ -10,7 +10,7 @@
     <div class="flex flex-row items-center justify-start gap-4">
       @if (profile; as user) {
       <hlm-avatar variant="large">
-        <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+        <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
         <span hlmAvatarFallback>{{ user | userLetter }}</span>
       </hlm-avatar>
 

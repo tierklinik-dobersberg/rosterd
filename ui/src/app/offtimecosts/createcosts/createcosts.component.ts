@@ -2,7 +2,7 @@ import { lucideAlertTriangle } from '@ng-icons/lucide';
 import { BrnDialogModule, BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
 
-import { ChangeDetectionStrategy, Component, OnInit, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Timestamp } from '@bufbuild/protobuf';
@@ -15,10 +15,13 @@ import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
-import { Profile } from '@tierklinik-dobersberg/apis';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { injectUserProfiles } from 'src/app/common/behaviors';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
+import { UserAvatarPipe } from 'src/app/common/pipes';
+import { DurationValidatorDirective } from 'src/app/common/validators';
+import { TkdErrorMessagesComponent } from 'src/app/common/error-messages';
 
 export type VacationType = 'vacation' | 'timeoff' | '';
 
@@ -40,6 +43,9 @@ export type VacationType = 'vacation' | 'timeoff' | '';
     HlmAlertModule,
     HlmIconModule,
     BrnSelectModule,
+    UserAvatarPipe,
+    DurationValidatorDirective,
+    TkdErrorMessagesComponent,
   ],
   providers: provideIcons({ lucideAlertTriangle }),
   templateUrl: './createcosts.component.html',
@@ -52,12 +58,12 @@ export type VacationType = 'vacation' | 'timeoff' | '';
     `
   ]
 })
-export class CreatecostsComponent implements OnInit {
+export class CreatecostsComponent {
   private readonly offTimeService = injectOfftimeService();
   private readonly usersService = injectUserService();
 
   protected readonly dialogRef = inject(BrnDialogRef);
-  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _profiles = injectUserProfiles();
 
   /* Models */
 
@@ -66,13 +72,6 @@ export class CreatecostsComponent implements OnInit {
   protected readonly _date = model<Date | null>(null);
   protected readonly _costs = model(0);
   protected readonly _type = model<VacationType>('');
-
-  ngOnInit() {
-    this.usersService.listUsers({})
-      .then(res => {
-        this._profiles.set(res.users);
-      })
-  }
 
   updateCosts(costs: string) {
     const d = Duration.parseString(costs);

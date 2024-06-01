@@ -1,15 +1,16 @@
-import { Injectable, Signal, computed, inject, signal } from "@angular/core";
+import { Injectable, Signal, computed, effect, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { NavigationStart, Router } from "@angular/router";
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { injectHolidayService, injectOfftimeService, injectRosterService, injectUserService } from "@tierklinik-dobersberg/angular/connect";
+import { injectCommentService, injectHolidayService, injectOfftimeService, injectRosterService } from "@tierklinik-dobersberg/angular/connect";
 import { toDateString } from '@tierklinik-dobersberg/angular/utils/date';
-import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, Profile, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
+import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
 import { Subject, catchError, debounceTime, filter, from, map, of, switchMap } from "rxjs";
+import { ProfileService } from "src/app/common/profile.service";
 
 export interface ShiftState {
   // A unique ID to identify the shift.
@@ -89,13 +90,36 @@ export interface RosterState {
   approvedBy: string;
 }
 
+export interface Settings {
+  showAllUsers: boolean;
+  shiftIdsToShow: string[];
+}
+
+export interface AssignOp {
+  type: 'assign';
+  dateKey: string;
+  shiftId: string;
+  userId: string;
+}
+
+export interface UnassignOp {
+  type: 'unassign';
+  dateKey: string;
+  shiftId: string;
+  userId: string;
+}
+
+export type Operation = AssignOp | UnassignOp;
+
 @Injectable()
 export class RosterPlannerService {
   /** Private services */
-  private readonly userService = injectUserService();
   private readonly rosterService = injectRosterService();
   private readonly offTimeService = injectOfftimeService();
   private readonly holidayService = injectHolidayService();
+  private readonly commentService = injectCommentService();
+  private readonly profileService = inject(ProfileService);
+
   private readonly router = inject(Router);
 
   /** Used to trigger a debounced save */
@@ -113,8 +137,14 @@ export class RosterPlannerService {
     approvedBy: '',
   });
 
+  /** The current user */
+  public readonly currentUser = computed(() => this.profileService.current());
+
+  /** Whether or not the current user is a admin */
+  public readonly isAdmin = computed(() => this.profileService.isAdmin());
+
   /** All user profiles */
-  private readonly _profiles = signal<Profile[]>([]);
+  public readonly profiles = computed(() => this.profileService.profiles())
 
   /** The currently selected user ID, if any */
   private readonly _selectedUser = signal<string | null>(null);
@@ -123,13 +153,19 @@ export class RosterPlannerService {
   private readonly _workTimes = signal<Record<string, WorkTimeAnalysis>>({});
 
   /** The type of roster we're currently editing/viewing */
-  private _rosterTypeName = signal('');
+  private readonly _rosterTypeName = signal('');
 
   /** The ID of the roster */
-  private _rosterId = signal<string | null>(null);
+  private readonly _rosterId = signal<string | null>(null);
 
   /** Whether or not we're currently loading and preparing a new planning session */
-  private _loading = signal(true);
+  private readonly _loading = signal(true);
+
+  /** The current settings */
+  public readonly settings = signal<Settings>({
+    shiftIdsToShow: [],
+    showAllUsers: false,
+  });
 
   private readonly _computedSaveRosterModel = computed(() => {
     const id = this._rosterId();
@@ -166,17 +202,21 @@ export class RosterPlannerService {
         paths: [
           'work_time_analysis',
           'roster.cas_index',
+          'roster.id',
         ]
       }
     })
   })
 
+  /** A list of applied operations for undo support */
+  private readonly _undoStack = signal<Operation[]>([]);
+  private readonly _redoStack = signal<Operation[]>([]);
+
   // Public signals
+  public readonly undoStack = this._undoStack.asReadonly();
+  public readonly redoStack = this._redoStack.asReadonly();
 
   public readonly rosterId = this._rosterId.asReadonly();
-
-  /** A list of all available user profiles */
-  public readonly profiles = this._profiles.asReadonly();
 
   /** A list of user profiles that are eligible to be used during this planning session */
   public readonly eligibleProfiles = computed(() => {
@@ -225,12 +265,12 @@ export class RosterPlannerService {
     return max;
   })
 
-  /** A list of all shifts to show */
-  public readonly shiftIdsToShow = signal<string[]>([]);
+  private readonly _computedShiftsIdsToShow = computed(() => this.settings().shiftIdsToShow);
 
+  /** A list of all shifts to show */
   public readonly computedShiftsToShow = computed(() => {
     const state = this._state();
-    const ids = this.shiftIdsToShow();
+    const ids = this._computedShiftsIdsToShow();
 
     if (ids.length === 0) {
       return Array.from(state.shiftDefinitions.keys())
@@ -238,6 +278,8 @@ export class RosterPlannerService {
 
     return ids;
   })
+
+  public readonly showAllUsers = computed(() => this.settings().showAllUsers);
 
   /** The start of the calendar */
   public readonly calendarStart = computed(() => {
@@ -314,11 +356,12 @@ export class RosterPlannerService {
   });
 
   constructor() {
-    // Load all users once since we don't expect any changes to users
-    // during a planning session.
-    this.userService
-      .listUsers({})
-      .then(response => this._profiles.set(response.users));
+    console.log("planning service created")
+
+    effect(() => {
+      const undoStack = [...this._undoStack()];
+      console.log("New undo stack", undoStack)
+    })
 
     this._triggerSave
       .pipe(
@@ -364,6 +407,61 @@ export class RosterPlannerService {
       })
   }
 
+  public pushOp(op: Operation) {
+    this._undoStack.update(ops => {
+      return [...ops, op]
+    })
+  }
+
+  public undo() {
+    const stack = [...this._undoStack()];
+
+    if (!stack.length) {
+      return;
+    }
+
+    const lastOp = stack.pop()!;
+
+    switch (lastOp.type) {
+      case 'assign':
+        this.updateUserAssignment(lastOp.userId, lastOp.dateKey, lastOp.shiftId, false, false)
+        break;
+
+      case 'unassign':
+        this.updateUserAssignment(lastOp.userId, lastOp.dateKey, lastOp.shiftId, true, false)
+        break;
+    }
+
+    this._undoStack.set(stack);
+    this._redoStack.update(stack => {
+      return [...stack, lastOp]
+    })
+  }
+
+  public redo() {
+    const stack = [...this._redoStack()];
+
+    if (!stack.length) {
+      return;
+    }
+
+    const lastOp = stack.pop()!;
+    switch (lastOp.type) {
+      case 'assign':
+        this.updateUserAssignment(lastOp.userId, lastOp.dateKey, lastOp.shiftId, true, false)
+        break;
+
+      case 'unassign':
+        this.updateUserAssignment(lastOp.userId, lastOp.dateKey, lastOp.shiftId, false, false)
+        break;
+    }
+
+    this._redoStack.set(stack);
+    this._undoStack.update(stack => {
+      return [...stack, lastOp]
+    })
+  }
+
   /**
    * Selects a new user.
    *
@@ -404,7 +502,7 @@ export class RosterPlannerService {
    * @param uniqueShiftId The unique ID of the shift.
    */
   public assingUser(userId: string, dateKey: string, uniqueShiftId: string) {
-    this.updateUserAssignment(userId, dateKey, uniqueShiftId, true)
+    this.updateUserAssignment(userId, dateKey, uniqueShiftId, true, true)
   }
 
   /**
@@ -415,16 +513,21 @@ export class RosterPlannerService {
    * @param uniqueShiftId The unique ID of the shift.
    */
   public unassingUser(userId: string, dateKey: string, uniqueShiftId: string) {
-    this.updateUserAssignment(userId, dateKey, uniqueShiftId, false)
+    this.updateUserAssignment(userId, dateKey, uniqueShiftId, false, true)
   }
 
   /** Toggle the assignment of a upser */
   public toggleUserAssignment(userId: string, dateKey: string, uniqueShiftId: string) {
-    this.updateUserAssignment(userId, dateKey, uniqueShiftId, null)
+    this.updateUserAssignment(userId, dateKey, uniqueShiftId, null, true)
   }
 
+  public pushToUndoStack(op: Operation) {
+    this._undoStack.update(stack => {
+      return [...stack, op];
+    })
+  }
 
-  private updateUserAssignment(userId: string, dateKey: string, uniqueShiftId: string, assign: boolean | null) {
+  private updateUserAssignment(userId: string, dateKey: string, uniqueShiftId: string, assign: boolean | null, pushOp = false) {
     const current = this._state();
 
     const assignedUsers = current.dates
@@ -443,6 +546,29 @@ export class RosterPlannerService {
       set.add(userId)
     } else {
       set.delete(userId);
+    }
+
+    if (pushOp) {
+      this._undoStack.update(stack => {
+        let op: Operation;
+
+        if (assign) {
+          op = {
+            type: 'assign',
+            dateKey,
+            userId,
+            shiftId: uniqueShiftId,
+          }
+        } else {
+          op = {
+            type: 'unassign',
+            dateKey,
+            userId,
+            shiftId: uniqueShiftId,
+          }
+        }
+        return [...stack, op];
+      })
     }
 
     this.setShiftAssignments(dateKey, uniqueShiftId, Array.from(set.values()));
@@ -506,7 +632,30 @@ export class RosterPlannerService {
       return;
     }
 
-    this.prepareForEdit(this._rosterTypeName(), id, this.sessionState().readonly);
+    this.startSession(id, this.sessionState().readonly);
+  }
+
+  public stopSession() {
+    if (this._savePending()) {
+      toast.warning('Dienstplan wurde noch nicht gespeichert!')
+      return
+    }
+
+    this._savePending.set(false);
+
+    this._state.set({
+      from: new Date(),
+      to: new Date(),
+      dates: [],
+      readonly: false,
+      shiftDefinitions: new Map(),
+      casIndex: BigInt(0),
+      approvedBy: '',
+    })
+    this._undoStack.set([]);
+    this._redoStack.set([]);
+    this._rosterId.set(null);
+    this._rosterTypeName.set('');
   }
 
   /**
@@ -517,12 +666,11 @@ export class RosterPlannerService {
    * @param typeName The name of the roster type.
    * @param id The ID of the roster that is being viewed or edited.
    */
-  public prepareForEdit(typeName: string, id: string, readonly = false): Promise<void> {
+  public startSession(id: string, readonly = false): Promise<void> {
     this._loading.set(true);
 
     return this.rosterService
       .getRoster({
-        rosterTypeNames: typeName ? [typeName] : undefined,
         search: {
           case: 'id',
           value: id,
@@ -544,33 +692,43 @@ export class RosterPlannerService {
           return;
         }
 
-        const fetchHolidays = this.holidayService
-          .getHoliday({
-            month: BigInt(+fromMonth),
-            year: BigInt(+fromYear),
-          })
+        const isAdmin = this.isAdmin();
 
-        const requiredShifts = this.rosterService
-          .getRequiredShifts({
+        const fetchHolidays =
+          this.holidayService
+            .getHoliday({
+              month: BigInt(+fromMonth),
+              year: BigInt(+fromYear),
+            })
+
+        const requiredShifts =
+          this.rosterService
+            .getRequiredShifts({
+              from: roster.from,
+              to: roster.to,
+              rosterTypeName: roster.rosterTypeName,
+            });
+
+        const offTimes =
+            isAdmin
+          ? this.offTimeService
+            .findOffTimeRequests({
+              from: Timestamp.fromDate(new Date(roster.from)),
+              to: Timestamp.fromDate(new Date(roster.to)),
+              userIds: [],
+            })
+          : Promise.resolve(new FindOffTimeRequestsResponse())
+
+        const workTimes =
+          isAdmin ?
+          this.rosterService.analyzeWorkTime({
             from: roster.from,
             to: roster.to,
-            rosterTypeName: roster.rosterTypeName,
-          });
-
-        const offTimes = this.offTimeService
-          .findOffTimeRequests({
-            from: Timestamp.fromDate(new Date(roster.from)),
-            to: Timestamp.fromDate(new Date(roster.to)),
-            userIds: [],
+            users: {
+              allUsers: true
+            }
           })
-
-        const workTimes = this.rosterService.analyzeWorkTime({
-          from: roster.from,
-          to: roster.to,
-          users: {
-            allUsers: true
-          }
-        });
+          : new AnalyzeWorkTimeResponse({});
 
         return Promise.all([
           Promise.resolve(roster),
@@ -591,12 +749,15 @@ export class RosterPlannerService {
         const offTimes = response[3];
         const workTimes = response[4];
 
+        this._undoStack.set([]);
+        this._redoStack.set([]);
         this._rosterId.set(roster.id);
         this._rosterTypeName.set(roster.rosterTypeName);
 
         return this._prepareState(roster, holidays, requiredShifts, offTimes, workTimes, readonly);
       })
       .catch(err => {
+        console.error(err);
         this._rosterId.set(null);
         this._rosterTypeName.set('');
 
@@ -607,23 +768,39 @@ export class RosterPlannerService {
       })
       .finally(() => {
         this._loading.set(false);
+
+        if (!this.sessionState().readonly && !this.isAdmin()) {
+          this.toggleReadonly();
+        }
       });
   }
 
   public toggleReadonly() {
+    if (!this.isAdmin() && this.sessionState().readonly) {
+      return
+    }
+
     this._state.update(current => {
       const copy = { ...current };
 
       copy.readonly = !copy.readonly;
 
+      if (copy.readonly) {
+        this.router.navigate(['/roster/view/', this.rosterId()])
+      } else {
+        this.router.navigate(['/roster/plan/', this.rosterId()])
+      }
+
       return copy;
     })
   }
 
-  public exportRoster(type: 'ical' | 'html' | 'pdf', shiftTags: string[] = []) {
-    const id = this._rosterId();
-    if (!id) {
-      return
+  public exportRoster(type: 'ical' | 'html' | 'pdf', id: string | null = null, shiftTags: string[] = []) {
+    if (id === null) {
+      id = this._rosterId();
+      if (!id) {
+        return
+      }
     }
 
     let protoType: ExportRosterType;
@@ -644,11 +821,30 @@ export class RosterPlannerService {
         return;
     }
 
+    const abort = new AbortController();
+
+
+    const toastId = toast.loading('Dienstplan wird exportiert', {
+      description: 'Bitte habe etwas Gedult, dein Export wird vorbereitet',
+      dismissable: false,
+      duration: 20000,
+      action: {
+        label: 'Abbrechen',
+        onClick: () => abort.abort('Export aborted by user')
+      },
+      classes: {
+        actionButton: 'font-bold uppercase'
+      }
+    })
+
+
     this.rosterService
       .exportRoster({
         id: id,
         type: protoType,
         includeShiftTags: shiftTags,
+      }, {
+        signal: abort.signal
       })
       .then(response => {
         return FileSaver.saveAs(new Blob([response.payload], {
@@ -656,7 +852,20 @@ export class RosterPlannerService {
         }), response.fileName)
       })
       .then(() => {
-        toast.success('Export erfolgreich')
+        //toast.dismiss(toastId);
+        toast.success('Dienstplan erfolgreich exportiert', {
+          description: 'Der Download des Exports sollte automatisch erfolgen',
+          id: toastId,
+          dismissable: true,
+          duration: 4000,
+          action: {
+            label: 'OKAY',
+            onClick: () => { }
+          },
+          classes: {
+            actionButton: 'font-bold uppercase'
+          }
+        })
       })
       .catch(err => {
         console.error(err);
@@ -664,7 +873,17 @@ export class RosterPlannerService {
         const connectErr = ConnectError.from(err);
 
         toast.error('Export Fehlgeschlagen', {
-          description: connectErr.message
+          description: connectErr.message,
+          id: toastId,
+          dismissable: true,
+          duration: 4000,
+          action: {
+            label: 'OKAY',
+            onClick: () => { }
+          },
+          classes: {
+            actionButton: 'font-bold uppercase'
+          }
         })
       })
   }
@@ -689,7 +908,20 @@ export class RosterPlannerService {
         this._state.update(current => ({
           ...current,
           casIndex: response.roster!.casIndex,
+          approvedBy: response.roster!.approverUserId,
         }))
+
+        if (this.rosterId() !== response.roster!.id) {
+          console.log("new roster id", this.rosterId(), response.roster!.id)
+          this._rosterId.set(response.roster!.id)
+          const readonly = this.sessionState().readonly;
+
+          if (readonly) {
+            this.router.navigate(['/roster/view', this.rosterId()])
+          } else {
+            this.router.navigate(['/roster/plan', this.rosterId()])
+          }
+        }
 
         return response;
       })
@@ -702,6 +934,12 @@ export class RosterPlannerService {
           toast.error('Dieser Dienstplan wurde in der Zwischenzeit bearbeitet', {
             description: connectErr.message,
           })
+        } else if (connectErr.code === Code.PermissionDenied) {
+          toast.error('Du bist nicht berechtigt den Dienstplan zu bearbeiten!')
+
+          if (!this.sessionState().readonly) {
+            this.toggleReadonly();
+          }
         }
 
         throw err;

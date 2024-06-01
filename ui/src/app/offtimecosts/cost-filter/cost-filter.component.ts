@@ -13,7 +13,7 @@ import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { HlmSheetModule } from "@tierklinik-dobersberg/angular/sheet";
 import { Profile } from "@tierklinik-dobersberg/apis";
 import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
-import { UserLetterPipe } from "src/app/common/pipes";
+import { UserAvatarPipe, UserLetterPipe } from "src/app/common/pipes";
 import { HlmSeparatorModule } from '@tierklinik-dobersberg/angular/separator';
 import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { HlmRadioGroupModule } from '@tierklinik-dobersberg/angular/radiogroup';
@@ -58,6 +58,7 @@ export const emptyFilter: CostFilter = {
     HlmSeparatorModule,
     ToUserPipe,
     UserLetterPipe,
+    UserAvatarPipe,
   ],
   providers: provideIcons({lucideFilter}),
   changeDetection: ChangeDetectionStrategy.OnPush,

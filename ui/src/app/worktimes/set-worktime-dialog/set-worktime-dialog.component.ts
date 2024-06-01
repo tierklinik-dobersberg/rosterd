@@ -18,7 +18,7 @@ import { Duration } from '@tierklinik-dobersberg/angular/utils/date';
 import { Profile, SetWorkTimeRequest, WorkTime } from '@tierklinik-dobersberg/apis';
 import { toast } from 'ngx-sonner';
 import { TkdErrorMessagesComponent } from 'src/app/common/error-messages';
-import { UserLetterPipe } from 'src/app/common/pipes';
+import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
 import { DurationValidatorDirective } from 'src/app/common/validators';
 
 @Component({
@@ -39,6 +39,7 @@ import { DurationValidatorDirective } from 'src/app/common/validators';
     HlmBadgeDirective,
     DurationValidatorDirective,
     TkdErrorMessagesComponent,
+    UserAvatarPipe,
   ],
   providers: [],
   templateUrl: './set-worktime-dialog.component.html',

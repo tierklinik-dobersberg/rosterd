@@ -40,7 +40,7 @@ import { HlmH1Directive, HlmH2Directive, HlmH3Directive } from '@tierklinik-dobe
 import { NzDatePickerModule } from "ng-zorro-antd/date-picker";
 import { NZ_DATE_CONFIG } from "ng-zorro-antd/i18n";
 import { NzToolTipModule } from "ng-zorro-antd/tooltip";
-import { JoinListPipe, UserLetterPipe } from 'src/app/common/pipes';
+import { JoinListPipe, UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
 import { TkdInViewportDirective } from "../common/in-viewport";
 import { TkdTableSortColumnComponent } from "../common/table-sort";
 import { AppHeaderOutletDirective } from "../header-outlet.directive";
@@ -53,6 +53,7 @@ import { TkdRosterPlannerComponent, TkdRosterPlannerDayComponent } from './plann
 import { TkdRosterPlannerSettingsComponent } from "./planner/settings";
 import { TkdShiftSelectComponent } from "./planner/shift-select";
 import { TkdRoster2Routing } from './roster2-routing.module';
+import { RosterPlannerService } from "./planner/planner.service";
 
 @NgModule({
   imports: [
@@ -113,6 +114,7 @@ import { TkdRoster2Routing } from './roster2-routing.module';
     GroupByISOWeekPipe,
     JoinListPipe,
     AppHeaderOutletDirective,
+    UserAvatarPipe,
   ],
   declarations: [
     TkdRosterPlannerComponent,
@@ -148,6 +150,7 @@ import { TkdRoster2Routing } from './roster2-routing.module';
       lucideRedo2,
       lucideX
     }),
+    RosterPlannerService,
   ]
 })
 export class TkdRoster2Module { }

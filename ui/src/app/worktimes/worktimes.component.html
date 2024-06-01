@@ -29,7 +29,7 @@
       <span class="inline-flex flex-row flex-nowrap gap-2 items-center text-ellipsis overflow-hidden">
 
         <hlm-avatar variant="medium" [class.hidden]="!container.sm()">
-          <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+          <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
           <span hlmAvatarFallback>{{ user | userLetter }}</span>
         </hlm-avatar>
 

@@ -27,11 +27,11 @@
     <tr
       class="{{ !offTimePerUser[wt.userId]?.length ? 'border-b border-subtle' : '' }} hover:bg-gray-100 hover:bg-opacity-50">
       <td class="p-2 text-left  ">
-        @if ((wt.userId | toUser:profiles); as user) {
+        @if ((wt.userId | toUser:profiles()); as user) {
         <span class="flex flex-row items-center justify-start gap-2 text-left">
 
           <hlm-avatar variant="medium" class="border border-secondary bg-secondary">
-            <img [attr.src]="user.user?.avatar" hlmAvatarImage>
+            <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
             <span class="bg-[#FD005B] text-white" hlmAvatarFallback>{{ user.user?.username || 'N/A'}}</span>
           </hlm-avatar>
 

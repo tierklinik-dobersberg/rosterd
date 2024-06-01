@@ -18,6 +18,7 @@ import { HlmSheetModule } from "@tierklinik-dobersberg/angular/sheet";
 import { Profile } from "@tierklinik-dobersberg/apis";
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
+import { UserAvatarPipe } from "src/app/common/pipes";
 
 export type OffTimeState = 'all' | 'new';
 
@@ -52,6 +53,7 @@ export const emptyFilter: OffTimeFilter = {
     BrnSheetModule,
     NzDatePickerModule,
     HlmInputModule,
+    UserAvatarPipe,
 
     DisplayNamePipe,
     ToUserPipe,

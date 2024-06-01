@@ -1,10 +1,10 @@
-import { AfterRenderPhase, ChangeDetectionStrategy, Component, ElementRef, Injector, ViewChild, afterNextRender, computed, inject, model } from "@angular/core";
+import { AfterRenderPhase, ChangeDetectionStrategy, Component, ElementRef, Injector, ViewChild, afterNextRender, computed, inject} from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
 import { HlmDialogService } from "@tierklinik-dobersberg/angular/dialog";
 import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 import { differenceInCalendarDays } from 'date-fns';
-import { filter, map } from "rxjs";
+import { filter, map, take } from "rxjs";
 import { toDateString } from "src/utils";
 import { ApprovalComponent } from "../approval/approval.component";
 import { RosterPlannerService } from "./planner.service";
@@ -17,9 +17,6 @@ import { TkdRosterPlannerSettingsComponent } from "./settings";
   templateUrl: './roster-planner.html',
   styleUrls: ['./roster-planner.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    RosterPlannerService,
-  ]
 })
 export class TkdRosterPlannerComponent {
   private readonly activatedRoute = inject(ActivatedRoute);
@@ -42,15 +39,13 @@ export class TkdRosterPlannerComponent {
   /** Whether or not we are in "readonly" mode. */
   protected readonly _readonly = computed(() => this._state().readonly);
 
-  /** Whether or not all users should be shown */
-  protected readonly _showAllUsers = model<boolean>(false);
-
   /** A list of eligible profiles */
   protected readonly _profiles = computed(() => {
+    const showAll = this._service.showAllUsers()
     const eligible = this._service.eligibleProfiles()
     const all = this._service.profiles();
 
-    if (this._showAllUsers()) {
+    if (showAll) {
       return all
     }
 
@@ -91,6 +86,15 @@ export class TkdRosterPlannerComponent {
     this.router.navigate(['/roster']);
   }
 
+  protected toggleShowAll() {
+    this._service.settings.update(current => {
+      const copy = {...current};
+      copy.showAllUsers = !copy.showAllUsers;
+
+      return copy;
+    })
+  }
+
   protected approve() {
     if (this._dirty()) {
       return
@@ -118,15 +122,23 @@ export class TkdRosterPlannerComponent {
       .paramMap
       .pipe(
         takeUntilDestroyed(),
-        map(params => [params.get('type'), params.get('id')])
+        map(params => params.get('id')),
+        filter(params => !!params && !!params[1]),
+        take(1),
       )
-      .subscribe(([type, id]) => {
+      .subscribe((id) => {
         if (!id) {
           this.router.navigate(['../'])
           return
         }
 
-        this._service.prepareForEdit(type || '', id, this.activatedRoute.snapshot.data?.readonly)
+        if (this._service.rosterId() === id) {
+          return;
+        }
+
+        console.log("loading planning session", id, this._service.rosterId())
+
+        this._service.startSession(id, this.activatedRoute.snapshot.data?.readonly)
           .then(() => {
             if (!this.layout.lg()) {
               const today = toDateString(new Date());
@@ -137,6 +149,7 @@ export class TkdRosterPlannerComponent {
                 injector,
               })
             }
+            console.log("session ready", this._service.rosterId())
           })
       })
   }

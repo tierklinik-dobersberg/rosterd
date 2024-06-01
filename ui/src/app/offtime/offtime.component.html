@@ -33,7 +33,7 @@
       <span class="flex flex-row flex-nowrap gap-2 items-center w-full text-ellipsis overflow-hidden">
 
         <hlm-avatar variant="medium">
-          <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+          <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
           <span hlmAvatarFallback>{{ user | userLetter }}</span>
         </hlm-avatar>
 
@@ -254,7 +254,7 @@
             <hlm-avatar
               class="transition-shadow duration-200 ease-in-out group-hover:ring-2 group-hover:ring-primary/50 group-hover:ring-offset-2"
               variant="medium">
-              <img [attr.src]="user.user!.avatar" hlmAvatarImage [attr.alt]="user | displayName">
+              <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
               <span hlmAvatarFallback>{{ user | userLetter }}</span>
             </hlm-avatar>
 

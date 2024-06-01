@@ -115,6 +115,13 @@ export class TkdShiftSelectComponent {
         .state()
         .value as string[])
         .filter(o => o !== user);
+
+      this._planningService.pushToUndoStack({
+        type: 'unassign',
+        dateKey: toDateString(this.shift().from),
+        shiftId: this.shift().uniqueId,
+        userId: user,
+      })
     } else {
       newOptions = [
         ...this._selectService.state().selectedOptions,
@@ -124,6 +131,13 @@ export class TkdShiftSelectComponent {
         ...(this._selectService.state().value as string[]),
         user,
       ]
+
+      this._planningService.pushToUndoStack({
+        type: 'assign',
+        dateKey: toDateString(this.shift().from),
+        shiftId: this.shift().uniqueId,
+        userId: user,
+      })
     }
 
     this._selectService

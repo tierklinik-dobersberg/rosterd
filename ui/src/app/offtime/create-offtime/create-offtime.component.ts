@@ -14,14 +14,16 @@ import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import { HlmCardModule } from '@tierklinik-dobersberg/angular/card';
 import { HlmCheckboxModule } from '@tierklinik-dobersberg/angular/checkbox';
-import { injectOfftimeService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { injectOfftimeService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
-import { OffTimeEntry, OffTimeType, Profile } from '@tierklinik-dobersberg/apis';
+import { OffTimeEntry, OffTimeType } from '@tierklinik-dobersberg/apis';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { injectUserProfiles } from 'src/app/common/behaviors';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
+import { UserAvatarPipe } from 'src/app/common/pipes';
 
 
 @Component({
@@ -42,14 +44,14 @@ import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
     HlmSelectModule,
     HlmDialogModule,
     BrnDialogModule,
-    HlmBadgeModule
+    HlmBadgeModule,
+    UserAvatarPipe
   ],
   templateUrl: './create-offtime.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CreateOfftimeComponent implements OnInit {
   private readonly offTimeService = injectOfftimeService();
-  private readonly usersService = injectUserService();
   private readonly data: { entry: OffTimeEntry } = inject(DIALOG_DATA, { optional: true });
   private readonly dialogRef = inject(BrnDialogRef);
 
@@ -88,7 +90,7 @@ export class CreateOfftimeComponent implements OnInit {
     return result
   })
 
-  protected readonly _profiles = signal<Profile[] | null>(null);
+  protected readonly _profiles = injectUserProfiles();
 
   protected _wholeDays = model(true);
 
@@ -155,11 +157,6 @@ export class CreateOfftimeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.usersService.listUsers({})
-      .then(response => {
-        this._profiles.set(response.users);
-      })
-
     if (this.data && 'entry' in this.data && this.data.entry) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.applyToModel((this.data as any).entry)

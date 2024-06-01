@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, Injector, OnInit, computed, effect, inject, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, Injector, IterableDiffers, OnInit, computed, effect, inject, input, signal } from "@angular/core";
 import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 import { toDateString } from "src/utils";
-import { RosterDateState, RosterPlannerService } from "../planner.service";
+import { RosterDateState, RosterPlannerService, ShiftState } from "../planner.service";
 
 @Component({
   // eslint-disable-next-line @angular-eslint/component-selector
@@ -24,6 +24,7 @@ import { RosterDateState, RosterPlannerService } from "../planner.service";
 export class TkdRosterPlannerDayComponent implements OnInit {
   protected readonly _service = inject(RosterPlannerService);
   private readonly _injector = inject(Injector);
+  private readonly _differs = inject(IterableDiffers);
 
   /** Inputs */
   public date = input.required<string, Date | string>({
@@ -50,9 +51,12 @@ export class TkdRosterPlannerDayComponent implements OnInit {
   protected readonly _shifts = computed(() => this._state().shifts);
   protected readonly _readonly = signal(true);
   protected readonly _profiles = computed(() => this._service.profiles());
+  protected readonly _profileIds = computed(() => this._service.profiles().map(p => p.user!.id));
   protected readonly _workTimes = computed(() => this._service.workTimes());
   protected readonly _loading = computed(() => this._service.loading());
   protected readonly _shiftsToShow = computed(() => this._service.computedShiftsToShow());
+  protected readonly _showAllUsers = computed(() => this._service.showAllUsers())
+
   protected readonly _isToday = computed(() => {
     const loading = this._loading();
     const date = this.date();
@@ -74,6 +78,31 @@ export class TkdRosterPlannerDayComponent implements OnInit {
 
     return '';
   })
+
+  protected updateShiftAssignments(shift: ShiftState, users: string[]) {
+    const diff = this._differs.find([]).create<string>()
+    diff.diff(shift.assignedUsers);
+
+    const change = diff.diff(users);
+    change?.forEachAddedItem(item => {
+      this._service.pushToUndoStack({
+        type: 'assign',
+        dateKey: this.date(),
+        shiftId: shift.uniqueId,
+        userId: item.item
+      })
+    })
+    change?.forEachRemovedItem(item => {
+      this._service.pushToUndoStack({
+        type: 'unassign',
+        dateKey: this.date(),
+        shiftId: shift.uniqueId,
+        userId: item.item
+      })
+    })
+
+    this._service.setShiftAssignments(this.date(), shift.uniqueId, users)
+  }
 
   ngOnInit(): void {
     const date = this.date();

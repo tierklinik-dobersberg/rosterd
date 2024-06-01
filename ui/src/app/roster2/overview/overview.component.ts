@@ -3,16 +3,17 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectError } from '@connectrpc/connect';
 import { provideIcons } from '@ng-icons/core';
 import { lucideArrowUpDown, lucideCheck, lucideEye, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2 } from '@ng-icons/lucide';
-import { injectAuthService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
+import { injectRosterService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
-import { Profile, Role, Roster, RosterType } from '@tierklinik-dobersberg/apis';
-import { NzMessageService } from 'ng-zorro-antd/message';
+import { Roster, RosterType } from '@tierklinik-dobersberg/apis';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
+import { injectUserProfiles } from 'src/app/common/behaviors';
 import { injectContainerSize } from 'src/app/common/container';
 import { SortColumn } from 'src/app/common/table-sort';
 import { toDateString } from 'src/utils';
 import { ApprovalComponent } from '../approval/approval.component';
+import { RosterPlannerService } from '../planner/planner.service';
 
 interface RosterWithLink {
   roster: Roster;
@@ -79,13 +80,15 @@ const sortFunctions: Record<string, (a: Roster, b: Roster) => number> = {
 })
 export class TkdRosterOverviewComponent implements OnInit {
   private readonly rosterService = injectRosterService();
-  private readonly userService = injectUserService();
-  private readonly messageService = inject(NzMessageService)
-  private readonly authService = injectAuthService();
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute)
-  protected readonly container = injectContainerSize();
   private readonly dialog = inject(HlmDialogService)
+
+  protected readonly container = injectContainerSize();
+
+  protected readonly _service = inject(RosterPlannerService);
+
+  protected readonly _isAdmin = computed(() => this._service.isAdmin());
 
   private readonly _rosters = signal<RosterWithLink[]>([]);
 
@@ -146,9 +149,9 @@ export class TkdRosterOverviewComponent implements OnInit {
       })
   })
 
-  profiles = signal<Profile[]>([]);
+  readonly profiles = injectUserProfiles();
+
   rosterTypes = signal<RosterType[]>([]);
-  isAdmin = signal(false);
 
   createRosterType = model<string>();
   createRosterRange = model<[Date, Date]>();
@@ -187,9 +190,17 @@ export class TkdRosterOverviewComponent implements OnInit {
   }
 
   async deleteRoster(roster: Roster) {
-    await this.rosterService.deleteRoster({
-      id: roster.id,
-    })
+    try {
+      await this.rosterService.deleteRoster({
+        id: roster.id,
+      })
+    } catch (err) {
+      const connectErr = ConnectError.from(err);
+
+      toast.error('Dienstplan konnte nicht gelöscht werden', {
+        description: connectErr.message,
+      })
+    }
 
     await this.loadRosters();
   }
@@ -199,7 +210,7 @@ export class TkdRosterOverviewComponent implements OnInit {
       id: roster.id,
     })
       .then(() => {
-        this.messageService.success("Alle mails wurden erfolgreich versandt.")
+        toast.success("Alle mails wurden erfolgreich versandt.")
       })
   }
 
@@ -239,20 +250,12 @@ export class TkdRosterOverviewComponent implements OnInit {
   }
 
   async ngOnInit() {
-    this.userService.listUsers({})
-      .then(response => this.profiles.set(response.users));
-
     this.rosterService.listRosterTypes({})
       .then(response => {
         this.rosterTypes.set(response.rosterTypes);
       })
 
-
-    this.authService
-      .introspect({})
-      .then(response => {
-        this.isAdmin.set(response.profile!.roles!.find((r: Role) => ['idm_superuser', 'roster_manager'].includes(r.name)) !== undefined);
-      });
+    this._service.stopSession();
 
     await this.loadRosters();
   }

@@ -83,7 +83,7 @@
           @if(user | toUser:_profiles(); as profile) {
           <button brnCmdItem hlm (click)="onSheetUserClick(user); $event.preventDefault(); $event.stopPropagation();">
             <hlm-avatar hlmCmdIcon variant="small">
-              <img [attr.src]="profile.user!.avatar" hlmAvatarImage [attr.alt]="profile | displayName">
+              <img [attr.src]="profile | avatar" hlmAvatarImage [attr.alt]="profile | displayName">
               <span hlmAvatarFallback>{{ profile | userLetter }}</span>
             </hlm-avatar>
 

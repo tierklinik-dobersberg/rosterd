@@ -11,7 +11,7 @@ import { HlmAlertDialogModule } from '@tierklinik-dobersberg/angular/alertdialog
 import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
 import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
-import { injectUserService, injectWorktimeSerivce } from '@tierklinik-dobersberg/angular/connect';
+import { injectWorktimeSerivce } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
 import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
@@ -27,9 +27,9 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
-import { sortProtoDuration, sortUserProfile } from '../common/behaviors';
+import { injectUserProfiles, sortProtoDuration, sortUserProfile } from '../common/behaviors';
 import { injectContainerSize } from '../common/container';
-import { UserLetterPipe } from '../common/pipes';
+import { UserAvatarPipe, UserLetterPipe } from '../common/pipes';
 import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { SetWorktimeDialogComponent } from './set-worktime-dialog';
@@ -111,6 +111,7 @@ const sortFns: { [key in Columns]?: SortFunc } = {
     DisplayNamePipe,
     ToDatePipe,
     HlmBadgeModule,
+    UserAvatarPipe,
   ],
   templateUrl: './worktimes.component.html',
   providers: [
@@ -130,7 +131,6 @@ const sortFns: { [key in Columns]?: SortFunc } = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorktimesComponent implements OnInit {
-  private readonly userService = injectUserService();
   private readonly workTimeService = injectWorktimeSerivce();
   private readonly dialog = inject(HlmDialogService);
 
@@ -141,7 +141,7 @@ export class WorktimesComponent implements OnInit {
   analyze: AnalyzeVacation | null = null;
 
   protected readonly _loading = signal<boolean>(false);
-  protected readonly _profiles = signal<Profile[]>([]);
+  protected readonly _profiles = injectUserProfiles();
   protected readonly _workTimes = signal<UserWorkTime[]>([]);
   protected readonly _credits = signal<UserVacationSum[]>([]);
   protected readonly _sort = model<SortColumn<typeof sortFns> | null>(null)
@@ -249,14 +249,7 @@ export class WorktimesComponent implements OnInit {
   async ngOnInit() {
     this._loading.set(true);
 
-    this.userService
-      .listUsers({})
-      .then(response => this._profiles.set(response.users))
-      .catch(err => toast.error(ConnectError.from(err).message));
-
-
     await this.loadWorkTimes()
-
   }
 
   async loadWorkTimes() {

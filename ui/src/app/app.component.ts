@@ -1,23 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { NgIconsModule } from '@ng-icons/core';
 import { moveInOutAnimation } from '@tierklinik-dobersberg/angular/animations';
 import { HlmAvatarModule } from '@tierklinik-dobersberg/angular/avatar';
 import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
-import { AUTH_SERVICE } from '@tierklinik-dobersberg/angular/connect';
 import { HlmIconModule } from '@tierklinik-dobersberg/angular/icon';
 import { LayoutService } from '@tierklinik-dobersberg/angular/layout';
 import { HlmToasterModule } from '@tierklinik-dobersberg/angular/sonner';
-import { Profile, Role } from '@tierklinik-dobersberg/apis';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageModule } from 'ng-zorro-antd/message';
-import { BehaviorSubject, filter, from, map, share } from 'rxjs';
-import { UserLetterPipe } from 'src/app/common/pipes';
+import { filter } from 'rxjs';
+import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
 import { environment } from 'src/environments/environment';
 import { TkdContainerSizeDirective } from './common/container/container.directive';
+import { ProfileService } from './common/profile.service';
 import { AppHeaderOutletDirective, AppHeaderOutletService } from './header-outlet.directive';
 import { TkdRoster2Module } from './roster2/roster2.module';
 import { DevSizeOutlineComponent } from './size-outline/size-outline';
@@ -43,6 +42,7 @@ import { DevSizeOutlineComponent } from './size-outline/size-outline';
     UserLetterPipe,
     DevSizeOutlineComponent,
     AppHeaderOutletDirective,
+    UserAvatarPipe,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
@@ -56,10 +56,10 @@ export class AppComponent implements OnInit {
   protected readonly mainApplication = environment.mainApplication;
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute)
-  protected readonly cdr = inject(ChangeDetectorRef);
-  protected readonly layout = inject(LayoutService).withAutoUpdate();
+  protected readonly layout = inject(LayoutService);
+  protected readonly profileService = inject(ProfileService);
 
-  protected readonly outlet = (() => {
+  protected readonly _outlet = (() => {
     const service = inject(AppHeaderOutletService);
 
     return computed(() => service.outlet());
@@ -71,24 +71,9 @@ export class AppComponent implements OnInit {
     this.drawerVisible = false;
   }
 
-  isRosterView = false;
-
-  profile = from(
-    inject(AUTH_SERVICE).introspect({})
-      .then(response => response.profile)
-  ).pipe(
-    share({ connector: () => new BehaviorSubject<Profile | undefined>(undefined) }),
-    filter(p => !!p),
-  )
-
-  isAdmin = this.profile
-    .pipe(map(p => {
-      if (p!.roles.find((role: Role) => ['idm_superuser', 'roster_manager'].includes(role.name))) {
-        return true
-      }
-
-      return false
-    }))
+  protected readonly _isRosterView = signal(false);
+  protected readonly _profile = computed(() => this.profileService.current())
+  protected readonly _isAdmin = computed(() => this.profileService.isAdmin())
 
   ngOnInit() {
     this.router
@@ -99,11 +84,10 @@ export class AppComponent implements OnInit {
       .subscribe(() => {
         this.drawerVisible = false;
 
-        this.isRosterView = this.router.routerState.snapshot.url.startsWith('/roster/view')
-          || this.router.routerState.snapshot.url.startsWith('/roster/plan');
-
-
-        this.cdr.markForCheck();
+        this._isRosterView.set(
+          this.router.routerState.snapshot.url.startsWith('/roster/view')
+          || this.router.routerState.snapshot.url.startsWith('/roster/plan')
+        );
       })
   }
 }
