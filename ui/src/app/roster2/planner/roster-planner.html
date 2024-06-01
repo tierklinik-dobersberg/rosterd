@@ -48,7 +48,7 @@
         <hlm-menu-group>
           @if (_readonly()) {
           <button hlmMenuItem (click)="_service.toggleReadonly()">
-            <hlm-icon name="lucidePenicl" hlmMenuIcon />
+            <hlm-icon name="lucidePencil" hlmMenuIcon />
             Bearbeiten
           </button>
           } @else {
@@ -128,6 +128,7 @@
 
             Alle Mitarbeiter anzeigen
           </button>
+
         </hlm-menu-group>
 
         <hlm-menu-separator />
@@ -137,6 +138,12 @@
             Mehr ...
 
             <hlm-menu-item-sub-indicator />
+          </button>
+
+          <button hlmMenuItem inset (click)="_service.resetSettings()" [disabled]="!_service.hasChangedSettings()">
+            <hlm-menu-item-check />
+
+            Zurücksetzen
           </button>
         </hlm-menu-group>
       </hlm-menu>

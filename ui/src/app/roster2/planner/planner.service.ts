@@ -167,6 +167,13 @@ export class RosterPlannerService {
     showAllUsers: false,
   });
 
+  /** Whether or not the user has changed some view settings. */
+  public readonly hasChangedSettings = computed(() => {
+    const settings = this.settings();
+
+    return !(settings.showAllUsers === false && settings.shiftIdsToShow.length === 0);
+  })
+
   private readonly _computedSaveRosterModel = computed(() => {
     const id = this._rosterId();
     const typeName = this._rosterTypeName();
@@ -405,12 +412,6 @@ export class RosterPlannerService {
             });
         }
       })
-  }
-
-  public pushOp(op: Operation) {
-    this._undoStack.update(ops => {
-      return [...ops, op]
-    })
   }
 
   public undo() {
@@ -656,6 +657,11 @@ export class RosterPlannerService {
     this._redoStack.set([]);
     this._rosterId.set(null);
     this._rosterTypeName.set('');
+
+    this.resetSettings();
+  }
+
+  public resetSettings() {
     this.settings.set({
       shiftIdsToShow: [],
       showAllUsers: false,
