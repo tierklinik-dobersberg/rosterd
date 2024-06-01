@@ -68,6 +68,7 @@ type (
 		DutyRosterByID(ctx context.Context, id string) (structs.DutyRoster, error)
 		DutyRostersByTime(ctx context.Context, time time.Time) ([]structs.DutyRoster, error)
 		GetSupersededDutyRoster(ctx context.Context, rosterID primitive.ObjectID) (*structs.DutyRoster, error)
+		FindRostersWithActiveShifts(ctx context.Context, t time.Time) ([]structs.DutyRoster, error)
 	}
 
 	DatabaseImpl struct {

@@ -232,6 +232,35 @@ func (db *DatabaseImpl) LoadDutyRosters(ctx context.Context) ([]structs.DutyRost
 	return result, nil
 }
 
+func (db *DatabaseImpl) FindRostersWithActiveShifts(ctx context.Context, t time.Time) ([]structs.DutyRoster, error) {
+	res, err := db.dutyRosters.Find(ctx, bson.M{
+		"shifts": bson.M{
+			"$elemMatch": bson.M{
+				"from": bson.M{
+					"$lte": t,
+				},
+				"to": bson.M{
+					"$gte": t,
+				},
+			},
+		},
+		"deleted": bson.M{
+			"$exists": false,
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var results []structs.DutyRoster
+	if err := res.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]structs.DutyRoster, error) {
 	// make sure we use correct hours/minutes for the from/to query
 	from := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())

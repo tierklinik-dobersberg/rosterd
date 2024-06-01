@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/sirupsen/logrus"
@@ -117,8 +118,9 @@ func (p *Providers) VerifyUserExists(ctx context.Context, id string) error {
 func (p *Providers) FetchAllUserProfiles(ctx context.Context) ([]*idmv1.Profile, error) {
 	res, err := p.Users.ListUsers(ctx, connect.NewRequest(&idmv1.ListUsersRequest{
 		FieldMask: &fieldmaskpb.FieldMask{
-			Paths: []string{"users.user.id", "users.user.username", "users.roles", "users.user.primary_mail", "users.user.display_name"},
+			Paths: []string{"users.user.avatar"},
 		},
+		ExcludeFields: true,
 	}))
 	if err != nil {
 		return nil, err
@@ -146,6 +148,8 @@ func (p *Providers) RenderHTML(ctx context.Context, index string) (io.ReadCloser
 	req.Landscape(true)
 	req.Margins(gotenberg.NoMargins)
 	req.SkipNetworkIdleEvent()
+	req.WaitDelay(time.Second * 3)
+	req.Scale(0.75)
 
 	res, err := client.PostContext(ctx, req)
 	if err != nil {

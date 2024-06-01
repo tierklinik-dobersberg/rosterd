@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/muesli/gamut"
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/rosterd/internal/ical"
 	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
+	"github.com/tierklinik-dobersberg/rosterd/internal/timecalc"
 	"github.com/tierklinik-dobersberg/rosterd/templates"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -41,6 +44,12 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 		return nil, fmt.Errorf("failed to get users: %w", err)
 	}
 	uslm := data.IndexSlice(allUsers, func(p *idmv1.Profile) string { return p.User.Id })
+
+	// holiday
+	holidays, err := svc.getHolidayLookupMap(ctx, roster.FromTime(), roster.ToTime())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch holidays: %w", err)
+	}
 
 	// finally, create the export based on the requested type
 	switch req.Msg.Type {
@@ -82,9 +91,15 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 
 		rosterContext := templates.RosterContext{}
 
-		for iter := roster.FromTime(); iter.Before(roster.ToTime().AddDate(0, 0, 1)); iter = iter.AddDate(0, 0, 1) {
+		rosterFromTime := roster.FromTime()
+		rosterToTime := roster.ToTime()
+
+		toTime := timecalc.EndOfWeek(rosterToTime)
+		for iter := timecalc.StartOfWeek(rosterFromTime); iter.Before(toTime) || iter.Equal(toTime); iter = iter.AddDate(0, 0, 1) {
 			day := templates.RosterDay{
 				DayTitle: iter.Format("02.01"),
+				Holiday:  holidays[iter.Format("2006-01-02")],
+				Disabled: iter.Before(rosterFromTime) || iter.After(rosterToTime),
 			}
 
 			for _, shift := range roster.Shifts {
@@ -95,13 +110,16 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 					for idx, id := range shift.AssignedUserIds {
 						p := uslm[id]
 						users[idx] = templates.RosterUser{
-							Name: p.User.Username,
+							Name:          strings.ToUpper(getUserIdentifier(p)),
+							Color:         getUserColor(p),
+							ContrastColor: getUserContrastColor(p),
 						}
 					}
 
 					day.Shifts = append(day.Shifts, templates.RosterShift{
-						ShiftName: def.Name,
+						ShiftName: def.ShortName,
 						Users:     users,
+						Color:     def.Color,
 					})
 				}
 			}
@@ -149,4 +167,38 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 	}
 
 	return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown export type %q", req.Msg.Type.String()))
+}
+
+func getUserIdentifier(p *idmv1.Profile) string {
+	if p.User.DisplayName != "" {
+		return p.User.DisplayName[0:2]
+	}
+
+	if p.User.FirstName != "" {
+		return p.User.FirstName[0:2]
+	}
+
+	return p.User.Username[0:2]
+}
+
+func getUserColor(p *idmv1.Profile) string {
+	extra := p.User.GetExtra().GetFields()
+	if extra == nil {
+		return "#fff"
+	}
+
+	if color := extra["color"].GetStringValue(); color != "" {
+		return color
+	}
+
+	return "#ffffff"
+}
+
+func getUserContrastColor(p *idmv1.Profile) string {
+	color := getUserColor(p)
+	c := gamut.Hex(color)
+
+	contrast := gamut.Contrast(c)
+
+	return gamut.ToHex(contrast)
 }

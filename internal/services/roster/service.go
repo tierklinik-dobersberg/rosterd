@@ -114,8 +114,10 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 
 		oldRosterID := roster.ID
 
-		// generate a new id for the roster
+		// generate a new id for the roster and reset the CAS index values
 		roster.ID = primitive.NewObjectID()
+		roster.CASIndex = 0
+		casIndex = nil
 
 		log.L(ctx).Infof("marking approved roster %q as superseded by %s", oldRosterID.Hex(), roster.ID.Hex())
 
@@ -343,7 +345,7 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 		}
 	}
 
-	rosters, err := svc.Datastore.DutyRostersByTime(ctx, t)
+	rosters, err := svc.Datastore.FindRostersWithActiveShifts(ctx, t)
 	if err != nil {
 		return nil, err
 	}

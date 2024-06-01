@@ -10,6 +10,7 @@ import (
 	"log"
 
 	"github.com/Masterminds/sprig"
+	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 )
 
 //go:generate npm run build
@@ -17,17 +18,22 @@ import (
 var dist embed.FS
 
 type RosterUser struct {
-	Name string
+	Name          string
+	Color         string
+	ContrastColor string
 }
 
 type RosterShift struct {
 	ShiftName string
 	Users     []RosterUser
+	Color     string
 }
 
 type RosterDay struct {
 	DayTitle string
 	Shifts   []RosterShift
+	Holiday  *calendarv1.PublicHoliday
+	Disabled bool
 }
 
 type RosterContext struct {

@@ -5,7 +5,7 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                roster: resolve(__dirname, 'roster.html')
+                roster: resolve(__dirname, 'roster.html'),
             }
         }
     }
