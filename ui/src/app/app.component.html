@@ -31,7 +31,7 @@ Next to the sidebar there's the main content container including the header
     }">
 
     <!-- On mobile the logo is put into the header -->
-    @if (!layout.lg()) {
+    @if (!layout.lg() && !_outlet()) {
     <a class="block w-8 h-8 mr-2" href="https://my.dobersberg.vet">
       <img class="w-full h-full" src="assets/logo.png" alt="logo">
     </a>
