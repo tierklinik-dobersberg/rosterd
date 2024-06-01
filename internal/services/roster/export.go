@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/bufbuild/connect-go"
@@ -51,6 +52,23 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 		return nil, fmt.Errorf("failed to fetch holidays: %w", err)
 	}
 
+	filterShift := func(def structs.WorkShift) bool {
+		// apply any filter
+		switch v := req.Msg.Filter.(type) {
+		case *rosterv1.ExportRosterRequest_ShiftIds:
+			if len(v.ShiftIds.GetValues()) > 0 && !slices.Contains(v.ShiftIds.Values, def.ID.Hex()) {
+				return false
+			}
+
+		case *rosterv1.ExportRosterRequest_ShiftTags:
+			if len(v.ShiftTags.GetValues()) > 0 && !data.ElemInBothSlices(def.Tags, v.ShiftTags.GetValues()) {
+				return false
+			}
+		}
+
+		return true
+	}
+
 	// finally, create the export based on the requested type
 	switch req.Msg.Type {
 	case rosterv1.ExportRosterType_EXPORT_ROSTER_TYPE_ICAL:
@@ -58,11 +76,9 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 
 		for _, shift := range roster.Shifts {
 			def := wslm[shift.WorkShiftID.Hex()]
-			if len(req.Msg.IncludeShiftTags) > 0 {
 
-				if !data.ElemInBothSlices(def.Tags, req.Msg.IncludeShiftTags) {
-					continue
-				}
+			if !filterShift(def) {
+				continue
 			}
 
 			users := make([]*idmv1.Profile, len(shift.AssignedUserIds))
@@ -104,6 +120,10 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 
 			for _, shift := range roster.Shifts {
 				def := wslm[shift.WorkShiftID.Hex()]
+
+				if !filterShift(def) {
+					continue
+				}
 
 				if shift.From.Format("2006-01-02") == iter.Format("2006-01-02") {
 					users := make([]templates.RosterUser, len(shift.AssignedUserIds))

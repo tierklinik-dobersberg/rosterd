@@ -265,12 +265,12 @@ export class RosterPlannerService {
     return max;
   })
 
-  private readonly _computedShiftsIdsToShow = computed(() => this.settings().shiftIdsToShow);
+  public readonly computedShiftsIdsToShow = computed(() => this.settings().shiftIdsToShow);
 
   /** A list of all shifts to show */
   public readonly computedShiftsToShow = computed(() => {
     const state = this._state();
-    const ids = this._computedShiftsIdsToShow();
+    const ids = this.computedShiftsIdsToShow();
 
     if (ids.length === 0) {
       return Array.from(state.shiftDefinitions.keys())
@@ -656,6 +656,10 @@ export class RosterPlannerService {
     this._redoStack.set([]);
     this._rosterId.set(null);
     this._rosterTypeName.set('');
+    this.settings.set({
+      shiftIdsToShow: [],
+      showAllUsers: false,
+    })
   }
 
   /**
@@ -795,7 +799,7 @@ export class RosterPlannerService {
     })
   }
 
-  public exportRoster(type: 'ical' | 'html' | 'pdf', id: string | null = null, shiftTags: string[] = []) {
+  public exportRoster(type: 'ical' | 'html' | 'pdf', id: string | null = null, shiftIds: string[] = []) {
     if (id === null) {
       id = this._rosterId();
       if (!id) {
@@ -842,7 +846,12 @@ export class RosterPlannerService {
       .exportRoster({
         id: id,
         type: protoType,
-        includeShiftTags: shiftTags,
+        filter: shiftIds.length ? {
+          case: 'shiftIds',
+          value: {
+            values: shiftIds,
+          }
+        }: undefined,
       }, {
         signal: abort.signal
       })

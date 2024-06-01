@@ -98,13 +98,13 @@
     <ng-template #shareMenu>
       <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
         <hlm-menu-group>
-          <button hlmMenuItem (click)="_service.exportRoster('ical')">
+          <button hlmMenuItem (click)="_service.exportRoster('ical', null, _service.computedShiftsIdsToShow())">
             Als iCal herunterladen
           </button>
-          <button hlmMenuItem (click)="_service.exportRoster('pdf')">
+          <button hlmMenuItem (click)="_service.exportRoster('pdf', null, _service.computedShiftsIdsToShow())">
             Als PDF herunterladen
           </button>
-          <button hlmMenuItem (click)="_service.exportRoster('html')">
+          <button hlmMenuItem (click)="_service.exportRoster('html', null, _service.computedShiftsIdsToShow())">
             Als HTML herunterladen
           </button>
         </hlm-menu-group>

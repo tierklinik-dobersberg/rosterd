@@ -650,6 +650,8 @@ github.com/tierklinik-dobersberg/apis v0.0.0-20240530181733-1ff7d1290e84 h1:ZuSH
 github.com/tierklinik-dobersberg/apis v0.0.0-20240530181733-1ff7d1290e84/go.mod h1:BCMOcJ9ynWMrRdaNb3sBs/xJxGBXPi78zEGrvUUBKXA=
 github.com/tierklinik-dobersberg/apis v0.0.0-20240601070713-b00aec39f6ca h1:08GFao5UEKRJ8CNx1lxSZjBMje62SA09dTErUVJlo/4=
 github.com/tierklinik-dobersberg/apis v0.0.0-20240601070713-b00aec39f6ca/go.mod h1:BCMOcJ9ynWMrRdaNb3sBs/xJxGBXPi78zEGrvUUBKXA=
+github.com/tierklinik-dobersberg/apis v0.0.0-20240601084551-8c534a7b6408 h1:FPf5DZ5DZFNrtV5LVnU9ImgZ3yYjiM3PpTv/GBCOV5c=
+github.com/tierklinik-dobersberg/apis v0.0.0-20240601084551-8c534a7b6408/go.mod h1:BCMOcJ9ynWMrRdaNb3sBs/xJxGBXPi78zEGrvUUBKXA=
 github.com/tierklinik-dobersberg/cis v1.1.0 h1:T0c52+TkOxohkW2tNXOl0exLt/Jow5poa/4h7JGuF1k=
 github.com/tierklinik-dobersberg/cis v1.1.0/go.mod h1:jOjQltGeHDxePGBCjEP28S5NeQ0q4J40UrloIR1NWBE=
 github.com/wcharczuk/go-chart/v2 v2.1.0/go.mod h1:yx7MvAVNcP/kN9lKXM/NTce4au4DFN99j6i1OwDclNA=
