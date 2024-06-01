@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -144,9 +145,12 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 						ShiftName: def.ShortName,
 						Users:     users,
 						Color:     def.Color,
+						Order:     def.Order,
 					})
 				}
 			}
+
+			sort.Sort(templates.RosterShiftList(day.Shifts))
 
 			rosterContext.Days = append(rosterContext.Days, day)
 			rosterWeek.Days = append(rosterWeek.Days, day)

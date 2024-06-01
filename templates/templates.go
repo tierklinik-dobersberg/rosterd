@@ -26,7 +26,14 @@ type RosterShift struct {
 	ShiftName string
 	Users     []RosterUser
 	Color     string
+	Order     int
 }
+
+type RosterShiftList []RosterShift
+
+func (rsl RosterShiftList) Len() int           { return len(rsl) }
+func (rsl RosterShiftList) Less(i, j int) bool { return rsl[i].Order < rsl[j].Order }
+func (rsl RosterShiftList) Swap(i, j int)      { rsl[i], rsl[j] = rsl[j], rsl[i] }
 
 type RosterDay struct {
 	DayTitle string
