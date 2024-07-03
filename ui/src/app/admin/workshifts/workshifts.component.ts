@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, m
 import { FormsModule } from '@angular/forms';
 import { PartialMessage } from '@bufbuild/protobuf';
 import { ConnectError } from '@connectrpc/connect';
+import { lucideXCircle } from '@ng-icons/lucide';
 import { BrnDialogModule, BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { BrnPopoverModule } from '@spartan-ng/ui-popover-brain';
 import { BrnSelectModule } from '@spartan-ng/ui-select-brain';
@@ -12,7 +13,7 @@ import { HlmButtonModule } from '@tierklinik-dobersberg/angular/button';
 import { HlmCheckboxModule } from '@tierklinik-dobersberg/angular/checkbox';
 import { injectRoleService, injectWorkShiftService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
-import { provideIcons } from '@tierklinik-dobersberg/angular/icon';
+import { HlmIconModule, provideIcons } from '@tierklinik-dobersberg/angular/icon';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { DaytimePipe, DurationPipe } from '@tierklinik-dobersberg/angular/pipes';
@@ -52,9 +53,10 @@ import { Duration } from 'src/duration';
     BrnDialogModule,
     BrnSeparatorModule,
     HlmSeparatorModule,
+    HlmIconModule,
   ],
   providers: [
-    ...provideIcons({})
+    ...provideIcons({lucideXCircle})
   ],
   templateUrl: './workshifts.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -99,7 +101,7 @@ export class WorkshiftsComponent implements OnInit {
     this._staffCount.set(Number(ws.requiredStaffCount))
     this._tags.set(ws.tags);
     this._timeValue.set(
-      ws.timeWorth
+      (ws.timeWorth && getDaySeconds(ws.timeWorth) > 0)
         ? Duration.seconds(getDaySeconds(ws.timeWorth)).format('default-hours')
         : ''
     )
@@ -159,6 +161,30 @@ export class WorkshiftsComponent implements OnInit {
     p.then(() => toast.success('Schicht wurde erfolgreich gespeichert'))
       .then(() => this.dialogRef.close('change'))
       .catch(err => toast.error(`Schicht konnte nicht gespeichert werden: ${ConnectError.from(err).message}`));
+  }
+
+  protected removeTag(item: string) {
+    this._tags.set(this._tags().filter(value => value !== item))
+  }
+
+  protected removeLastTag() {
+    const tags = this._tags();
+    if (tags.length === 0) {
+      return
+    }
+
+
+    this.removeTag(tags[tags.length - 1]);
+  }
+
+
+  protected addTag(event: KeyboardEvent) {
+    this._tags.set([
+      ...this._tags(),
+      (event.target as HTMLInputElement).value,
+    ]);
+
+    (event.target as HTMLInputElement).value = '';
   }
 
   constructor() {

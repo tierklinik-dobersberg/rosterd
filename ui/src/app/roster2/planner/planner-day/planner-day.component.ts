@@ -84,6 +84,11 @@ export class TkdRosterPlannerDayComponent implements OnInit {
     diff.diff(shift.assignedUsers);
 
     const change = diff.diff(users);
+
+    if (!change) {
+      return;
+    }
+
     change?.forEachAddedItem(item => {
       this._service.pushToUndoStack({
         type: 'assign',

@@ -125,7 +125,17 @@
       </brn-select>
     </app-error-messages>
 
-    <!-- TODO: tags -->
+    <label hlmLabel for="tags">Tags</label>
+    <div hlmInput class="space-x-1 -mt-3" name="tags">
+      @for (item of _tags(); track item) {
+        <span hlmBadge variant="outline" size="default" class="flex flex-row items-center justify-center gap-2 whitespace-nowrap pr-1 hover:bg-gray-100">
+          {{ item }}
+          <hlm-icon size="sm" name="lucideXCircle" class="cursor-pointer hover:bg-black hover:text-white transition-colors duration-150 rounded-full" (click)="removeTag(item)" />
+        </span>
+      }
+
+      <input type="text" class="border-none outline-none ring-none h-full w-full py-2" (keyup.enter)="addTag($any($event))" (keyup.backspace)="removeLastTag()" />
+    </div>
 
     @if( _isEdit() ){
     <label hlmLabel class="flex items-center" for="updateInPlace">

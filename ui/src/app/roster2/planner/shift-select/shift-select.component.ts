@@ -68,8 +68,6 @@ export class TkdShiftSelectComponent {
   })
 
   constructor() {
-    console.log("tkd-sheet-side created")
-
     if (this._selectService) {
       const observer = new ResizeObserver(() => {
         this._selectService!.setTriggerWidth(this._element.nativeElement.offsetWidth)

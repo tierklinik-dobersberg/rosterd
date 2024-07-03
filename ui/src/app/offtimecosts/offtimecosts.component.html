@@ -90,10 +90,10 @@
     <hlm-td *brnCellDef="let e">
       @switch (e.cost.rosterId ? 'roster' : (e.cost.offtimeId ? 'offtime' : '')) {
       @case ('roster') {
-      <span hlmBadge variant="default">Dienstplan</span>
+      <span hlmBadge variant="default" [routerLink]="['/roster/view', e.cost.rosterId]">Dienstplan</span>
       }
       @case ('offtime') {
-      <span hlmBadge variant="secondary">Urlaubsantrag</span>
+      <span hlmBadge variant="secondary" [routerLink]="['/offtime/view', e.cost.offtimeId]">Urlaubsantrag</span>
       }
       @default {
       <span hlmBadge variant="outline">

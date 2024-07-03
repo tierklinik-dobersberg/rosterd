@@ -9,8 +9,9 @@ import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, Fin
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
-import { Subject, catchError, debounceTime, filter, from, map, of, switchMap } from "rxjs";
+import { Subject, catchError, debounceTime, filter, from, map, mergeMap, of, switchMap, tap } from "rxjs";
 import { ProfileService } from "src/app/common/profile.service";
+import { SaveManager } from "./save-manager";
 
 export interface ShiftState {
   // A unique ID to identify the shift.
@@ -82,12 +83,15 @@ export interface RosterState {
   // All shift definitions index by shift id.
   shiftDefinitions: Map<string, WorkShift>;
 
-  // The Compare-And-Save index to avoid race conditions when multiple
-  // users are editing the same roster.
-  casIndex: bigint;
-
   // The name of the user that approved the roster, if any.
   approvedBy: string;
+
+  sessionState: SaveState;
+}
+
+export interface SaveState {
+  lastSaveTime: number;
+  lastEditTime: number;
 }
 
 export interface Settings {
@@ -120,11 +124,20 @@ export class RosterPlannerService {
   private readonly commentService = injectCommentService();
   private readonly profileService = inject(ProfileService);
 
+  private _saveManager = new SaveManager(this.rosterService);
+
   private readonly router = inject(Router);
 
-  /** Used to trigger a debounced save */
-  private _triggerSave = new Subject<void>();
-  private _savePending = signal(false);
+  /** Whether or not saving the roster is pending */
+  public readonly savePending = computed(() => {
+    const state = this._state().sessionState;
+
+    return state.lastEditTime > state.lastSaveTime;
+  })
+
+  public get saveInProgress() {
+    return this._saveManager.inProgress;
+  }
 
   /** The current planning session state. */
   private readonly _state = signal<RosterState>({
@@ -133,8 +146,11 @@ export class RosterPlannerService {
     dates: [],
     readonly: false,
     shiftDefinitions: new Map(),
-    casIndex: BigInt(0),
     approvedBy: '',
+    sessionState: {
+      lastEditTime: 0,
+      lastSaveTime: 0,
+    }
   });
 
   /** The current user */
@@ -204,7 +220,6 @@ export class RosterPlannerService {
       from: toDateString(state.from),
       to: toDateString(state.to),
       shifts: shifts,
-      casIndex: state.casIndex,
       readMask: {
         paths: [
           'work_time_analysis',
@@ -330,8 +345,6 @@ export class RosterPlannerService {
   /** Whether or not we are currently loading and preparing a session */
   public readonly loading = this._loading.asReadonly();
 
-  /** Whether or not saving the roster is pending */
-  public readonly savePending = this._savePending.asReadonly();
 
   public readonly distinctShiftTypes = computed(() => {
     const state = this._state();
@@ -369,49 +382,6 @@ export class RosterPlannerService {
       const undoStack = [...this._undoStack()];
       console.log("New undo stack", undoStack)
     })
-
-    this._triggerSave
-      .pipe(
-        map(() => {
-          this._savePending.set(true);
-        }),
-        debounceTime(1000),
-        takeUntilDestroyed(),
-        switchMap(() => {
-          if (!this._savePending()) {
-            return of()
-          }
-
-          return from(this.saveRoster())
-        }),
-        catchError(err => {
-          console.error(`Failed to save roster: ${ConnectError.from(err).message}`)
-
-          return of(undefined);
-        })
-      )
-      .subscribe()
-
-
-    this.router
-      .events
-      .pipe(
-        takeUntilDestroyed(),
-        filter(event => event instanceof NavigationStart)
-      )
-      .subscribe(() => {
-        if (this._savePending() && !this.sessionState().readonly) {
-          this.saveRoster()
-            .then(() => {
-              toast.success('Diestplan wurde erfolgreich gespeichert')
-            })
-            .catch(err => {
-              toast.error('Dienstplan konnte nicht gespeichert werden ', {
-                description: ConnectError.from(err).message,
-              })
-            });
-        }
-      })
   }
 
   public undo() {
@@ -575,11 +545,27 @@ export class RosterPlannerService {
     this.setShiftAssignments(dateKey, uniqueShiftId, Array.from(set.values()));
   }
 
+  public __saveFromLocalStorage(key: string) {
+    const value = localStorage.getItem(key);
+    if (!value) {
+      return Promise.reject("Key not found in localStorage")
+    }
+
+    const model = SaveRosterRequest.fromJsonString(value);
+
+    return this._saveManager.save(model, 0);
+  }
+
   /** Overwrite the user assignments of a given shift. */
   public setShiftAssignments(dateKey: string, uniqueShiftId: string, userIds: string[]) {
     this._state.update(current => {
       if (!current) {
         console.error(`Cannot update user assignment: planning-session not yet prepared.`);
+        return current;
+      }
+
+      if (current.readonly) {
+        console.error(`Cannot update user assignment: planning-session is readonly.`);
         return current;
       }
 
@@ -603,6 +589,7 @@ export class RosterPlannerService {
       const previousAssignedUsers = [...dateState.shifts[shiftIndex].assignedUsers].sort();
       userIds.sort();
       if (JSON.stringify(previousAssignedUsers) === JSON.stringify(userIds)) {
+        console.log("noting to do")
         return current;
       }
 
@@ -620,11 +607,15 @@ export class RosterPlannerService {
         ...dateState,
       }
 
-      // Trigger saving the roster in the background.
-      this._triggerSave.next();
+      updated.sessionState = {
+        ...current.sessionState,
+        lastEditTime: (new Date()).getTime(),
+      }
 
       return updated;
     })
+
+    this._saveRoster(5000);
   }
 
   public reload() {
@@ -637,12 +628,13 @@ export class RosterPlannerService {
   }
 
   public stopSession() {
-    if (this._savePending()) {
-      toast.warning('Dienstplan wurde noch nicht gespeichert!')
+    if (this.savePending() && !this.saveInProgress()) {
+      this.saveRoster()
+        .then(() => {
+          toast.success('Dienstplan wurde erfolgreich gespeichert!')
+        })
       return
     }
-
-    this._savePending.set(false);
 
     this._state.set({
       from: new Date(),
@@ -650,13 +642,17 @@ export class RosterPlannerService {
       dates: [],
       readonly: false,
       shiftDefinitions: new Map(),
-      casIndex: BigInt(0),
       approvedBy: '',
+      sessionState: {
+        lastEditTime: 0,
+        lastSaveTime: 0,
+      }
     })
     this._undoStack.set([]);
     this._redoStack.set([]);
     this._rosterId.set(null);
     this._rosterTypeName.set('');
+    this._selectedUser.set(null);
 
     this.resetSettings();
   }
@@ -720,25 +716,25 @@ export class RosterPlannerService {
             });
 
         const offTimes =
-            isAdmin
-          ? this.offTimeService
-            .findOffTimeRequests({
-              from: Timestamp.fromDate(new Date(roster.from)),
-              to: Timestamp.fromDate(new Date(roster.to)),
-              userIds: [],
-            })
-          : Promise.resolve(new FindOffTimeRequestsResponse())
+          isAdmin
+            ? this.offTimeService
+              .findOffTimeRequests({
+                from: Timestamp.fromDate(new Date(roster.from)),
+                to: Timestamp.fromDate(new Date(roster.to)),
+                userIds: [],
+              })
+            : Promise.resolve(new FindOffTimeRequestsResponse())
 
         const workTimes =
           isAdmin ?
-          this.rosterService.analyzeWorkTime({
-            from: roster.from,
-            to: roster.to,
-            users: {
-              allUsers: true
-            }
-          })
-          : new AnalyzeWorkTimeResponse({});
+            this.rosterService.analyzeWorkTime({
+              from: roster.from,
+              to: roster.to,
+              users: {
+                allUsers: true
+              }
+            })
+            : new AnalyzeWorkTimeResponse({});
 
         return Promise.all([
           Promise.resolve(roster),
@@ -833,7 +829,6 @@ export class RosterPlannerService {
 
     const abort = new AbortController();
 
-
     const toastId = toast.loading('Dienstplan wird exportiert', {
       description: 'Bitte habe etwas Gedult, dein Export wird vorbereitet',
       dismissable: false,
@@ -847,7 +842,6 @@ export class RosterPlannerService {
       }
     })
 
-
     this.rosterService
       .exportRoster({
         id: id,
@@ -857,7 +851,7 @@ export class RosterPlannerService {
           value: {
             values: shiftIds,
           }
-        }: undefined,
+        } : undefined,
       }, {
         signal: abort.signal
       })
@@ -903,62 +897,90 @@ export class RosterPlannerService {
       })
   }
 
-  public saveRoster(): Promise<SaveRosterResponse> {
+  public saveRoster() {
+    return this._saveRoster();
+  }
+
+
+  private async _saveRoster(timeout?: number, force?: boolean) {
     const saveModel = this._computedSaveRosterModel();
-
     if (!saveModel) {
-      console.error(`Planning session not yet ready, no saveModel computed`)
-
-      return Promise.reject(new Error('Planning session not yet ready'));
+      throw new Error(`Planning session not yet ready`)
     }
 
-    return this.rosterService
-      .saveRoster(saveModel)
-      .then(response => {
-        this._savePending.set(false);
-        this._workTimes.set(
-          indexWorkTimeAnalysis(response.workTimeAnalysis)
-        );
+    if (this._state().readonly) {
+      throw new Error(`Planning session is readonly`)
+    }
 
-        this._state.update(current => ({
-          ...current,
-          casIndex: response.roster!.casIndex,
-          approvedBy: response.roster!.approverUserId,
-        }))
+    const now = (new Date()).getTime();
 
-        if (this.rosterId() !== response.roster!.id) {
-          console.log("new roster id", this.rosterId(), response.roster!.id)
-          this._rosterId.set(response.roster!.id)
-          const readonly = this.sessionState().readonly;
+    try {
+      if (!this.savePending()) {
+        console.log("[planner] roster is not dirty, skipping save request")
+        return;
+      }
 
-          if (readonly) {
-            this.router.navigate(['/roster/view', this.rosterId()])
-          } else {
-            this.router.navigate(['/roster/plan', this.rosterId()])
-          }
+      const response = await this._saveManager.save(saveModel, timeout, force);
+
+      this._workTimes.set(
+        indexWorkTimeAnalysis(response.workTimeAnalysis)
+      );
+
+      this._state.update(current => ({
+        ...current,
+        approvedBy: response.roster!.approverUserId,
+        sessionState: {
+          ...current.sessionState,
+          lastSaveTime: now,
         }
+      }))
 
-        return response;
-      })
-      .catch(err => {
-        const connectErr = ConnectError.from(err);
+      if (this.rosterId() !== response.roster!.id) {
+        console.log("[planner] received new roster id", this.rosterId(), response.roster!.id)
+        this._rosterId.set(response.roster!.id)
 
-        console.error(connectErr);
+        const readonly = this.sessionState().readonly;
 
-        if (connectErr.code === Code.FailedPrecondition) {
+        if (readonly) {
+          this.router.navigate(['/roster/view', this.rosterId()])
+        } else {
+          this.router.navigate(['/roster/plan', this.rosterId()])
+        }
+      }
+
+    } catch (err) {
+      const connectErr = ConnectError.from(err);
+
+      switch (connectErr.code) {
+        case Code.FailedPrecondition:
           toast.error('Dieser Dienstplan wurde in der Zwischenzeit bearbeitet', {
-            description: connectErr.message,
+            description: 'Bitte kontaktiere einen Administrator!',
+            dismissable: false,
+            duration: 100000,
+            important: true,
           })
-        } else if (connectErr.code === Code.PermissionDenied) {
+
+          this.toggleReadonly();
+
+          if (localStorage) {
+            localStorage.setItem('roster:' + this.rosterId() + ':' + (new Date().toISOString()), saveModel.toJsonString());
+          }
+
+          break;
+
+        case Code.PermissionDenied:
           toast.error('Du bist nicht berechtigt den Dienstplan zu bearbeiten!')
 
-          if (!this.sessionState().readonly) {
-            this.toggleReadonly();
-          }
-        }
+          this.toggleReadonly();
 
-        throw err;
-      });
+        break;
+
+      default:
+        toast.error('Internal Server Error', {
+          description: connectErr.message,
+        })
+      }
+    }
   }
 
   private _prepareState(
@@ -975,8 +997,11 @@ export class RosterPlannerService {
       dates: [],
       readonly: readonly,
       shiftDefinitions: new Map(),
-      casIndex: roster.casIndex,
       approvedBy: roster.approverUserId,
+      sessionState: {
+        lastEditTime: 0,
+        lastSaveTime: 0,
+      }
     }
 
     // first, create a lookup map for the public holidays
@@ -1072,6 +1097,10 @@ export class RosterPlannerService {
 
     this._state.set(rosterState);
     this._workTimes.set(indexWorkTimeAnalysis(workTimes.results));
+    this._undoStack.set([]);
+    this._redoStack.set([]);
+    this._saveManager.setCasIndex(roster.casIndex);
+    this._selectedUser.set(null);
   }
 }
 

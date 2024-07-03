@@ -21,11 +21,25 @@
       }
     </h2>
 
-    <hlm-menu-bar class="border-none bg-transparent -mt-0.5">
-      <button hlmMenuBarItem [brnMenuTriggerFor]="rosterMenu">Dienstplan</button>
-      <button hlmMenuBarItem [brnMenuTriggerFor]="editMenu">Bearbeiten</button>
-      <button hlmMenuBarItem [brnMenuTriggerFor]="settingsMenu">Ansicht</button>
-    </hlm-menu-bar>
+    <div class="flex flex-row items-center gap-4">
+      <hlm-menu-bar class="border-none bg-transparent -mt-0.5">
+        <button hlmMenuBarItem [brnMenuTriggerFor]="rosterMenu">Dienstplan</button>
+        <button hlmMenuBarItem [brnMenuTriggerFor]="editMenu">Bearbeiten</button>
+        <button hlmMenuBarItem [brnMenuTriggerFor]="settingsMenu">Ansicht</button>
+      </hlm-menu-bar>
+
+      @if (_dirty()) {
+        <div hlmBadge size="default" variant="outline" class="flex flex-row items-center justify-start gap-2" (click)="_service.saveRoster()">
+          @if (_service.saveInProgress()) {
+            <hlm-icon size="sm" name="lucideLoader2" class="animate-spin" />
+          } @else {
+            <hlm-icon size="sm" name="lucideAlertTriangle" />
+          }
+
+          Ungespeicherte Änderungen
+        </div>
+      }
+    </div>
 
     <ng-template #editMenu>
       <hlm-menu variant="menubar" class="min-w-[12rem] print:hidden -mt-1 rounded-t-none">
@@ -52,7 +66,7 @@
             Bearbeiten
           </button>
           } @else {
-          <button hlmMenuItem [disabled]="!_dirty() || _readonly()" (click)="_service.saveRoster()">
+          <button hlmMenuItem [disabled]="_readonly()" (click)="_service.saveRoster()">
             <hlm-icon name="lucideSave" hlmMenuIcon />
 
             Speichern

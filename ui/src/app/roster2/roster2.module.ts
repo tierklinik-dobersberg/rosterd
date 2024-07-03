@@ -5,7 +5,7 @@ import { NgModule } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { RouterModule } from "@angular/router";
 import { NgIconsModule } from "@ng-icons/core";
-import { lucideAlertTriangle, lucideCalendar, lucideCheck, lucideCheckCircle, lucideCog, lucideDownload, lucideListPlus, lucidePencil, lucidePrinter, lucideRedo2, lucideSave, lucideSearch, lucideUndo2, lucideX } from '@ng-icons/lucide';
+import { lucideAlertTriangle, lucideCalendar, lucideCheck, lucideCheckCircle, lucideCog, lucideDownload, lucideListPlus, lucideLoader2, lucidePencil, lucidePrinter, lucideRedo2, lucideSave, lucideSearch, lucideUndo2, lucideX } from '@ng-icons/lucide';
 import { BrnAlertDialogModule } from '@spartan-ng/ui-alertdialog-brain';
 import { BrnCommandModule } from '@spartan-ng/ui-command-brain';
 import { BrnDialogModule } from '@spartan-ng/ui-dialog-brain';
@@ -148,7 +148,8 @@ import { RosterPlannerService } from "./planner/planner.service";
       lucideSave,
       lucideUndo2,
       lucideRedo2,
-      lucideX
+      lucideX,
+      lucideLoader2
     }),
     RosterPlannerService,
   ]
