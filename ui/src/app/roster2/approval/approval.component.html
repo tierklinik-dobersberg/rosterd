@@ -32,7 +32,9 @@
 
           <hlm-avatar variant="medium" class="border border-secondary bg-secondary">
             <img [attr.src]="user | avatar" hlmAvatarImage [attr.alt]="user | displayName">
-            <span class="bg-[#FD005B] text-white" hlmAvatarFallback>{{ user.user?.username || 'N/A'}}</span>
+
+            <span class="uppercase" hlmAvatarFallback [style.backgroundColor]="user | color"
+                [style.color]="user | contrastColor">{{ user | userLetter }}</span>
           </hlm-avatar>
 
           {{ user | displayName }}

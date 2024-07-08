@@ -442,7 +442,8 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 
 func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[rosterv1.GetRosterRequest]) (*connect.Response[rosterv1.GetRosterResponse], error) {
 	var (
-		dutyRoster []structs.DutyRoster
+		dutyRoster         []structs.DutyRoster
+		canIncludeWorktime bool
 	)
 
 	switch v := req.Msg.Search.(type) {
@@ -475,6 +476,8 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		}
 
 		dutyRoster = []structs.DutyRoster{r}
+
+		canIncludeWorktime = true
 
 	default:
 		var err error
@@ -511,42 +514,29 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		}
 	}
 
-	var (
-		from time.Time
-		to   time.Time
-	)
-
 	response := &rosterv1.GetRosterResponse{
 		Roster: make([]*rosterv1.Roster, len(dutyRoster)),
 	}
+
 	for idx, r := range dutyRoster {
 		response.Roster[idx] = r.ToProto()
-
-		rosterFrom := r.FromTime()
-		rosterTo := r.ToTime()
-
-		if from.IsZero() || rosterFrom.Before(from) {
-			from = rosterFrom
-		}
-
-		if to.IsZero() || rosterTo.After(to) {
-			to = rosterTo
-		}
 	}
 
-	if shouldIncludeAnalysis && !from.IsZero() && !to.IsZero() {
+	if canIncludeWorktime && shouldIncludeAnalysis && len(dutyRoster) == 1 {
 		allUserIds, err := svc.FetchAllUserIds(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user ids: %w", err)
 		}
 
 		// caculate the work-time for the roster
-		analysis, err := svc.analyzeWorkTime(ctx, allUserIds, from.Format("2006-01-02"), to.Format("2006-01-02"), req.Msg.TimeTrackingOnly)
+		analysis, err := svc.analyzeWorkTime(ctx, allUserIds, dutyRoster[0].From, dutyRoster[0].To, req.Msg.TimeTrackingOnly)
 		if err != nil {
 			return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 		}
 
 		response.WorkTimeAnalysis = analysis
+	} else if !canIncludeWorktime && len(dutyRoster) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("time tracking analysis is not allowed"))
 	}
 
 	if req.Msg.ReadMask != nil && len(req.Msg.ReadMask.Paths) > 0 {
