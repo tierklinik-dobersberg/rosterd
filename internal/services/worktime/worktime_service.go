@@ -309,13 +309,17 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 
 			vacationWeeksPerDay := float64(iter.VacationWeeksPerYear) / 365.0
 			vacationsPerPeriod := vacationWeeksPerDay * float64(iter.TimePerWeek) * float64(daysUntilEnd)
-			vacationSum += time.Duration(vacationsPerPeriod)
+
+			if !iter.ExcludeFromTimeTracking {
+				vacationSum += time.Duration(vacationsPerPeriod)
+			}
 
 			log.L(ctx).WithFields(logrus.Fields{
 				"daysUntilEnd":        daysUntilEnd,
 				"vacationWeeksPerDay": vacationWeeksPerDay,
 				"vacationsPerPeriod":  vacationsPerPeriod,
 				"vacationSum":         vacationSum,
+				"timeTracking":        !iter.ExcludeFromTimeTracking,
 			}).Infof("vacation credits between %s and %s (%d days)", iter.ApplicableFrom, endsAt, endsAt.Sub(iter.ApplicableFrom)/(24*time.Hour))
 
 			if req.Msg.Analyze {
