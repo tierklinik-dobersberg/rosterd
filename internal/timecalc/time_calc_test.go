@@ -1,6 +1,7 @@
 package timecalc_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"testing"
@@ -282,7 +283,7 @@ func Test_CalculateExpectedWorkTime(t *testing.T) {
 		title := fmt.Sprintf("#%d", idx)
 		t.Run(title, func(t *testing.T) {
 
-			result, err := timecalc.CalculateExpectedWorkTime(testCase.days, map[string]timecalc.WorkTimeList{
+			result, err := timecalc.CalculateExpectedWorkTime(context.TODO(), testCase.days, map[string]timecalc.WorkTimeList{
 				"bob": workTimes,
 			}, testCase.from, testCase.to)
 
@@ -430,6 +431,7 @@ func Test_CalculatePlannedMonthlyWorkTime(t *testing.T) {
 
 		t.Run(title, func(t *testing.T) {
 			res, err := timecalc.CalculatePlannedMonthlyWorkTime(
+				context.TODO(),
 				[]structs.DutyRoster{rosterMay, rosterJune},
 				testCase.from,
 				testCase.to,

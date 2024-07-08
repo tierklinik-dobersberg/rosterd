@@ -1,12 +1,13 @@
 package timecalc
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"time"
 
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 	"github.com/tierklinik-dobersberg/apis/pkg/data"
+	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"golang.org/x/exp/maps"
 )
@@ -114,6 +115,7 @@ func (emwtl ExpectedMonthlyWorkTimeList) TotalWorkTime() time.Duration {
 }
 
 func CalculateExpectedWorkTime(
+	ctx context.Context,
 	monthlyWorkDays []MonthlyWorkDays,
 	workTimes map[string]WorkTimeList,
 	from string,
@@ -169,12 +171,15 @@ func CalculateExpectedWorkTime(
 			for userId := range workTimes {
 				wt, ok := workTimes[userId].FindForDate(dateTime)
 				if !ok {
+					log.L(ctx).Warnf("User %q does not have a working-time set for %s", userId, dateTime.Local().Format("2006-01-02"))
 					// no worktime for this date.
 					continue
 				}
 
 				// Update the WorkTime for this month
 				timePerWorkDay := float64(wt.TimePerWeek) / 5.0
+
+				log.L(ctx).Warnf("User %q with work-time %s works %s on %s with time-tracking=%v", userId, wt.TimePerWeek, time.Duration(timePerWorkDay), dateTime.Local().Format("2006-01-2"), !wt.ExcludeFromTimeTracking)
 
 				if wt.ExcludeFromTimeTracking {
 					result[userId][idx].UntrackedWorkTime += time.Duration(timePerWorkDay)
@@ -257,6 +262,7 @@ func (lst PlannedMonthlyWorkTimeList) TotalForUser(userId string) UserTime {
 }
 
 func CalculatePlannedMonthlyWorkTime(
+	ctx context.Context,
 	rosters []structs.DutyRoster,
 	from string,
 	to string, // inclusive
@@ -284,7 +290,7 @@ func CalculatePlannedMonthlyWorkTime(
 	for _, roster := range rosters {
 		// immediately skip rosters that don't match from or to
 		if roster.FromTime().After(toTime) || roster.ToTime().Before(fromTime) {
-			log.Printf("skipping roster  %s - %s", roster.From, roster.To)
+			log.L(ctx).Infof("skipping roster  %s - %s", roster.From, roster.To)
 
 			continue
 		}
@@ -292,7 +298,7 @@ func CalculatePlannedMonthlyWorkTime(
 		for _, shift := range roster.Shifts {
 			// skip this shift if it is out-of-range
 			if shift.To.Before(fromTime) || shift.From.After(toTime) {
-				log.Printf("skipping shift %s on %s", shift.WorkShiftID, shift.From.Format("2006-01-02"))
+				log.L(ctx).Infof("skipping shift %s on %s", shift.WorkShiftID, shift.From.Format("2006-01-02"))
 				continue
 			}
 
@@ -302,7 +308,7 @@ func CalculatePlannedMonthlyWorkTime(
 				timeWorth = time.Duration(*def.MinutesWorth) * time.Minute
 			}
 
-			log.Printf("shift %s on %s is %s time worth", shift.WorkShiftID, shift.From.Format("2006-01-02"), timeWorth)
+			log.L(ctx).Infof("shift %s on %s is %s time worth", shift.WorkShiftID, shift.From.Format("2006-01-02"), timeWorth)
 
 			// Perpare the date key and make sure we have PlannedMonthlyWorkTime container
 			// for the result.

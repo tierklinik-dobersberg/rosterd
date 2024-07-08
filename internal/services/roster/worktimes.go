@@ -104,12 +104,12 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 		perUserWorkTimes[id] = times
 	}
 
-	expectedWorkTimes, err := timecalc.CalculateExpectedWorkTime(monthlyWorkDays, perUserWorkTimes, from, to)
+	expectedWorkTimes, err := timecalc.CalculateExpectedWorkTime(ctx, monthlyWorkDays, perUserWorkTimes, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate expected work time: %w", err)
 	}
 
-	plannedWorkTimes, err := timecalc.CalculatePlannedMonthlyWorkTime(maps.Values(distinctRosters), from, to, workShifts, perUserWorkTimes)
+	plannedWorkTimes, err := timecalc.CalculatePlannedMonthlyWorkTime(ctx, maps.Values(distinctRosters), from, to, workShifts, perUserWorkTimes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate planned work time: %w", err)
 	}
