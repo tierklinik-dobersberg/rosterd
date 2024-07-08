@@ -535,7 +535,7 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		}
 
 		response.WorkTimeAnalysis = analysis
-	} else if !canIncludeWorktime && len(dutyRoster) > 0 {
+	} else if shouldIncludeAnalysis && !canIncludeWorktime && len(dutyRoster) > 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("time tracking analysis is not allowed"))
 	}
 
