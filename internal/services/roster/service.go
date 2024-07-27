@@ -333,25 +333,82 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 }
 
 func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Request[rosterv1.GetWorkingStaffRequest]) (*connect.Response[rosterv1.GetWorkingStaffResponse], error) {
-	t := time.Now()
-
-	if req.Msg.Time.IsValid() {
-		t = req.Msg.Time.AsTime()
+	oldReq := &rosterv1.GetWorkingStaffRequest2{
+		Query: &rosterv1.GetWorkingStaffRequest2_Time{
+			Time: req.Msg.Time,
+		},
+		ReadMaks:       req.Msg.ReadMaks,
+		RosterTypeName: req.Msg.RosterTypeName,
+		OnCall:         req.Msg.OnCall,
 	}
 
+	return svc.GetWorkingStaff2(ctx, connect.NewRequest(oldReq))
+}
+
+func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Request[rosterv1.GetWorkingStaffRequest2]) (*connect.Response[rosterv1.GetWorkingStaffResponse], error) {
 	if req.Msg.OnCall {
 		if req.Msg.RosterTypeName == "" {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("on_call may only be set if roster_type_name is set"))
 		}
 	}
 
-	rosters, err := svc.Datastore.FindRostersWithActiveShifts(ctx, t)
+	var (
+		rosters []structs.DutyRoster
+		err     error
+
+		checkShift func(shift structs.PlannedShift) bool
+	)
+
+	switch v := req.Msg.GetQuery().(type) {
+	case *rosterv1.GetWorkingStaffRequest2_Time:
+		t := time.Now()
+
+		if v.Time.IsValid() {
+			t = v.Time.AsTime()
+		}
+
+		rosters, err = svc.Datastore.FindRostersWithActiveShifts(ctx, t)
+		checkShift = func(shift structs.PlannedShift) bool {
+			return (shift.From.Before(t) || shift.From.Equal(t)) && (shift.To.After(t) || shift.To.Equal(t))
+		}
+
+	case *rosterv1.GetWorkingStaffRequest2_TimeRange:
+		var (
+			from, to time.Time
+		)
+
+		if v.TimeRange.From.IsValid() {
+			from = v.TimeRange.From.AsTime()
+		}
+
+		if v.TimeRange.To.IsValid() {
+			to = v.TimeRange.To.AsTime()
+		}
+
+		rosters, err = svc.Datastore.FindRostersWithActiveShiftsInRange(ctx, from, to)
+		checkShift = func(shift structs.PlannedShift) bool {
+			if !from.IsZero() {
+				if shift.To.Before(from) {
+					return false
+				}
+			}
+
+			if !to.IsZero() {
+				if shift.From.After(to) {
+					return false
+				}
+			}
+
+			return true
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	if len(rosters) == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to find any rosters for %s", t))
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to find any rosters"))
 	}
 
 	shifts, err := svc.Datastore.ListWorkShifts(ctx)
@@ -414,7 +471,7 @@ func (svc *RosterService) GetWorkingStaff(ctx context.Context, req *connect.Requ
 				continue
 			}
 
-			if (shift.From.Before(t) || shift.From.Equal(t)) && (shift.To.After(t) || shift.To.Equal(t)) {
+			if checkShift(shift) {
 				relevantShifts = append(relevantShifts, shift)
 				relevantRosters[roster.ID.Hex()] = struct{}{}
 				for _, user := range shift.AssignedUserIds {

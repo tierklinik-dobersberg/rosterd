@@ -145,8 +145,16 @@ func Test_WorkTimeList(t *testing.T) {
 			expected: "",
 		},
 		{
+			t:        "2024-06-10",
+			expected: "june",
+		},
+		{
 			t:        "2024-06-20",
 			expected: "june",
+		},
+		{
+			t:        "2024-07-01",
+			expected: "july",
 		},
 		{
 			t:        "2024-07-02",

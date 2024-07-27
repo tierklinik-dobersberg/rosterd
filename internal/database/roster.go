@@ -232,6 +232,74 @@ func (db *DatabaseImpl) LoadDutyRosters(ctx context.Context) ([]structs.DutyRost
 	return result, nil
 }
 
+func (db *DatabaseImpl) FindRostersWithActiveShiftsInRange(ctx context.Context, from, to time.Time) ([]structs.DutyRoster, error) {
+	filter := bson.M{}
+
+	var fromFilter bson.M
+	if !from.IsZero() {
+		fromFilter = bson.M{
+			"from": bson.M{
+				"$lte": from,
+			},
+			"to": bson.M{
+				"$gte": from,
+			},
+		}
+	}
+
+	var toFilter bson.M
+	if !to.IsZero() {
+		toFilter = bson.M{
+			"from": bson.M{
+				"$lte": to,
+			},
+			"to": bson.M{
+				"$gte": to,
+			},
+		}
+	}
+
+	switch {
+	case fromFilter != nil && toFilter != nil:
+		filter["$or"] = bson.A{
+			fromFilter,
+			toFilter,
+			bson.M{
+				"from": bson.M{
+					"$gte": from,
+				},
+				"to": bson.M{
+					"$lte": to,
+				},
+			},
+		}
+
+	case fromFilter != nil:
+		filter = fromFilter
+	case toFilter != nil:
+		filter = toFilter
+	}
+	res, err := db.dutyRosters.Find(ctx, bson.M{
+		"shifts": bson.M{
+			"$elemMatch": filter,
+		},
+		"deleted": bson.M{
+			"$exists": false,
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var results []structs.DutyRoster
+	if err := res.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 func (db *DatabaseImpl) FindRostersWithActiveShifts(ctx context.Context, t time.Time) ([]structs.DutyRoster, error) {
 	res, err := db.dutyRosters.Find(ctx, bson.M{
 		"shifts": bson.M{

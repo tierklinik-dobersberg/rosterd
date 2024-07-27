@@ -217,14 +217,13 @@ func (wtl WorkTimeList) FindForDate(t time.Time) (structs.WorkTime, bool) {
 				panic("expected WorkTimeList to be sorted!")
 			}
 
-			stdlog.Printf("%s (%s): current: applicableFrom=%s with-timetracking=%v: next work-time entry applicableFrom=%s with-timetracking=%v", key, wt.UserID, wt.ApplicableFrom, !wt.ExcludeFromTimeTracking, next.ApplicableFrom, !next.ExcludeFromTimeTracking)
-
 			// the next entry is effective already.
 			if next.ApplicableFrom.Before(t) || next.ApplicableFrom.Equal(t) {
-				stdlog.Printf("%s (%s): switching to next entry ....", key, wt.UserID)
 				continue
 			}
 		}
+
+		stdlog.Printf("%s (%s): applicable: applicableFrom=%s with-timetracking=%v", key, wt.UserID, wt.ApplicableFrom, !wt.ExcludeFromTimeTracking)
 
 		return wt, true
 	}
