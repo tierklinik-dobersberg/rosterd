@@ -465,6 +465,15 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 				}
 			}
 
+			if len(req.Msg.ShiftTags) > 0 {
+				for _, tag := range req.Msg.ShiftTags {
+					if !slices.Contains(def.Tags, tag) {
+						isAllowed = false
+						break
+					}
+				}
+			}
+
 			if !isAllowed {
 				log.L(ctx).Debugf("shift %s is filtered. shift-tags=%v rosterType.shiftTags=%v rosterType.onCallTags=%v", shift.WorkShiftID, def.Tags, rosterType.ShiftTags, rosterType.OnCallTags)
 
