@@ -11,8 +11,6 @@ type (
 	ServiceConfig struct {
 		// IdentityProvider holds the address of the identity provider.
 		IdentityProvider string `env:"IDM_URL,default=http://cisidm:8081"`
-		// JWTSecret holds the secret to validate JWTs issued by CIS.
-		JWTSecret string `env:"JWT_SECRET,required"`
 		// DatabaseURL is the mongodb connection URL
 		DatabaseURL string `env:"DATABASE_URL,required"`
 		// DatabaseName is the name of the mongodb database.
