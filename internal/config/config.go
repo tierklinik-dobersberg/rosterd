@@ -44,6 +44,9 @@ type (
 		StaticFiles string `env:"STATIC_FILES"`
 		// Gotenberg holds the gotenberg URL
 		Gotenberg string `env:"GOTENBERG"`
+		// EventServiceUrl holds the URL of the event-service used to publish
+		// messages.
+		EventServiceUrl string `env:"EVENTS_SERVICE_URL,required"`
 	}
 )
 

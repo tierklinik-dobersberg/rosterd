@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -13,12 +14,17 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/sirupsen/logrus"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1/calendarv1connect"
+	eventsv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/events/v1"
+	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/events/v1/eventsv1connect"
 	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1/idmv1connect"
+	"github.com/tierklinik-dobersberg/apis/pkg/cli"
 	"github.com/tierklinik-dobersberg/apis/pkg/overlayfs"
 	"github.com/tierklinik-dobersberg/rosterd/internal/database"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/dcaraxes/gotenberg-go-client/v8"
@@ -29,6 +35,7 @@ type Providers struct {
 	Roles     idmv1connect.RoleServiceClient
 	Notify    idmv1connect.NotifyServiceClient
 	Calendar  calendarv1connect.CalendarServiceClient
+	Events    eventsv1connect.EventServiceClient
 	Holidays  calendarv1connect.HolidayServiceClient
 	Templates fs.FS
 	Datastore *database.DatabaseImpl
@@ -76,6 +83,7 @@ func NewProviders(ctx context.Context, cfg *ServiceConfig, httpClient *http.Clie
 		Notify:    idmv1connect.NewNotifyServiceClient(httpClient, cfg.IdentityProvider),
 		Calendar:  calendarv1connect.NewCalendarServiceClient(httpClient, cfg.CalendarService),
 		Holidays:  calendarv1connect.NewHolidayServiceClient(httpClient, cfg.CalendarService),
+		Events:    eventsv1connect.NewEventServiceClient(cli.NewInsecureHttp2Client(), cfg.EventServiceUrl),
 		Templates: overlayfs.NewFS(fileSystems...),
 		Datastore: db,
 	}
@@ -163,4 +171,23 @@ func (p *Providers) RenderHTML(ctx context.Context, index string) (io.ReadCloser
 	}
 
 	return res.Body, nil
+}
+
+func (p *Providers) PublishEvent(msg proto.Message, retained bool) {
+	go func() {
+		pb, err := anypb.New(msg)
+		if err != nil {
+			slog.Error("failed to marshal protobuf message as anypb.Any", "error", err, "messageType", proto.MessageName(msg))
+			return
+		}
+
+		evt := &eventsv1.Event{
+			Event:    pb,
+			Retained: retained,
+		}
+
+		if _, err := p.Events.Publish(context.Background(), connect.NewRequest(evt)); err != nil {
+			slog.Error("failed to publish event", "error", err, "messageType", proto.MessageName(msg))
+		}
+	}()
 }

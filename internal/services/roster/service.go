@@ -142,6 +142,10 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
 
+	svc.Providers.PublishEvent(&rosterv1.RosterChangedEvent{
+		Roster: roster.ToProto(),
+	}, false)
+
 	response := &rosterv1.SaveRosterResponse{
 		Roster:           roster.ToProto(),
 		WorkTimeAnalysis: analysis,
