@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -442,6 +443,7 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 		}
 	}
 
+	orderedUserIds := make([]string, 0)
 	userIds := make(map[string]struct{})
 	for _, roster := range rosters {
 		if rosterType.UniqueName != "" && roster.RosterTypeName != rosterType.UniqueName {
@@ -449,6 +451,12 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 		}
 
 		log.L(ctx).Debugf("checking roster %s (from %s to %s) with type %s", roster.ID.Hex(), roster.From, roster.To, roster.RosterTypeName)
+
+		// Sort roster shifts first
+		sort.Stable(&rosterShiftSlice{
+			shifts: roster.Shifts,
+			defs:   shiftMap,
+		})
 
 		for _, shift := range roster.Shifts {
 			def, ok := shiftMap[shift.WorkShiftID.Hex()]
@@ -488,7 +496,10 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 				relevantShifts = append(relevantShifts, shift)
 				relevantRosters[roster.ID.Hex()] = struct{}{}
 				for _, user := range shift.AssignedUserIds {
-					userIds[user] = struct{}{}
+					if _, ok := userIds[user]; !ok {
+						userIds[user] = struct{}{}
+						orderedUserIds = append(orderedUserIds, user)
+					}
 				}
 			} else {
 				log.L(ctx).Debugf("shift is either before or after the requested time")
@@ -496,10 +507,10 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 		}
 	}
 
-	response := &rosterv1.GetWorkingStaffResponse{}
-	for user := range userIds {
-		response.UserIds = append(response.UserIds, user)
+	response := &rosterv1.GetWorkingStaffResponse{
+		UserIds: orderedUserIds,
 	}
+
 	for _, shift := range relevantShifts {
 		response.CurrentShifts = append(response.CurrentShifts, shift.ToProto())
 	}
@@ -729,4 +740,23 @@ func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoli
 	}
 
 	return numberOfWorkingDays, dayTypes
+}
+
+type rosterShiftSlice struct {
+	shifts []structs.PlannedShift
+	defs   map[string]structs.WorkShift
+}
+
+func (rss *rosterShiftSlice) Len() int { return len(rss.shifts) }
+func (rss *rosterShiftSlice) Less(i, j int) bool {
+	si := rss.shifts[i]
+	sj := rss.shifts[j]
+
+	defI := rss.defs[si.WorkShiftID.Hex()]
+	defJ := rss.defs[sj.WorkShiftID.Hex()]
+
+	return defI.Order < defJ.Order
+}
+func (rss *rosterShiftSlice) Swap(i, j int) {
+	rss.shifts[i], rss.shifts[j] = rss.shifts[j], rss.shifts[i]
 }

@@ -257,17 +257,19 @@ func RequiredShiftsCommmand(root *cli.Root) *cobra.Command {
 
 func WorkingStaffCommand(root *cli.Root) *cobra.Command {
 	var (
-		t        string
-		typeName string
-		onCall   bool
+		t         string
+		typeName  string
+		onCall    bool
+		shiftTags []string
 	)
 
 	cmd := &cobra.Command{
 		Use: "working-staff",
 		Run: func(cmd *cobra.Command, args []string) {
-			req := &rosterv1.GetWorkingStaffRequest{
+			req := &rosterv1.GetWorkingStaffRequest2{
 				RosterTypeName: typeName,
 				OnCall:         onCall,
+				ShiftTags:      shiftTags,
 			}
 
 			if t != "" {
@@ -276,12 +278,16 @@ func WorkingStaffCommand(root *cli.Root) *cobra.Command {
 					logrus.Fatalf("invalid value for --time")
 				}
 
-				req.Time = timestamppb.New(time)
+				req.Query = &rosterv1.GetWorkingStaffRequest2_Time{
+					Time: timestamppb.New(time),
+				}
 			} else {
-				req.Time = timestamppb.New(time.Now())
+				req.Query = &rosterv1.GetWorkingStaffRequest2_Time{
+					Time: timestamppb.Now(),
+				}
 			}
 
-			res, err := root.Roster().GetWorkingStaff(context.Background(), connect.NewRequest(req))
+			res, err := root.Roster().GetWorkingStaff2(context.Background(), connect.NewRequest(req))
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -293,6 +299,7 @@ func WorkingStaffCommand(root *cli.Root) *cobra.Command {
 	cmd.Flags().StringVar(&t, "time", "", "")
 	cmd.Flags().StringVar(&typeName, "roster-type", "", "The name of the roster type")
 	cmd.Flags().BoolVar(&onCall, "on-call", false, "Only return staff assigned to on-call shifts.")
+	cmd.Flags().StringSliceVar(&shiftTags, "tag", nil, "Filter by shift tags")
 
 	return cmd
 }
