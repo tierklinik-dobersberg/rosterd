@@ -1,15 +1,13 @@
 import { Injectable, Signal, computed, effect, inject, signal } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { NavigationStart, Router } from "@angular/router";
+import { Router } from "@angular/router";
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { injectCommentService, injectHolidayService, injectOfftimeService, injectRosterService } from "@tierklinik-dobersberg/angular/connect";
 import { toDateString } from '@tierklinik-dobersberg/angular/utils/date';
-import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, SaveRosterResponse, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
+import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetHolidayResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, PublicHoliday, RequiredShift, Roster, SaveRosterRequest, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis";
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
-import { Subject, catchError, debounceTime, filter, from, map, mergeMap, of, switchMap, tap } from "rxjs";
 import { ProfileService } from "src/app/common/profile.service";
 import { SaveManager } from "./save-manager";
 
@@ -586,8 +584,7 @@ export class RosterPlannerService {
       const shift = dateState.shifts[shiftIndex]!;
 
       // Avoid circular updates if the list is already the same.
-      const previousAssignedUsers = [...dateState.shifts[shiftIndex].assignedUsers].sort();
-      userIds.sort();
+      const previousAssignedUsers = [...dateState.shifts[shiftIndex].assignedUsers];
       if (JSON.stringify(previousAssignedUsers) === JSON.stringify(userIds)) {
         console.log("noting to do")
         return current;
