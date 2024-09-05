@@ -56,19 +56,21 @@ func (svc *RosterService) ReapplyShiftTimes(ctx context.Context, req *connect.Re
 	shiftMap := data.IndexSlice(shifts, func(shift structs.WorkShift) string { return shift.ID.Hex() })
 
 	// re apply shift times
-	for _, shift := range roster.Shifts {
+	for idx, shift := range roster.Shifts {
 		def, ok := shiftMap[shift.WorkShiftID.Hex()]
 		if !ok {
 			return nil, fmt.Errorf("failed to get workshift definition for planned shift ID %q", shift.WorkShiftID.Hex())
 		}
 
-		start, end := def.AtDay(shift.From)
+		start, end := def.AtDay(shift.From.Local())
 
 		if !shift.From.Equal(start) || !shift.To.Equal(end) {
 			slog.Info("updating shift times", "oldStart", shift.From, "oldEnd", shift.To, "newStart", start, "newEnd", end)
 
 			shift.From = start
 			shift.To = end
+
+			roster.Shifts[idx] = shift
 		}
 	}
 
