@@ -1,5 +1,4 @@
 import { Injectable, Signal, computed, effect, inject, signal } from "@angular/core";
-import { Router } from "@angular/router";
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { injectCommentService, injectHolidayService, injectOfftimeService, injectRosterService } from "@tierklinik-dobersberg/angular/connect";
@@ -10,6 +9,7 @@ import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
 import { ProfileService } from "src/app/common/profile.service";
 import { SaveManager } from "./save-manager";
+import { Router } from "@angular/router";
 
 export interface ShiftState {
   // A unique ID to identify the shift.

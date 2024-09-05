@@ -695,6 +695,8 @@ github.com/tierklinik-dobersberg/apis v0.0.30 h1:FpioFq5546BvXiggayM9Y0r+xAEEOVW
 github.com/tierklinik-dobersberg/apis v0.0.30/go.mod h1:BCMOcJ9ynWMrRdaNb3sBs/xJxGBXPi78zEGrvUUBKXA=
 github.com/tierklinik-dobersberg/apis v0.0.43 h1:e1uC0RGIJT2/HXFFS3peg7ZpugQGL3slgvsJDKE2TDg=
 github.com/tierklinik-dobersberg/apis v0.0.43/go.mod h1:8L4K4/dMvue+C61KN9s8YwMnjjQ+sz/3VIooC+IGigo=
+github.com/tierklinik-dobersberg/apis v0.0.49 h1:KujComt0SP5bPrNqYhbPvlG4O/uOUz+Yd2QxHDdntbI=
+github.com/tierklinik-dobersberg/apis v0.0.49/go.mod h1:5vHtpoPktL3Oix5/9OE5KhhGDiX5zoaNM/grJLb+3Ys=
 github.com/tierklinik-dobersberg/cis v1.1.0 h1:T0c52+TkOxohkW2tNXOl0exLt/Jow5poa/4h7JGuF1k=
 github.com/tierklinik-dobersberg/cis v1.1.0/go.mod h1:jOjQltGeHDxePGBCjEP28S5NeQ0q4J40UrloIR1NWBE=
 github.com/tierklinik-dobersberg/cis v1.3.1 h1:o2fAkgMrqa0etX6CgFX5iSwAMMlaSN+J3W3nkYzkr5o=
@@ -1220,6 +1222,7 @@ google.golang.org/genproto v0.0.0-20221201164419-0e50fba7f41c/go.mod h1:rZS5c/ZV
 google.golang.org/genproto v0.0.0-20230202175211-008b39050e57/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
 google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac h1:ZL/Teoy/ZGnzyrqK/Optxxp2pmVh+fmJ97slxSRyzUg=
 google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac/go.mod h1:+Rvu7ElI+aLzyDQhpHMFMMltsD6m7nqpuWDd2CwJw3k=
+google.golang.org/genproto v0.0.0-20240823204242-4ba0660f739c/go.mod h1:2rC5OendXvZ8wGEo/cSLheztrZDZaSoHanUcd1xtZnw=
 google.golang.org/grpc v1.2.1-0.20170921194603-d4b75ebd4f9f/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.1/go.mod h1:10oTOabMzJvdu6/UiuZezV6QK5dSlG84ov/aaiqXj38=

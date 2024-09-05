@@ -27,6 +27,7 @@ func RosterCommand(root *cli.Root) *cobra.Command {
 		RequiredShiftsCommmand(root),
 		WorkingStaffCommand(root),
 		RosterTypeCommand(root),
+		ReapplyShiftTimesCommand(root),
 	)
 
 	return cmd
@@ -251,6 +252,25 @@ func RequiredShiftsCommmand(root *cli.Root) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&from, "from", "", "")
 	f.StringVar(&to, "to", "", "")
+
+	return cmd
+}
+
+func ReapplyShiftTimesCommand(root *cli.Root) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "re-apply [roster-id]",
+		Args: cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			res, err := root.Roster().ReapplyShiftTimes(root.Context(), connect.NewRequest(&rosterv1.ReapplyShiftTimesRequest{
+				RosterId: args[0],
+			}))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+
+			root.Print(res.Msg)
+		},
+	}
 
 	return cmd
 }

@@ -16,7 +16,7 @@ require (
 	github.com/sethvargo/go-envconfig v1.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/tierklinik-dobersberg/apis v0.0.43
+	github.com/tierklinik-dobersberg/apis v0.0.49
 	github.com/tierklinik-dobersberg/cis v1.3.1
 	go.mongodb.org/mongo-driver v1.16.1
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
@@ -67,6 +67,6 @@ require (
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.24.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
-	google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac // indirect
+	google.golang.org/genproto v0.0.0-20240823204242-4ba0660f739c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -34,6 +35,46 @@ func NewRosterService(p *config.Providers) *RosterService {
 	return &RosterService{
 		Providers: p,
 	}
+}
+
+func (svc *RosterService) ReapplyShiftTimes(ctx context.Context, req *connect.Request[rosterv1.ReapplyShiftTimesRequest]) (*connect.Response[rosterv1.ReapplyShiftTimesResponse], error) {
+	roster, err := svc.Datastore.DutyRosterByID(ctx, req.Msg.RosterId)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+
+		return nil, err
+	}
+
+	// load all workshift definitions
+	shifts, err := svc.Datastore.ListWorkShifts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load work shifts: %w", err)
+	}
+
+	shiftMap := data.IndexSlice(shifts, func(shift structs.WorkShift) string { return shift.ID.Hex() })
+
+	// re apply shift times
+	for _, shift := range roster.Shifts {
+		def, ok := shiftMap[shift.WorkShiftID.Hex()]
+		if !ok {
+			return nil, fmt.Errorf("failed to get workshift definition for planned shift ID %q", shift.WorkShiftID.Hex())
+		}
+
+		start, end := def.AtDay(shift.From)
+
+		if !shift.From.Equal(start) || !shift.To.Equal(end) {
+			slog.Info("updating shift times", "oldStart", shift.From, "oldEnd", shift.To, "newStart", start, "newEnd", end)
+
+			shift.From = start
+			shift.To = end
+		}
+	}
+
+	return connect.NewResponse(&rosterv1.ReapplyShiftTimesResponse{
+		Roster: roster.ToProto(),
+	}), nil
 }
 
 func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[rosterv1.SaveRosterRequest]) (*connect.Response[rosterv1.SaveRosterResponse], error) {
