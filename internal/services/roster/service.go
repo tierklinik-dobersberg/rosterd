@@ -74,6 +74,14 @@ func (svc *RosterService) ReapplyShiftTimes(ctx context.Context, req *connect.Re
 		}
 	}
 
+	if _, err := svc.Datastore.SaveDutyRoster(ctx, &roster, nil); err != nil {
+		return nil, fmt.Errorf("failed to save roster: %w", err)
+	}
+
+	svc.Providers.PublishEvent(&rosterv1.RosterChangedEvent{
+		Roster: roster.ToProto(),
+	}, false)
+
 	return connect.NewResponse(&rosterv1.ReapplyShiftTimesResponse{
 		Roster: roster.ToProto(),
 	}), nil
