@@ -65,7 +65,7 @@ func (svc *RosterService) ReapplyShiftTimes(ctx context.Context, req *connect.Re
 		start, end := def.AtDay(shift.From.Local())
 
 		if !shift.From.Equal(start) || !shift.To.Equal(end) {
-			slog.Info("updating shift times", "oldStart", shift.From, "oldEnd", shift.To, "newStart", start, "newEnd", end)
+			slog.Info("updating shift times", "name", def.Name, "oldStart", shift.From.Local(), "oldEnd", shift.To.Local(), "newStart", start, "newEnd", end)
 
 			shift.From = start
 			shift.To = end
