@@ -17,6 +17,9 @@ import (
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
 	"github.com/tierklinik-dobersberg/apis/pkg/cors"
+	"github.com/tierklinik-dobersberg/apis/pkg/discovery"
+	"github.com/tierklinik-dobersberg/apis/pkg/discovery/consuldiscover"
+	"github.com/tierklinik-dobersberg/apis/pkg/discovery/wellknown"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/apis/pkg/privacy"
 	apisrv "github.com/tierklinik-dobersberg/apis/pkg/server"
@@ -54,15 +57,20 @@ func main() {
 		l.Fatal("failed to bootstrap roster_manager role", "error", err.Error())
 	}
 
-	/*
-		location, err := time.LoadLocation("Europe/Vienna")
-		if err != nil {
-			l.Error("failed to load location data", "error", err.Error())
-			os.Exit(1)
-		}
-	*/
-
 	publicServer, adminServer := prepareConnectServer(p)
+
+	// Register at the service catalog
+	catalog, err := consuldiscover.NewFromEnv()
+	if err != nil {
+		l.Fatal("failed to create service catalog client", "error", err.Error())
+	}
+
+	if err := discovery.Register(ctx, catalog, discovery.ServiceInstance{
+		Name:    wellknown.RosterV1ServiceScope,
+		Address: cfg.AdminAddress,
+	}); err != nil {
+		l.Error("failed to register at service catalog", "error", err.Error())
+	}
 
 	if err := apisrv.Serve(context.Background(), publicServer, adminServer); err != nil {
 		logrus.Fatalf("failed to serve: %s", err)
