@@ -65,7 +65,7 @@ func main() {
 		l.Fatal("failed to create service catalog client", "error", err.Error())
 	}
 
-	if err := discovery.Register(ctx, catalog, discovery.ServiceInstance{
+	if err := discovery.Register(ctx, catalog, &discovery.ServiceInstance{
 		Name:    wellknown.RosterV1ServiceScope,
 		Address: cfg.AdminAddress,
 	}); err != nil {
