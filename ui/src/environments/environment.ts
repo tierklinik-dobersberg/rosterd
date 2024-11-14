@@ -6,7 +6,11 @@ export const environment = {
   rosterService: "https://roster.dobersberg.dev",
   commentService: "https://comments.dobersberg.dev",
   callService: "https://3cx-support.dobersberg.dev",
-  customerService: ""
+  customerService: "",
+  eventService: "",
+  officeHourService: "",
+  orthancBridge: "",
+  taskService: "",
 }
 
 import 'zone.js/plugins/zone-error';

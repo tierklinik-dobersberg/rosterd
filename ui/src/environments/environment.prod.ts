@@ -5,7 +5,11 @@ export const environment: Config = {
   rosterService: "https://roster.dobersberg.vet",
   commentService: "https://comments.dobersberg.vet",
   callService: "https://3cx.dobersberg.vet",
-  customerService: ""
+  customerService: "",
+  eventService: "",
+  officeHourService: "",
+  orthancBridge: "",
+  taskService: "",
 }
 
 import { ConnectConfig } from '@tierklinik-dobersberg/angular/connect';
