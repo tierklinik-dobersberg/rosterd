@@ -1,4 +1,4 @@
-import { Profile } from '@tierklinik-dobersberg/apis';
+import { Profile } from '@tierklinik-dobersberg/apis/idm/v1';
 import { Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({

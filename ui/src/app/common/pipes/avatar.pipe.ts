@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform, inject } from "@angular/core";
 import { DomSanitizer } from "@angular/platform-browser";
 import { CONNECT_CONFIG } from "@tierklinik-dobersberg/angular/connect";
-import { Profile } from "@tierklinik-dobersberg/apis";
+import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
 
 @Pipe({
   standalone: true,

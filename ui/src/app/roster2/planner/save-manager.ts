@@ -1,7 +1,7 @@
 import { signal } from "@angular/core";
 import { PartialMessage } from "@bufbuild/protobuf";
 import { RosterServiceClient } from "@tierklinik-dobersberg/angular/connect";
-import { SaveRosterRequest, SaveRosterResponse } from "@tierklinik-dobersberg/apis";
+import { SaveRosterRequest, SaveRosterResponse } from "@tierklinik-dobersberg/apis/roster/v1";
 
 export class SaveManager {
   constructor(
@@ -10,6 +10,7 @@ export class SaveManager {
 
   private casIndex: bigint | undefined = undefined;
   private inFlightPromise: Promise<void> = Promise.resolve();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private inFlightTimeout: any | null = null;
   private saveIndex = 0;
 

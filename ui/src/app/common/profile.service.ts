@@ -2,7 +2,7 @@ import { toast } from 'ngx-sonner';
 import { Injectable, computed, signal } from "@angular/core";
 import { ConnectError } from "@connectrpc/connect";
 import { injectAuthService, injectUserService } from "@tierklinik-dobersberg/angular/connect";
-import { Profile } from "@tierklinik-dobersberg/apis";
+import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
 import { interval, retry, startWith, switchMap } from 'rxjs';
 
 @Injectable({providedIn: 'root'})

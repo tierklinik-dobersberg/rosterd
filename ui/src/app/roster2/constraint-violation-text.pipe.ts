@@ -1,5 +1,5 @@
 import { Pipe, PipeTransform } from "@angular/core";
-import { ConstraintViolationList } from "@tierklinik-dobersberg/apis";
+import { ConstraintViolationList } from "@tierklinik-dobersberg/apis/roster/v1";
 
 @Pipe({
   name: 'constraintViolation',

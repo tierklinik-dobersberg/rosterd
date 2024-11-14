@@ -1,7 +1,8 @@
 import { Duration, Timestamp } from "@bufbuild/protobuf";
 import { DisplayNamePipe } from "@tierklinik-dobersberg/angular/pipes";
 import { coerceDate, getDaySeconds } from "@tierklinik-dobersberg/angular/utils/date";
-import { Daytime, Profile } from "@tierklinik-dobersberg/apis";
+import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
+import { Daytime } from "@tierklinik-dobersberg/apis/roster/v1";
 
 export type Optional<T> = T | null | undefined;
 

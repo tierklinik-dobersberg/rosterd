@@ -19,7 +19,7 @@ import { HlmDialogModule } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
-import { OffTimeEntry, OffTimeType } from '@tierklinik-dobersberg/apis';
+import { OffTimeEntry, OffTimeType } from '@tierklinik-dobersberg/apis/roster/v1';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { injectUserProfiles } from 'src/app/common/behaviors';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';

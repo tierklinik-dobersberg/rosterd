@@ -16,7 +16,8 @@ import { HlmMenuModule } from '@tierklinik-dobersberg/angular/menu';
 import { DaytimePipe, RoleListPipe, WorkDayPipe } from '@tierklinik-dobersberg/angular/pipes';
 import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTableModule } from '@tierklinik-dobersberg/angular/table';
-import { CreateWorkShiftRequest, Role, WorkShift } from '@tierklinik-dobersberg/apis';
+import { CreateWorkShiftRequest, WorkShift } from '@tierklinik-dobersberg/apis/roster/v1';
+import { Role } from '@tierklinik-dobersberg/apis/idm/v1'
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
 import { sortProtoDaytime, sortProtoDuration } from '../common/behaviors';

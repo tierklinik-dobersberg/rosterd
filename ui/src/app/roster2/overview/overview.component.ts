@@ -5,7 +5,7 @@ import { provideIcons } from '@ng-icons/core';
 import { lucideArrowUpDown, lucideCheck, lucideEye, lucideMoreVertical, lucidePencil, lucideSend, lucideTrash2 } from '@ng-icons/lucide';
 import { injectRosterService } from '@tierklinik-dobersberg/angular/connect';
 import { HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
-import { Roster, RosterType } from '@tierklinik-dobersberg/apis';
+import { Roster, RosterType } from '@tierklinik-dobersberg/apis/roster/v1';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
 import { injectUserProfiles } from 'src/app/common/behaviors';

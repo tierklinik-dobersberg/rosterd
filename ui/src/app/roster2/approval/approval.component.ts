@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PartialMessage, Timestamp } from '@bufbuild/protobuf';
 import { BrnDialogRef } from '@spartan-ng/ui-dialog-brain';
 import { injectOfftimeService, injectRosterService, injectUserService } from '@tierklinik-dobersberg/angular/connect';
-import { ApproveRosterWorkTimeSplit, OffTimeEntry, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis';
+import { ApproveRosterWorkTimeSplit, OffTimeEntry, Roster, WorkTimeAnalysis } from '@tierklinik-dobersberg/apis/roster/v1';
 import { from, map, of, switchMap } from 'rxjs';
 import { injectUserProfiles } from 'src/app/common/behaviors';
 import { Duration } from 'src/duration';

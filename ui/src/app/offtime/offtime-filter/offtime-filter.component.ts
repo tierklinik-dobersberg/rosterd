@@ -15,7 +15,7 @@ import { HlmRadioGroupModule } from '@tierklinik-dobersberg/angular/radiogroup';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { HlmSeparatorModule } from "@tierklinik-dobersberg/angular/separator";
 import { HlmSheetModule } from "@tierklinik-dobersberg/angular/sheet";
-import { Profile } from "@tierklinik-dobersberg/apis";
+import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
 import { UserAvatarPipe } from "src/app/common/pipes";

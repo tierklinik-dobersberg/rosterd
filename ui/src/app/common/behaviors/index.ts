@@ -1,6 +1,6 @@
 import { inject, computed, Signal } from '@angular/core';
 import { ProfileService } from '../profile.service';
-import { Profile } from '@tierklinik-dobersberg/apis';
+import { Profile } from '@tierklinik-dobersberg/apis/idm/v1';
 
 export * from './filter-sheet-side';
 export * from './debounced-signal';

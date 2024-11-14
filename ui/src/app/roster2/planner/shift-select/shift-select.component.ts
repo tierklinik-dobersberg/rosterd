@@ -4,6 +4,7 @@ import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
 import { HlmSheetComponent } from "@tierklinik-dobersberg/angular/sheet";
 import { toDateString } from "src/utils";
 import { RosterPlannerService, ShiftState } from "../planner.service";
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   // eslint-disable-next-line @angular-eslint/component-selector
@@ -19,6 +20,15 @@ export class TkdShiftSelectComponent {
 
   @ViewChild(HlmSheetComponent)
   protected _sheet!: HlmSheetComponent;
+
+  protected drop(dropEvent: CdkDragDrop<string>) {
+    const shift = this.shift();
+    const values = [...this.value()]
+
+    moveItemInArray(values, dropEvent.previousIndex, dropEvent.currentIndex)
+
+    this._planningService.setShiftAssignments(toDateString(shift.from), shift.uniqueId, values)
+  }
 
   @HostListener('click', ['$event'])
   protected onHostClick(event: MouseEvent) {

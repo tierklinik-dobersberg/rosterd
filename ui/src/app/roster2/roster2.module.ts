@@ -54,6 +54,7 @@ import { TkdRosterPlannerSettingsComponent } from "./planner/settings";
 import { TkdShiftSelectComponent } from "./planner/shift-select";
 import { TkdRoster2Routing } from './roster2-routing.module';
 import { RosterPlannerService } from "./planner/planner.service";
+import { CdkDropList, CdkDrag } from '@angular/cdk/drag-drop';
 
 @NgModule({
   imports: [
@@ -115,6 +116,9 @@ import { RosterPlannerService } from "./planner/planner.service";
     JoinListPipe,
     AppHeaderOutletDirective,
     UserAvatarPipe,
+
+    CdkDropList,
+    CdkDrag,
   ],
   declarations: [
     TkdRosterPlannerComponent,

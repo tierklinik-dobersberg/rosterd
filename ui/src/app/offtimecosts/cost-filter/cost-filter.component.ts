@@ -11,7 +11,7 @@ import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { DisplayNamePipe, ToUserPipe } from "@tierklinik-dobersberg/angular/pipes";
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { HlmSheetModule } from "@tierklinik-dobersberg/angular/sheet";
-import { Profile } from "@tierklinik-dobersberg/apis";
+import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
 import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
 import { UserAvatarPipe, UserLetterPipe } from "src/app/common/pipes";
 import { HlmSeparatorModule } from '@tierklinik-dobersberg/angular/separator';

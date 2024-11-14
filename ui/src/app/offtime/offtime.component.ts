@@ -49,8 +49,7 @@ import {
   ApprovalRequestType,
   OffTimeEntry,
   OffTimeType,
-  Profile,
-} from '@tierklinik-dobersberg/apis';
+} from '@tierklinik-dobersberg/apis/roster/v1';
 import { toast } from 'ngx-sonner';
 
 import { ConnectError } from '@connectrpc/connect';
@@ -67,6 +66,7 @@ import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { CreateOfftimeComponent } from './create-offtime/create-offtime.component';
 import { OffTimeFilter, OffTimeFilterComponent, emptyFilter } from './offtime-filter/offtime-filter.component';
+import { Profile } from '@tierklinik-dobersberg/apis/idm/v1';
 
 // Filter function for off-time requests. used in sortFunctions below.
 type OffTimeSortFunc = (a: OffTimeEntry, b: OffTimeEntry, profiles: Profile[]) => number;

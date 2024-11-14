@@ -158,7 +158,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		roster.Shifts[idx] = conv
 	}
 
-	if roster.IsApproved() {
+	if roster.IsApproved() && !req.Msg.KeepApproval {
 		// reset approval fields
 		roster.Approved = false
 		roster.ApprovedAt = time.Time{}
