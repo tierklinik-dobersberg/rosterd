@@ -25,7 +25,7 @@ import { Role } from '@tierklinik-dobersberg/apis/idm/v1';
 import { CreateWorkShiftRequest, Daytime, UpdateWorkShiftRequest, WorkShift } from '@tierklinik-dobersberg/apis/roster/v1';
 import { toast } from 'ngx-sonner';
 import { TkdErrorMessagesComponent } from 'src/app/common/error-messages';
-import { DurationValidatorDirective } from 'src/app/common/validators';
+import { DurationValidatorDirective } from '@tierklinik-dobersberg/angular/validators';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
 

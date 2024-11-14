@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, isDevMode, signal } from "@angular/core";
 import { HlmBadgeModule } from "@tierklinik-dobersberg/angular/badge";
 import { LayoutService } from "@tierklinik-dobersberg/angular/layout";
-import { injectContainerSize } from "../common/container";
+import { injectContainerSize } from "@tierklinik-dobersberg/angular/container";
 
 @Component({
   selector: 'app-dev-size',

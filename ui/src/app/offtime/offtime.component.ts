@@ -58,15 +58,15 @@ import { HlmBadgeModule } from '@tierklinik-dobersberg/angular/badge';
 import { HlmDialogModule, HlmDialogService } from '@tierklinik-dobersberg/angular/dialog';
 import { HlmSpinnerModule } from '@tierklinik-dobersberg/angular/spinner';
 import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
-import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
-import { injectUserProfiles } from '../common/behaviors';
-import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
+import { UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { TkdContainerSizeClassDirective, injectContainerSize } from '@tierklinik-dobersberg/angular/container';
 import { TkdEmptyTableComponent } from '../common/empty-table';
-import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { SortColumn, TkdTableSortColumnComponent } from '@tierklinik-dobersberg/angular/table-sort';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { CreateOfftimeComponent } from './create-offtime/create-offtime.component';
 import { OffTimeFilter, OffTimeFilterComponent, emptyFilter } from './offtime-filter/offtime-filter.component';
 import { Profile } from '@tierklinik-dobersberg/apis/idm/v1';
+import { injectUserProfiles } from '@tierklinik-dobersberg/angular/behaviors';
 
 // Filter function for off-time requests. used in sortFunctions below.
 type OffTimeSortFunc = (a: OffTimeEntry, b: OffTimeEntry, profiles: Profile[]) => number;

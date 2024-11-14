@@ -16,11 +16,11 @@ import { HlmInputModule } from '@tierklinik-dobersberg/angular/input';
 import { HlmLabelModule } from '@tierklinik-dobersberg/angular/label';
 import { HlmSelectModule } from '@tierklinik-dobersberg/angular/select';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { injectUserProfiles } from 'src/app/common/behaviors';
+import { injectUserProfiles } from '@tierklinik-dobersberg/angular/behaviors';
 import { TkdRoster2Module } from 'src/app/roster2/roster2.module';
 import { Duration } from 'src/duration';
-import { UserAvatarPipe } from 'src/app/common/pipes';
-import { DurationValidatorDirective } from 'src/app/common/validators';
+import { UserAvatarPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { DurationValidatorDirective } from '@tierklinik-dobersberg/angular/validators';
 import { TkdErrorMessagesComponent } from 'src/app/common/error-messages';
 
 export type VacationType = 'vacation' | 'timeoff' | '';

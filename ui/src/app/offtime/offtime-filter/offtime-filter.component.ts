@@ -17,8 +17,8 @@ import { HlmSeparatorModule } from "@tierklinik-dobersberg/angular/separator";
 import { HlmSheetModule } from "@tierklinik-dobersberg/angular/sheet";
 import { Profile } from "@tierklinik-dobersberg/apis/idm/v1";
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
-import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
-import { UserAvatarPipe } from "src/app/common/pipes";
+import { injectComputedFilterSheetSide } from "@tierklinik-dobersberg/angular/behaviors";
+import { UserAvatarPipe } from '@tierklinik-dobersberg/angular/pipes';
 
 export type OffTimeState = 'all' | 'new';
 

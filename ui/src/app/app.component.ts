@@ -13,13 +13,14 @@ import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzMessageModule } from 'ng-zorro-antd/message';
 import { filter } from 'rxjs';
-import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
+import { UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
 import { environment } from 'src/environments/environment';
-import { TkdContainerSizeDirective } from './common/container/container.directive';
-import { ProfileService } from './common/profile.service';
+import { TkdContainerSizeDirective } from '@tierklinik-dobersberg/angular/container';
+import { injectCurrentUserIsAdmin } from './common/profile.service';
 import { AppHeaderOutletDirective, AppHeaderOutletService } from './header-outlet.directive';
 import { TkdRoster2Module } from './roster2/roster2.module';
 import { DevSizeOutlineComponent } from './size-outline/size-outline';
+import { injectCurrentProfile } from '@tierklinik-dobersberg/angular/behaviors';
 
 @Component({
   selector: 'app-root',
@@ -57,7 +58,6 @@ export class AppComponent implements OnInit {
   protected readonly router = inject(Router);
   protected readonly route = inject(ActivatedRoute)
   protected readonly layout = inject(LayoutService);
-  protected readonly profileService = inject(ProfileService);
 
   protected readonly _outlet = (() => {
     const service = inject(AppHeaderOutletService);
@@ -72,8 +72,8 @@ export class AppComponent implements OnInit {
   }
 
   protected readonly _isRosterView = signal(false);
-  protected readonly _profile = computed(() => this.profileService.current())
-  protected readonly _isAdmin = computed(() => this.profileService.isAdmin())
+  protected readonly _profile = injectCurrentProfile()
+  protected readonly _isAdmin = injectCurrentUserIsAdmin()
 
   ngOnInit() {
     this.router

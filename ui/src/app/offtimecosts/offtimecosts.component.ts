@@ -29,11 +29,11 @@ import { HlmTooltipModule } from '@tierklinik-dobersberg/angular/tooltip';
 import { OffTimeCosts, UserOffTimeCosts } from '@tierklinik-dobersberg/apis/roster/v1';
 import { Profile } from '@tierklinik-dobersberg/apis/idm/v1';
 import { toast } from 'ngx-sonner';
-import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
-import { injectUserProfiles, sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '../common/behaviors';
-import { TkdContainerSizeClassDirective, injectContainerSize } from '../common/container';
+import { UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { injectUserProfiles, sortProtoDuration, sortProtoTimestamps, sortUserProfile } from '@tierklinik-dobersberg/angular/behaviors';
+import { TkdContainerSizeClassDirective, injectContainerSize } from '@tierklinik-dobersberg/angular/container';
 import { TkdEmptyTableComponent } from '../common/empty-table';
-import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { SortColumn, TkdTableSortColumnComponent } from '@tierklinik-dobersberg/angular/table-sort';
 import { CostFilter, OffTimeCostFilterComponent, emptyFilter } from './cost-filter/cost-filter.component';
 import { CreatecostsComponent } from './createcosts/createcosts.component';
 

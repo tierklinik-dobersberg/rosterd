@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, ViewChild, computed, effect, inject, model } from "@angular/core";
-import { injectComputedFilterSheetSide } from "src/app/common/behaviors";
+import { injectComputedFilterSheetSide } from "@tierklinik-dobersberg/angular/behaviors";
 import { RosterPlannerService } from "../planner.service";
 
 @Component({

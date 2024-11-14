@@ -19,8 +19,8 @@ import { SetWorkTimeRequest, WorkTime } from '@tierklinik-dobersberg/apis/roster
 import { Profile  } from '@tierklinik-dobersberg/apis/idm/v1';
 import { toast } from 'ngx-sonner';
 import { TkdErrorMessagesComponent } from 'src/app/common/error-messages';
-import { UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
-import { DurationValidatorDirective } from 'src/app/common/validators';
+import { UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { DurationValidatorDirective } from '@tierklinik-dobersberg/angular/validators';
 
 @Component({
   standalone: true,

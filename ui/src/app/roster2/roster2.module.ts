@@ -40,9 +40,9 @@ import { HlmH1Directive, HlmH2Directive, HlmH3Directive } from '@tierklinik-dobe
 import { NzDatePickerModule } from "ng-zorro-antd/date-picker";
 import { NZ_DATE_CONFIG } from "ng-zorro-antd/i18n";
 import { NzToolTipModule } from "ng-zorro-antd/tooltip";
-import { JoinListPipe, UserAvatarPipe, UserLetterPipe } from 'src/app/common/pipes';
+import { JoinListPipe, UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
 import { TkdInViewportDirective } from "../common/in-viewport";
-import { TkdTableSortColumnComponent } from "../common/table-sort";
+import { TkdTableSortColumnComponent } from '@tierklinik-dobersberg/angular/table-sort';
 import { AppHeaderOutletDirective } from "../header-outlet.directive";
 import { ApprovalComponent } from './approval/approval.component';
 import { TkdConstraintIsHardPipe, TkdConstraintViolationPipe } from "./constraint-violation-text.pipe";

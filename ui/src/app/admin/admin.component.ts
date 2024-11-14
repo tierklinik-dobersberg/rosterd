@@ -20,11 +20,11 @@ import { CreateWorkShiftRequest, WorkShift } from '@tierklinik-dobersberg/apis/r
 import { Role } from '@tierklinik-dobersberg/apis/idm/v1'
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
-import { sortProtoDaytime, sortProtoDuration } from '../common/behaviors';
-import { injectContainerSize } from '../common/container';
+import { injectContainerSize } from '@tierklinik-dobersberg/angular/container';
 import { TkdRoster2Module } from '../roster2/roster2.module';
-import { SortColumn, TkdTableSortColumnComponent } from './../common/table-sort/table-sort.component';
+import { SortColumn, TkdTableSortColumnComponent } from '@tierklinik-dobersberg/angular/table-sort';
 import { WorkshiftsComponent } from './workshifts/workshifts.component';
+import { sortProtoDaytime, sortProtoDuration } from '@tierklinik-dobersberg/angular/behaviors';
 
 enum Columns {
   Name = 'name',

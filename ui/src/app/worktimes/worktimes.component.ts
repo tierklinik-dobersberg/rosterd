@@ -28,10 +28,11 @@ import { NzTimelineModule } from 'ng-zorro-antd/timeline';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { toast } from 'ngx-sonner';
 import { filter } from 'rxjs';
-import { injectUserProfiles, sortProtoDuration, sortUserProfile } from '../common/behaviors';
-import { injectContainerSize } from '../common/container';
-import { UserAvatarPipe, UserLetterPipe } from '../common/pipes';
-import { SortColumn, TkdTableSortColumnComponent } from '../common/table-sort';
+import { sortProtoDuration, sortUserProfile } from '@tierklinik-dobersberg/angular/behaviors';
+import { injectUserProfiles } from '@tierklinik-dobersberg/angular/behaviors';
+import { injectContainerSize } from '@tierklinik-dobersberg/angular/container';
+import { UserAvatarPipe, UserLetterPipe } from '@tierklinik-dobersberg/angular/pipes';
+import { SortColumn, TkdTableSortColumnComponent } from '@tierklinik-dobersberg/angular/table-sort';
 import { TkdRoster2Module } from '../roster2/roster2.module';
 import { SetWorktimeDialogComponent } from './set-worktime-dialog';
 

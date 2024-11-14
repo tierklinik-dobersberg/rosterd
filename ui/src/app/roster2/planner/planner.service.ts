@@ -8,9 +8,10 @@ import { GetHolidayResponse, PublicHoliday } from '@tierklinik-dobersberg/apis/c
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
-import { ProfileService } from "src/app/common/profile.service";
 import { SaveManager } from "./save-manager";
 import { Router } from "@angular/router";
+import { injectCurrentProfile, injectUserProfiles } from "@tierklinik-dobersberg/angular/behaviors";
+import { injectCurrentUserIsAdmin } from "src/app/common/profile.service";
 
 export interface ShiftState {
   // A unique ID to identify the shift.
@@ -124,7 +125,6 @@ export class RosterPlannerService {
   private readonly offTimeService = injectOfftimeService();
   private readonly holidayService = injectHolidayService();
   private readonly commentService = injectCommentService();
-  private readonly profileService = inject(ProfileService);
 
   private _saveManager = new SaveManager(this.rosterService);
 
@@ -157,13 +157,13 @@ export class RosterPlannerService {
   });
 
   /** The current user */
-  public readonly currentUser = computed(() => this.profileService.current());
+  public readonly currentUser = injectCurrentProfile();
 
   /** Whether or not the current user is a admin */
-  public readonly isAdmin = computed(() => this.profileService.isAdmin());
+  public readonly isAdmin = injectCurrentUserIsAdmin();
 
   /** All user profiles */
-  public readonly profiles = computed(() => this.profileService.profiles())
+  public readonly profiles = injectUserProfiles();
 
   /** The currently selected user ID, if any */
   private readonly _selectedUser = signal<string | null>(null);
