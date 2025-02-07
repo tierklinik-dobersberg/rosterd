@@ -3,6 +3,7 @@ package roster
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -73,6 +74,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 
 		for _, roster := range rosters {
 			if rosterTypeName != "" && roster.RosterTypeName != rosterTypeName {
+				slog.Info("skipping roster of different type", "requested", rosterTypeName, "roster-type", roster.RosterTypeName)
 				continue
 			}
 
@@ -107,6 +109,8 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 				for _, role := range shift.EligibleRoles {
 					eligibleRoleIds[role] = struct{}{}
 				}
+			} else {
+				slog.Info("filtering workshift definitions since no tags overlap", "allowed-tags", rosterType.ShiftTags, "shift-tags", shift.Tags)
 			}
 		}
 		roleIds := maps.Keys(eligibleRoleIds)
@@ -134,6 +138,8 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 				return r.Id
 			}) {
 				filteredIds = append(filteredIds, id)
+			} else {
+				slog.Info("filtering user since it's not eligble for the requested roster type", "user-id", id)
 			}
 		}
 		userIds = filteredIds
