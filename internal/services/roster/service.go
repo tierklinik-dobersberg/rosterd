@@ -189,7 +189,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 	}
 
 	// caculate the work-time for the roster
-	analysis, err := svc.analyzeWorkTime(ctx, users, roster.From, roster.To, req.Msg.TimeTrackingOnly)
+	analysis, err := svc.analyzeWorkTime(ctx, roster.RosterTypeName, users, roster.From, roster.To, req.Msg.TimeTrackingOnly)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
@@ -243,7 +243,7 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 	// caculate the work-time for the roster. The last parameter specified
 	// that we only want work-time analysis for users with time-tracking enabled.
-	analysis, err := svc.analyzeWorkTime(ctx, allUserIds, roster.From, roster.To, true)
+	analysis, err := svc.analyzeWorkTime(ctx, roster.RosterTypeName, allUserIds, roster.From, roster.To, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 	}
@@ -661,7 +661,7 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 		}
 
 		// caculate the work-time for the roster
-		analysis, err := svc.analyzeWorkTime(ctx, allUserIds, dutyRoster[0].From, dutyRoster[0].To, req.Msg.TimeTrackingOnly)
+		analysis, err := svc.analyzeWorkTime(ctx, dutyRoster[0].RosterTypeName, allUserIds, dutyRoster[0].From, dutyRoster[0].To, req.Msg.TimeTrackingOnly)
 		if err != nil {
 			return nil, fmt.Errorf("failed to calculate work-time: %w", err)
 		}

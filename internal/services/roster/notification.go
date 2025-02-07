@@ -143,7 +143,7 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 
 	userIds := maps.Keys(targetUsers)
 
-	workTime, err := svc.analyzeWorkTime(ctx, userIds, roster.From, roster.To, true)
+	workTime, err := svc.analyzeWorkTime(ctx, roster.RosterTypeName, userIds, roster.From, roster.To, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze work time: %w", err)
 	}

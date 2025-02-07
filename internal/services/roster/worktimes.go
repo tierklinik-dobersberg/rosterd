@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	idmv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/idm/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
+	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"github.com/tierklinik-dobersberg/rosterd/internal/timecalc"
@@ -38,7 +40,7 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 		userIds = []string{remoteUser.ID}
 	}
 
-	res, err := svc.analyzeWorkTime(ctx, userIds, req.Msg.From, req.Msg.To, req.Msg.TimeTrackingOnly)
+	res, err := svc.analyzeWorkTime(ctx, "", userIds, req.Msg.From, req.Msg.To, req.Msg.TimeTrackingOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +50,7 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 	}), nil
 }
 
-func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string, from, to string, onlyTimeTracking bool) ([]*rosterv1.WorkTimeAnalysis, error) {
+func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName string, userIds []string, from, to string, onlyTimeTracking bool) ([]*rosterv1.WorkTimeAnalysis, error) {
 	log.L(ctx).Infof("analyzing work time for users between %s and %s", from, to)
 
 	// parse from and to times
@@ -70,6 +72,10 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 		}
 
 		for _, roster := range rosters {
+			if rosterTypeName != "" && roster.RosterTypeName != rosterTypeName {
+				continue
+			}
+
 			distinctRosters[roster.ID.Hex()] = roster
 		}
 	}
@@ -80,6 +86,57 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, userIds []string,
 	workShifts, err := svc.Datastore.ListWorkShifts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch work-shift definitions: %w", err)
+	}
+
+	// if there's a rosterTypeName only evaluate shifts that are allowed for the type.
+	if rosterTypeName != "" {
+		rosterType, err := svc.Datastore.GetRosterType(ctx, rosterTypeName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch roster type name")
+		}
+
+		// iterate over the workshifts and only find shifts that are eligible for the
+		// given roster type
+		shifts := make([]structs.WorkShift, 0, len(workShifts))
+		eligibleRoleIds := make(map[string]struct{})
+
+		for _, shift := range workShifts {
+			if data.ElemInBothSlices(shift.Tags, rosterType.ShiftTags) || data.ElemInBothSlices(shift.Tags, rosterType.OnCallTags) {
+				shifts = append(shifts, shift)
+
+				for _, role := range shift.EligibleRoles {
+					eligibleRoleIds[role] = struct{}{}
+				}
+			}
+		}
+		roleIds := maps.Keys(eligibleRoleIds)
+
+		workShifts = shifts
+
+		// finally, fetch all user profiles and ensure we only calculate work times for eligible users
+		profiles, err := svc.FetchAllUserProfiles(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch user profiles: %w", err)
+		}
+
+		userMap := data.IndexSlice(profiles, func(p *idmv1.Profile) string {
+			return p.User.Id
+		})
+
+		filteredIds := make([]string, 0, len(userIds))
+		for _, id := range userIds {
+			user, ok := userMap[id]
+			if !ok {
+				return nil, fmt.Errorf("failed to get user profile for id %q", id)
+			}
+
+			if data.ElemInBothSlicesFunc(roleIds, user.Roles, func(r *idmv1.Role) string {
+				return r.Id
+			}) {
+				filteredIds = append(filteredIds, id)
+			}
+		}
+		userIds = filteredIds
 	}
 
 	// get the number of working-days
