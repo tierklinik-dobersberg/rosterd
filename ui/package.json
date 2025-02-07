@@ -30,7 +30,7 @@
     "@ng-icons/lucide": "^26.5.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tierklinik-dobersberg/angular": "^0.4.1",
-    "@tierklinik-dobersberg/apis": "^0.22.0",
+    "@tierklinik-dobersberg/apis": "^0.31.0",
     "browser-fs-access": "^0.35.0",
     "file-saver": "^2.0.5",
     "ng-zorro-antd": "^17.4.0",

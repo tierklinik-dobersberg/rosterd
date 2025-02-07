@@ -134,6 +134,11 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 				return nil, fmt.Errorf("failed to get user profile for id %q", id)
 			}
 
+			if user.User.Deleted {
+				// skip deleted users here.
+				continue
+			}
+
 			if data.ElemInBothSlicesFunc(roleIds, user.Roles, func(r *idmv1.Role) string {
 				return r.Id
 			}) {

@@ -184,9 +184,19 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 	}
 	if len(*profiles) == 0 {
 		var err error
-		*profiles, err = svc.FetchAllUserProfiles(ctx)
+		userProfiles, err := svc.FetchAllUserProfiles(ctx)
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("failed to fetch users: %w", err)
+		}
+
+		*profiles = make([]*idmv1.Profile, 0, len(userProfiles))
+
+		for _, p := range userProfiles {
+			if p.User.Deleted {
+				continue
+			}
+
+			*profiles = append(*profiles, p)
 		}
 	}
 
