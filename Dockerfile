@@ -39,7 +39,7 @@ COPY ./templates .
 RUN npm run build
 
 # Build the go binary
-FROM golang:1.22 as gobuild
+FROM golang:1.23 as gobuild
  
 RUN update-ca-certificates
  
