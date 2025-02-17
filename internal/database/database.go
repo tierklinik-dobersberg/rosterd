@@ -74,7 +74,6 @@ type (
 
 	DatabaseImpl struct {
 		shifts          *mongo.Collection
-		rosters         *mongo.Collection
 		offTime         *mongo.Collection
 		offTimeCosts    *mongo.Collection
 		constraints     *mongo.Collection
@@ -89,7 +88,6 @@ type (
 func NewDatabase(ctx context.Context, db *mongo.Database, logger *logrus.Entry) (*DatabaseImpl, error) {
 	impl := &DatabaseImpl{
 		shifts:          db.Collection(ShiftCollection),
-		rosters:         db.Collection(RosterCollection),
 		offTime:         db.Collection(OffTimeRequestCollection),
 		offTimeCosts:    db.Collection(OffTimeCostsCollection),
 		constraints:     db.Collection(ConstraintCollection),
@@ -144,19 +142,6 @@ func (db *DatabaseImpl) setup(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create shift indexes: %w", err)
-	}
-
-	_, err = db.rosters.Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{
-			Keys: bson.D{
-				{Key: "year", Value: 1},
-				{Key: "month", Value: 1},
-			},
-			Options: options.Index().SetUnique(true),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create roster indexes: %w", err)
 	}
 
 	_, err = db.offTime.Indexes().CreateMany(ctx, []mongo.IndexModel{
