@@ -5,6 +5,7 @@ import (
 
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -66,6 +67,7 @@ func (p PlannedShift) ToProto() *rosterv1.PlannedShift {
 		From:            timestamppb.New(p.From),
 		To:              timestamppb.New(p.To),
 		AssignedUserIds: p.AssignedUserIds,
+		TimeWorth:       durationpb.New(p.TimeWorth),
 	}
 
 	if !p.WorkShiftID.IsZero() {
@@ -75,6 +77,9 @@ func (p PlannedShift) ToProto() *rosterv1.PlannedShift {
 	return protoShift
 }
 
+// FromProto converts a planned shift from it's protobuf definition to it'
+// local model.
+// This does ignore the TimeWorth field!
 func (p *PlannedShift) FromProto(protoShift *rosterv1.PlannedShift) error {
 	if protoShift.From.IsValid() {
 		p.From = protoShift.From.AsTime()

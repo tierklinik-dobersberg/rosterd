@@ -157,8 +157,21 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid shift definition: %w", err))
 		}
 
-		if _, ok := workShiftLm[shift.WorkShiftId]; !ok {
+		def, ok := workShiftLm[shift.WorkShiftId]
+		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("work shift with id %q is not allowed for roster type %q", shift.WorkShiftId, rosterType.UniqueName))
+		}
+
+		// update the time worth field
+		conv.TimeWorth = conv.To.Sub(conv.From)
+		if def.MinutesWorth != nil && *def.MinutesWorth > 0 {
+			conv.TimeWorth = time.Duration(*def.MinutesWorth) * time.Minute
+		}
+
+		// ensure from and to times are valid
+		shiftFrom, shiftTo := def.AtDay(conv.From)
+		if !shiftFrom.Equal(conv.From) || !shiftTo.Equal(conv.To) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("shift from and to times do not match"))
 		}
 
 		roster.Shifts[idx] = conv
