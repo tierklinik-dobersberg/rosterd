@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/dcaraxes/gotenberg-go-client/v8"
+	"github.com/dcaraxes/gotenberg-go-client/v8/document"
 )
 
 type Providers struct {
@@ -152,24 +153,25 @@ func (p *Providers) RenderHTML(ctx context.Context, index string) (io.ReadCloser
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no gotenberg server configured"))
 	}
 
-	client := gotenberg.Client{
-		Hostname: p.Config.Gotenberg,
+	client, err := gotenberg.NewClient(p.Config.Gotenberg, http.DefaultClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gotenberg client: %w", err)
 	}
 
-	indexDocument, err := gotenberg.NewDocumentFromString("index.html", index)
+	indexDocument, err := document.FromString("index.html", index)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare document: %w", err)
 	}
 
 	req := gotenberg.NewHTMLRequest(indexDocument)
 	req.PaperSize(gotenberg.A4)
-	req.Landscape(true)
+	req.Landscape()
 	req.Margins(gotenberg.NoMargins)
 	req.SkipNetworkIdleEvent()
 	req.WaitDelay(time.Second * 3)
 	req.Scale(0.75)
 
-	res, err := client.PostContext(ctx, req)
+	res, err := client.Send(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to gotenberg: %w", err)
 	}
