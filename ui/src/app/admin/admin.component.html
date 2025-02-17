@@ -1,5 +1,5 @@
-<header class="flex flex-row justify-between items-center gap-2 mb-4 text-lg font-normal  ">
-  <h2 class="font-light text-xl 2xl:text-2xl flex flex-row gap-2 items-center">
+<header class="flex flex-row items-center justify-between gap-2 mb-4 text-lg font-normal ">
+  <h2 class="flex flex-row items-center gap-2 text-xl font-light 2xl:text-2xl">
     Arbeitsschichten
     @if (_loading()) {
     <hlm-spinner />
@@ -53,7 +53,7 @@
     </hlm-th>
 
     <hlm-td *brnCellDef="let e">
-      @if (e.isHoliday) {
+      @if (e.onHoliday) {
       <span hlmBadge>Urlaub</span>
       } @else {
       <span hlmBadge variant="secondary">Regulär</span>
@@ -66,7 +66,7 @@
       Wochentage
     </hlm-th>
 
-    <hlm-td *brnCellDef="let e" class="gap-1 flex-wrap">
+    <hlm-td *brnCellDef="let e" class="flex-wrap gap-1">
       @for (day of e.days; track day) {
       <span hlmBadge variant="outline" class="font-mono">{{ [day] | workday }}</span>
       }
@@ -131,7 +131,7 @@
 
   <brn-column-def [name]="columns.EmployeeCount" class="w-0 flex-[0_0_7rem]">
     <hlm-th *brnHeaderDef>
-      <tkd-sort-th [(current)]="_sort" class="whitespace-nowrap overflow-hidden text-ellipsis">
+      <tkd-sort-th [(current)]="_sort" class="overflow-hidden whitespace-nowrap text-ellipsis">
         Anzahl
       </tkd-sort-th>
     </hlm-th>
