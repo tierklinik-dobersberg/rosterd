@@ -20,6 +20,7 @@ type (
 		To              time.Time          `bson:"to"`
 		AssignedUserIds []string           `bson:"assigned_user_ids"`
 		WorkShiftID     primitive.ObjectID `bson:"work_shift_id"`
+		TimeWorth       time.Duration      `bson:"timeWorth"`
 	}
 
 	RequiredShift struct {

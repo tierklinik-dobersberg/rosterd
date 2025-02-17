@@ -67,9 +67,19 @@ func NewProviders(ctx context.Context, cfg *ServiceConfig, httpClient *http.Clie
 		return nil, fmt.Errorf("failed to ping mongodb: %w", err)
 	}
 
+	mongoDatabase := mongoClient.Database(cfg.DatabaseName)
+
+	// before doing anything more, let's migrate our database
+	if err := database.RunMigrations(ctx, mongoDatabase); err != nil {
+		slog.Error("failed to run migrations", "error", err.Error())
+
+		// FIXME(ppacher): do not ignore this error here.
+	}
+
+	// finally, create our repository (database wrapper)
 	db, err := database.NewDatabase(
 		ctx,
-		mongoClient.Database(cfg.DatabaseName),
+		mongoDatabase,
 		logrus.NewEntry(logrus.StandardLogger()),
 	)
 	if err != nil {
