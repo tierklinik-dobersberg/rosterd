@@ -72,9 +72,18 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 
 						r.Shifts[idx] = p
 					}
+
+					updateResult, err := d.Collection(DutyRosterCollection).ReplaceOne(ctx, bson.M{"_id": r.ID}, r)
+					if err != nil {
+						return fmt.Errorf("failed to update duty roster %q in collection: %w", r.ID.Hex(), err)
+					}
+
+					if updateResult.ModifiedCount != 1 {
+						return fmt.Errorf("unexpected modified-count for update operation: expected 1 got %d", updateResult.ModifiedCount)
+					}
 				}
 
-				return fmt.Errorf("just a test")
+				return nil
 			}),
 		},
 	}

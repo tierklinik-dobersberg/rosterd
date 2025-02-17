@@ -72,9 +72,7 @@ func NewProviders(ctx context.Context, cfg *ServiceConfig, httpClient *http.Clie
 
 	// before doing anything more, let's migrate our database
 	if err := database.RunMigrations(ctx, mongoDatabase); err != nil {
-		slog.Error("failed to run migrations", "error", err.Error())
-
-		// FIXME(ppacher): do not ignore this error here.
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// finally, create our repository (database wrapper)
