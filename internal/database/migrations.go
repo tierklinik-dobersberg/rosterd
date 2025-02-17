@@ -62,7 +62,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 							return fmt.Errorf("failed to find workshift definition for id %q", p.WorkShiftID.Hex())
 						}
 
-						if workShift.MinutesWorth != nil {
+						if workShift.MinutesWorth != nil && *workShift.MinutesWorth > 0 {
 							p.TimeWorth = time.Duration(*workShift.MinutesWorth) * time.Minute
 						} else {
 							p.TimeWorth = p.To.Sub(p.From)
