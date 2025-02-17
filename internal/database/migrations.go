@@ -23,7 +23,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 			Up: mongomigrate.MigrateFunc(func(ctx mongo.SessionContext, d *mongo.Database) error {
 
 				// load all rosters
-				rosterListBSON, err := d.Collection(RosterCollection).Find(ctx, bson.M{})
+				rosterListBSON, err := d.Collection(DutyRosterCollection).Find(ctx, bson.M{})
 				if err != nil {
 					return fmt.Errorf("failed to find rosters: %w", err)
 				}
@@ -32,6 +32,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 				if err := rosterListBSON.All(ctx, &rosters); err != nil {
 					return fmt.Errorf("failed to decode rosters: %w", err)
 				}
+				slog.Info("migrations: successfully loaded rosters from the database collection", "count", len(rosters))
 
 				// load all workshift definitions
 				shiftListBSON, err := d.Collection(ShiftCollection).Find(ctx, bson.M{})
@@ -43,6 +44,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 				if err := shiftListBSON.All(ctx, &shifts); err != nil {
 					return fmt.Errorf("failed to decode workshift definitions: %w", err)
 				}
+				slog.Info("migrations: successfully loaded workshift definitions from the database collection", "count", len(shifts))
 
 				// create a lookup map for the workshifts by their ID
 				shiftMap := make(map[string]structs.WorkShift, len(shifts))
