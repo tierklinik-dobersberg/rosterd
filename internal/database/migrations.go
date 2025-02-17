@@ -86,6 +86,44 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 				return nil
 			}),
 		},
+
+		{
+			Version:     2,
+			Description: "Remove MinutesWorth where it is set to 0",
+			Database:    n,
+			Up: mongomigrate.MigrateFunc(func(ctx mongo.SessionContext, d *mongo.Database) error {
+				// load all workshift definitions
+				shiftListBSON, err := d.Collection(ShiftCollection).Find(ctx, bson.M{})
+				if err != nil {
+					return fmt.Errorf("failed to load workshift definitions: %w", err)
+				}
+
+				var shifts []structs.WorkShift
+				if err := shiftListBSON.All(ctx, &shifts); err != nil {
+					return fmt.Errorf("failed to decode workshift definitions: %w", err)
+				}
+				slog.Info("migrations: successfully loaded workshift definitions from the database collection", "count", len(shifts))
+
+				// update all workshift definitions where MinutesWorth is non-nil but set to 0
+				for _, s := range shifts {
+					if s.MinutesWorth != nil && *s.MinutesWorth == 0 {
+						slog.Info("migrations: removing minutes-worth from workshift", "name", s.Name)
+
+						s.MinutesWorth = nil
+						updateResult, err := d.Collection(ShiftCollection).ReplaceOne(ctx, bson.M{"_id": s.ID}, s)
+						if err != nil {
+							return fmt.Errorf("failed to replace workshift %q: %w", s.ID.Hex(), err)
+						}
+
+						if updateResult.ModifiedCount != 1 {
+							return fmt.Errorf("unexpected modified-count: expected 1 but got %d", updateResult.ModifiedCount)
+						}
+					}
+				}
+
+				return nil
+			}),
+		},
 	}
 
 	migrator := mongomigrate.NewMigrator(db, "")

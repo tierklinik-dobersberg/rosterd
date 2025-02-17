@@ -65,7 +65,7 @@ func (svc *RosterService) ReapplyShiftTimes(ctx context.Context, req *connect.Re
 		start, end := def.AtDay(shift.From.Local())
 
 		timeWorth := shift.To.Sub(shift.From)
-		if def.MinutesWorth != nil && *def.MinutesWorth > 0 {
+		if def.MinutesWorth != nil {
 			timeWorth = time.Duration(*def.MinutesWorth) * time.Minute
 		}
 
@@ -164,7 +164,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 
 		// update the time worth field
 		conv.TimeWorth = conv.To.Sub(conv.From)
-		if def.MinutesWorth != nil && *def.MinutesWorth > 0 {
+		if def.MinutesWorth != nil {
 			conv.TimeWorth = time.Duration(*def.MinutesWorth) * time.Minute
 		}
 
