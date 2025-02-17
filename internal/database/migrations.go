@@ -54,7 +54,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 
 				// iterate over all rosters and their planned shifts and update the time-worth field
 				for _, r := range rosters {
-					slog.Info("migrating roster", "id", r.ID.Hex(), "from", r.FromTime().Format("2006-01-02"), "to", r.ToTime().Format("2006-01-02"))
+					slog.Info("migrating roster", "id", r.ID.Hex(), "from", r.FromTime().Local().Format("2006-01-02"), "to", r.ToTime().Local().Format("2006-01-02"))
 
 					for idx, p := range r.Shifts {
 						workShift, ok := shiftMap[p.WorkShiftID.Hex()]
@@ -68,7 +68,7 @@ func RunMigrations(ctx context.Context, db *mongo.Database) error {
 							p.TimeWorth = p.To.Sub(p.From)
 						}
 
-						slog.Info("  -> updating shift", "from", p.From.Format("15:04"), "to", p.To.Format("15:04"), "timeWorth", p.TimeWorth)
+						slog.Info("  -> updating shift", "from", p.From.Local().Format("15:04"), "to", p.To.Local().Format("15:04"), "timeWorth", p.TimeWorth, "name", workShift.Name)
 
 						r.Shifts[idx] = p
 					}
