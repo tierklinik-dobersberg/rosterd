@@ -7,7 +7,6 @@ import (
 	"time"
 
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
-	"github.com/tierklinik-dobersberg/apis/pkg/data"
 	"github.com/tierklinik-dobersberg/apis/pkg/log"
 	"github.com/tierklinik-dobersberg/rosterd/internal/structs"
 	"golang.org/x/exp/maps"
@@ -287,9 +286,9 @@ func CalculatePlannedMonthlyWorkTime(
 	}
 	toTime = toTime.AddDate(0, 0, 1)
 
-	wsMap := data.IndexSlice(workShifts, func(ws structs.WorkShift) string {
-		return ws.ID.Hex()
-	})
+	// wsMap := data.IndexSlice(workShifts, func(ws structs.WorkShift) string {
+	// 	return ws.ID.Hex()
+	// })
 
 	for _, roster := range rosters {
 		// immediately skip rosters that don't match from or to
@@ -307,10 +306,12 @@ func CalculatePlannedMonthlyWorkTime(
 			}
 
 			// determine how much time this shift is worth for time-tracking
-			timeWorth := shift.To.Sub(shift.From)
-			if def, ok := wsMap[shift.WorkShiftID.Hex()]; ok && def.MinutesWorth != nil && *def.MinutesWorth > 0 {
-				timeWorth = time.Duration(*def.MinutesWorth) * time.Minute
-			}
+			// timeWorth := shift.To.Sub(shift.From)
+			// if def, ok := wsMap[shift.WorkShiftID.Hex()]; ok && def.MinutesWorth != nil && *def.MinutesWorth > 0 {
+			// 	timeWorth = time.Duration(*def.MinutesWorth) * time.Minute
+			// }
+
+			timeWorth := shift.TimeWorth
 
 			log.L(ctx).Infof("shift %s on %s is %s time worth", shift.WorkShiftID, shift.From.Format("2006-01-02"), timeWorth)
 
