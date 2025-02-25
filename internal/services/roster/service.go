@@ -169,9 +169,13 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		}
 
 		// ensure from and to times are valid
-		shiftFrom, shiftTo := def.AtDay(conv.From)
-		if !shiftFrom.Equal(conv.From) || !shiftTo.Equal(conv.To) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("shift from and to times do not match"))
+		shiftFrom, shiftTo := def.AtDay(conv.From.Local())
+		if !shiftFrom.Equal(conv.From) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from-time is invalid. expected %s but got %s", conv.From.Local().Format(time.RFC3339), shiftFrom.Local().Format(time.RFC3339)))
+		}
+
+		if !shiftTo.Equal(conv.To) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to-time is invalid. expected %s but got %s", conv.To.Local().Format(time.RFC3339), shiftTo.Local().Format(time.RFC3339)))
 		}
 
 		roster.Shifts[idx] = conv
