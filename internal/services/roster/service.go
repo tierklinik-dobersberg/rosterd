@@ -274,37 +274,39 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 	approver := remoteUser.ID
 
 	// Validate off-time costs split first
-	for _, an := range analysis {
-		diff := an.Overtime.AsDuration()
+	/*
+		for _, an := range analysis {
+			diff := an.Overtime.AsDuration()
 
-		if diff < 0 {
-			var split *rosterv1.ApproveRosterWorkTimeSplit
-			for _, splits := range req.Msg.WorkTimeSplit {
-				if splits.UserId == an.UserId {
-					split = splits
-					break
+			if diff < 0 {
+				var split *rosterv1.ApproveRosterWorkTimeSplit
+				for _, splits := range req.Msg.WorkTimeSplit {
+					if splits.UserId == an.UserId {
+						split = splits
+						break
+					}
+				}
+
+				timeOffCosts := diff
+				var vacationCosts time.Duration
+
+				// administrator did not specify how to handle the undertime,
+				// we fall back as normal offtime-costs
+				if split != nil {
+					timeOffCosts = split.TimeOff.AsDuration()
+					vacationCosts = split.Vacation.AsDuration()
+				}
+
+				if timeOffCosts > 0 || vacationCosts > 0 {
+					return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid off-time cost split"))
+				}
+
+				if (timeOffCosts + vacationCosts) != diff {
+					return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must equal %q", timeOffCosts, vacationCosts, diff)
 				}
 			}
-
-			timeOffCosts := diff
-			var vacationCosts time.Duration
-
-			// administrator did not specify how to handle the undertime,
-			// we fall back as normal offtime-costs
-			if split != nil {
-				timeOffCosts = split.TimeOff.AsDuration()
-				vacationCosts = split.Vacation.AsDuration()
-			}
-
-			if timeOffCosts > 0 || vacationCosts > 0 {
-				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid off-time cost split"))
-			}
-
-			if (timeOffCosts + vacationCosts) != diff {
-				return nil, fmt.Errorf("invalid off-time cost split, time-off=%q, vacation=%q, sum must equal %q", timeOffCosts, vacationCosts, diff)
-			}
 		}
-	}
+	*/
 
 	// If the roster was already approved and we "re-approve" it, make sure to recalculate the off-time
 	// costs.
