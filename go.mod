@@ -13,10 +13,10 @@ require (
 	github.com/mennanov/fmutils v0.3.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/muesli/gamut v0.3.1
-	github.com/sethvargo/go-envconfig v1.1.1
+	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
-	github.com/tierklinik-dobersberg/apis v0.32.0
+	github.com/tierklinik-dobersberg/apis v0.51.2
 	github.com/tierklinik-dobersberg/cis v1.5.0
 	go.mongodb.org/mongo-driver v1.17.2
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
@@ -49,6 +49,7 @@ require (
 	github.com/muesli/clusters v0.0.0-20200529215643-2700303c1762 // indirect
 	github.com/muesli/kmeans v0.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/suyashkumar/dicom v1.0.8-0.20250523201510-4c45b44e60ab // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
