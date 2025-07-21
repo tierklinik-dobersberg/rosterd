@@ -362,11 +362,14 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 				vacationCosts = split.Vacation.AsDuration()
 			}
 
-			if timeOffCosts < 0 {
+			// The approver might grant additional off-time credits by
+			// using more vaccation credits than required - i.e. staff requested some amount
+			// of __vacation__ but was fine with working on some other day as well.
+			if timeOffCosts != 0 {
 				log.L(ctx).
 					With(
 						"user", an.UserId,
-						"undertime", timeOffCosts.String(),
+						"change", timeOffCosts.String(),
 					).
 					Info("adding off-time costs entry for undertime")
 
