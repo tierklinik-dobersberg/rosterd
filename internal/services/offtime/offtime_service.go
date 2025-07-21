@@ -109,7 +109,7 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 		}))
 
 		if err != nil {
-			log.L(context.Background()).Errorf("failed to get roster_manager users: %s", err)
+			log.L(context.Background()).Error("failed to get roster_manager users", "error", err)
 		}
 
 		if res, err := svc.Providers.Notify.SendNotification(context.Background(), connect.NewRequest(&idmv1.SendNotificationRequest{
@@ -131,12 +131,12 @@ func (svc *Service) CreateOffTimeRequest(ctx context.Context, req *connect.Reque
 
 			for _, d := range res.Msg.Deliveries {
 				if d.Error != "" {
-					log.L(context.Background()).Errorf("failed to notify user %q: %s: %s", d.TargetUser, d.ErrorKind, d.Error)
+					log.L(context.Background()).Error("failed to notify user", "target", d.TargetUser, "errorKind", d.ErrorKind, "error", d.Error)
 				}
 			}
 
 		} else {
-			log.L(context.Background()).Errorf("failed to send off-time notification: %s", err)
+			log.L(context.Background()).Error("failed to send off-time notification", "error", err)
 		}
 	}()
 
@@ -352,7 +352,7 @@ func (svc *Service) ApproveOrReject(ctx context.Context, req *connect.Request[ro
 	}
 
 	if err := svc.sendApprovalNotice(ctx, remoteUser.ID, models[0]); err != nil {
-		log.L(ctx).Errorf("failed to send approval notice to %q: %s", remoteUser.ID, err)
+		log.L(ctx).Error("failed to send approval notice", "target", remoteUser.ID, "error", err)
 	}
 
 	return connect.NewResponse(&rosterv1.ApproveOrRejectResponse{
@@ -489,7 +489,7 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 		}
 	}
 
-	log.L(ctx).Infof("loading off-time costs for users: %v", userIds)
+	log.L(ctx).Info("loading off-time costs for users", "ids", userIds)
 
 	costs, err := svc.Datastore.GetOffTimeCosts(ctx, userIds...)
 	if err != nil {
@@ -504,7 +504,7 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 
 		m[cost.UserID] = append(m[cost.UserID], cost)
 
-		log.L(ctx).Infof("adding new offtime cost to user %q", cost.UserID)
+		log.L(ctx).Info("adding new offtime cost to user", "id", cost.UserID)
 	}
 
 	for user, costs := range m {
@@ -545,8 +545,6 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 			}
 		}
 
-		log.L(ctx).Infof("prepared off-time cost summary for user %q with %d results and %s vacation / %s timeoff", user, len(res.Costs), sumVacation, sumTimeOff)
-
 		res.Summary = &rosterv1.OffTimeCostSummary{
 			Vacation: durationpb.New(sumVacation),
 			TimeOff:  durationpb.New(sumTimeOff),
@@ -556,7 +554,6 @@ func (svc *Service) GetOffTimeCosts(ctx context.Context, req *connect.Request[ro
 	}
 
 	if paths := req.Msg.GetReadMask().GetPaths(); len(paths) > 0 {
-		log.L(ctx).Infof("filtering response based on get-paths: %v", paths)
 		fmutils.Filter(response, paths)
 	}
 
@@ -619,7 +616,7 @@ func (svc *Service) sendApprovalNotice(ctx context.Context, sender string, entry
 		TargetUsers: []string{entry.RequestorId},
 	}))
 	if err != nil {
-		log.L(ctx).Errorf("failed to send web-push notification: %s", err)
+		log.L(ctx).Error("failed to send web-push notification", "error", err)
 	}
 
 	_, err = svc.Notify.SendNotification(ctx, connect.NewRequest(&idmv1.SendNotificationRequest{

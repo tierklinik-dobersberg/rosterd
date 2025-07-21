@@ -97,7 +97,7 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 	users := []string{remoteUser.ID}
 	if req.Msg.Users != nil {
 		if req.Msg.Users.AllUsers {
-			log.L(ctx).Infof("user requested working shifts for all users")
+			log.L(ctx).Info("user requested working shifts for all users")
 
 			var err error
 			users, err = svc.FetchAllUserIds(ctx)
@@ -108,7 +108,7 @@ func (svc *RosterService) GetUserShifts(ctx context.Context, req *connect.Reques
 		} else if len(req.Msg.Users.UserIds) > 0 {
 			users = req.Msg.Users.UserIds
 
-			log.L(ctx).Infof("user requested working shifts for specified users: %v", users)
+			log.L(ctx).Info("user requested working shifts for specified users", "users", users)
 		}
 	}
 

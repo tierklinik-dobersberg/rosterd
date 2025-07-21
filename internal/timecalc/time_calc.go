@@ -171,15 +171,13 @@ func CalculateExpectedWorkTime(
 			for userId := range workTimes {
 				wt, ok := workTimes[userId].FindForDate(dateTime)
 				if !ok {
-					log.L(ctx).Warnf("User %q does not have a working-time set for %s", userId, dateTime.Local().Format("2006-01-02"))
+					log.L(ctx).Warn("User does not have a working-time set", "userId", userId, "date", dateTime.Local().Format("2006-01-02"))
 					// no worktime for this date.
 					continue
 				}
 
 				// Update the WorkTime for this month
 				timePerWorkDay := float64(wt.TimePerWeek) / 5.0
-
-				log.L(ctx).Warnf("User %q with work-time %s works %s on %s with time-tracking=%v", userId, wt.TimePerWeek, time.Duration(timePerWorkDay), dateTime.Local().Format("2006-01-2"), !wt.ExcludeFromTimeTracking)
 
 				if wt.ExcludeFromTimeTracking {
 					result[userId][idx].UntrackedWorkTime += time.Duration(timePerWorkDay)
@@ -293,15 +291,12 @@ func CalculatePlannedMonthlyWorkTime(
 	for _, roster := range rosters {
 		// immediately skip rosters that don't match from or to
 		if roster.FromTime().After(toTime) || roster.ToTime().Before(fromTime) {
-			log.L(ctx).Infof("skipping roster  %s - %s", roster.From, roster.To)
-
 			continue
 		}
 
 		for _, shift := range roster.Shifts {
 			// skip this shift if it is out-of-range
 			if shift.To.Before(fromTime) || shift.From.After(toTime) {
-				log.L(ctx).Infof("skipping shift %s on %s", shift.WorkShiftID, shift.From.Format("2006-01-02"))
 				continue
 			}
 
@@ -312,8 +307,6 @@ func CalculatePlannedMonthlyWorkTime(
 			// }
 
 			timeWorth := shift.TimeWorth
-
-			log.L(ctx).Infof("shift %s on %s is %s time worth", shift.WorkShiftID, shift.From.Format("2006-01-02"), timeWorth)
 
 			// Perpare the date key and make sure we have PlannedMonthlyWorkTime container
 			// for the result.

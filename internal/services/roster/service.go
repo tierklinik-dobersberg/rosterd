@@ -11,7 +11,6 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/mennanov/fmutils"
-	"github.com/sirupsen/logrus"
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
@@ -194,7 +193,7 @@ func (svc *RosterService) SaveRoster(ctx context.Context, req *connect.Request[r
 		roster.CASIndex = 0
 		casIndex = nil
 
-		log.L(ctx).Infof("marking approved roster %q as superseded by %s", oldRosterID.Hex(), roster.ID.Hex())
+		log.L(ctx).Info("marking approved roster as superseded", "old", oldRosterID.Hex(), "new", roster.ID.Hex())
 
 		// remove the approval since this roster has been modified
 		if err := svc.Datastore.DeleteOffTimeCostsByRoster(ctx, oldRosterID.Hex()); err != nil {
@@ -327,11 +326,11 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 			// user has more time planned than was expected, add this as some
 			// off-time credits.
 			log.L(ctx).
-				WithFields(logrus.Fields{
-					"user":     an.UserId,
-					"overtime": diff.String(),
-				}).
-				Infof("adding off-time costs entry for over-time")
+				With(
+					"user", an.UserId,
+					"overtime", diff.String(),
+				).
+				Info("adding off-time costs entry for over-time")
 
 			if err := svc.Datastore.AddOffTimeCost(ctx, &structs.OffTimeCosts{
 				UserID:    an.UserId,
@@ -365,11 +364,11 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 			if timeOffCosts < 0 {
 				log.L(ctx).
-					WithFields(logrus.Fields{
-						"user":      an.UserId,
-						"undertime": timeOffCosts.String(),
-					}).
-					Infof("adding off-time costs entry for undertime")
+					With(
+						"user", an.UserId,
+						"undertime", timeOffCosts.String(),
+					).
+					Info("adding off-time costs entry for undertime")
 
 				if err := svc.Datastore.AddOffTimeCost(ctx, &structs.OffTimeCosts{
 					UserID:    an.UserId,
@@ -385,11 +384,11 @@ func (svc *RosterService) ApproveRoster(ctx context.Context, req *connect.Reques
 
 			if vacationCosts < 0 {
 				log.L(ctx).
-					WithFields(logrus.Fields{
-						"user":     an.UserId,
-						"vacation": vacationCosts.String(),
-					}).
-					Infof("adding off-time costs entry for vacation")
+					With(
+						"user", an.UserId,
+						"vacation", vacationCosts.String(),
+					).
+					Info("adding off-time costs entry for vacation")
 
 				if err := svc.Datastore.AddOffTimeCost(ctx, &structs.OffTimeCosts{
 					UserID:     an.UserId,
@@ -526,7 +525,7 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 			continue
 		}
 
-		log.L(ctx).Debugf("checking roster %s (from %s to %s) with type %s", roster.ID.Hex(), roster.From, roster.To, roster.RosterTypeName)
+		log.L(ctx).Debug("checking roster", "id", roster.ID.Hex(), "from", roster.From, "to", roster.To, "type", roster.RosterTypeName)
 
 		// Sort roster shifts first
 		sort.Stable(&rosterShiftSlice{
@@ -563,7 +562,7 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 			}
 
 			if !isAllowed {
-				log.L(ctx).Debugf("shift %s is filtered. shift-tags=%v rosterType.shiftTags=%v rosterType.onCallTags=%v", shift.WorkShiftID, def.Tags, rosterType.ShiftTags, rosterType.OnCallTags)
+				log.L(ctx).Debug("shift is filtered", "id", shift.WorkShiftID, "shiftTags", def.Tags, "rosterShiftTags", rosterType.ShiftTags, "rosterOnCallTags", rosterType.OnCallTags)
 
 				continue
 			}
@@ -578,7 +577,7 @@ func (svc *RosterService) GetWorkingStaff2(ctx context.Context, req *connect.Req
 					}
 				}
 			} else {
-				log.L(ctx).Debugf("shift is either before or after the requested time")
+				log.L(ctx).Debug("shift is either before or after the requested time")
 			}
 		}
 	}
@@ -796,7 +795,7 @@ func daysInMonth(ctx context.Context, holidays map[string]*calendarv1.PublicHoli
 
 			continue
 		} else if ok {
-			log.L(ctx).Infof("found holiday on %s with type %s", iter, hd.Type.String())
+			log.L(ctx).Info("found holiday", "date", iter, "holiday-type", hd.Type.String())
 		}
 
 		switch iter.Weekday() {

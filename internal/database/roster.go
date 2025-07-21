@@ -379,20 +379,20 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 	if err != nil {
 
 		log.L(ctx).
-			WithField("from", from).
-			WithField("to", to).
-			WithError(err).
-			Errorf("failed to search for duty rosters by time")
+			With("from", from).
+			With("to", to).
+			With("error", err).
+			Error("failed to search for duty rosters by time")
 
 		return nil, err
 	}
 
 	if res.Err() != nil {
 		log.L(ctx).
-			WithField("from", from).
-			WithField("to", to).
-			WithError(res.Err()).
-			Errorf("failed to search for duty rosters by time")
+			With("from", from).
+			With("to", to).
+			With("error", res.Err()).
+			Error("failed to search for duty rosters by time")
 
 		return nil, res.Err()
 	}
@@ -404,10 +404,10 @@ func (db *DatabaseImpl) DutyRostersByTime(ctx context.Context, t time.Time) ([]s
 
 	if len(results) == 0 {
 		log.L(ctx).
-			WithField("from", from).
-			WithField("to", to).
-			WithError(err).
-			Errorf("failed to search for duty rosters by time")
+			With("from", from).
+			With("to", to).
+			With("error", err).
+			Error("failed to search for duty rosters by time")
 	}
 
 	return results, nil

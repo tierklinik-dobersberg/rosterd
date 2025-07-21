@@ -117,14 +117,14 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 	if oldRoster, err := svc.Datastore.GetSupersededDutyRoster(ctx, roster.ID); err == nil {
 		userDiff, err = diffRosters(ctx, oldRoster, &roster)
 		if err != nil {
-			log.L(ctx).Errorf("failed to diff duty rosters: %s", err)
+			log.L(ctx).Error("failed to diff duty rosters", "error", err)
 		} else {
 			isSuperseded = true
 		}
 	} else if !errors.Is(err, mongo.ErrNoDocuments) {
 		// just log the error, we're going to send the normal duty roster
 		// notification anyway
-		log.L(ctx).Errorf("failed to load superseded duty roster: %s", err)
+		log.L(ctx).Error("failed to load superseded duty roster", "error", err)
 	}
 
 	// make sure every user that has a diff is also part of the target users.
@@ -243,7 +243,7 @@ func (svc *RosterService) sendRosterNotification(ctx context.Context, senderId s
 		})
 	}
 
-	log.L(ctx).WithField("targetUsers", userIds).Infof("sending roster notification")
+	log.L(ctx).With("targetUsers", userIds).Info("sending roster notification")
 
 	req := &idmv1.SendNotificationRequest{
 		TargetUsers:            userIds,

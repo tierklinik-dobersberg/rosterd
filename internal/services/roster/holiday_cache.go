@@ -50,14 +50,12 @@ func (cache *HolidayCache) For(ctx context.Context, from time.Time, to time.Time
 			if result, ok := cache.cache[key]; ok {
 				defer cache.rw.RUnlock()
 
-				log.L(ctx).Infof("holiday cache hit for %s", key)
-
 				return result, nil
 			}
 
 			cache.rw.RUnlock()
 
-			log.L(ctx).Infof("holiday cache miss for %s, fetching ...", key)
+			log.L(ctx).Info("holiday cache miss, fetching ...", "key", key)
 
 			cache.rw.Lock()
 			defer cache.rw.Unlock()

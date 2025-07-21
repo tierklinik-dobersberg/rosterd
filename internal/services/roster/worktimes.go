@@ -52,7 +52,7 @@ func (svc *RosterService) AnalyzeWorkTime(ctx context.Context, req *connect.Requ
 }
 
 func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName string, userIds []string, from, to string, onlyTimeTracking bool) ([]*rosterv1.WorkTimeAnalysis, error) {
-	log.L(ctx).Infof("analyzing work time for users between %s and %s", from, to)
+	log.L(ctx).Info("analyzing work time for users", "from", from, "to", to)
 
 	// parse from and to times
 	f, err := time.ParseInLocation("2006-01-02", from, time.Local)
@@ -82,7 +82,7 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 		}
 	}
 
-	log.L(ctx).Debugf("found %d distinct rosters that need to be analyzed", len(distinctRosters))
+	log.L(ctx).Debug("found distinct rosters that need to be analyzed", "count", len(distinctRosters))
 
 	// fetch all work shifts
 	workShifts, err := svc.Datastore.ListWorkShifts(ctx)

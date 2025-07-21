@@ -11,7 +11,6 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mennanov/fmutils"
-	"github.com/sirupsen/logrus"
 	rosterv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1"
 	"github.com/tierklinik-dobersberg/apis/gen/go/tkd/roster/v1/rosterv1connect"
 	"github.com/tierklinik-dobersberg/apis/pkg/auth"
@@ -81,7 +80,7 @@ func (svc *Service) SetWorkTime(ctx context.Context, req *connect.Request[roster
 			merr.Errors = append(merr.Errors, fmt.Errorf("user_id %q: %w", wt.UserId, err))
 		}
 
-		log.L(ctx).Infof("updated work time for user %s to %s/Week, applicable after %s", model.UserID, model.TimePerWeek, model.ApplicableFrom)
+		log.L(ctx).Info("updated work time for user", "userId", model.UserID, "timePerWeek", model.TimePerWeek, "applicableFrom", model.ApplicableFrom)
 
 		response.WorkTimes[idx] = worktimeToProto(model)
 	}
@@ -119,7 +118,6 @@ func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[roster
 				return nil, fmt.Errorf("failed to fetch user ids: %w", err)
 			}
 
-			log.L(ctx).Infof("loading work-times for all %d users", len(userIds))
 		} else {
 			userIds = []string{remoteUser.ID}
 		}
@@ -148,8 +146,6 @@ func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[roster
 			shouldLoadCurrent = true
 		}
 	}
-
-	log.L(ctx).Infof("GetWorkTime: current=%v history=%v", shouldLoadCurrent, shouldLoadHistory)
 
 	// acutally prepare the response
 	response := &rosterv1.GetWorkTimeResponse{
@@ -181,7 +177,7 @@ func (svc *Service) GetWorkTime(ctx context.Context, req *connect.Request[roster
 					userWorkTime.History[hIdx] = worktimeToProto(wt)
 				}
 			} else {
-				log.L(ctx).Errorf("failed to load work-time history for user %q: %s", userId, err)
+				log.L(ctx).Error("failed to load work-time history for user", "userId", userId, "error", err)
 			}
 		}
 
@@ -313,14 +309,6 @@ func (svc *Service) GetVacationCreditsLeft(ctx context.Context, req *connect.Req
 			if !iter.ExcludeFromTimeTracking {
 				vacationSum += time.Duration(vacationsPerPeriod)
 			}
-
-			log.L(ctx).WithFields(logrus.Fields{
-				"daysUntilEnd":        daysUntilEnd,
-				"vacationWeeksPerDay": vacationWeeksPerDay,
-				"vacationsPerPeriod":  vacationsPerPeriod,
-				"vacationSum":         vacationSum,
-				"timeTracking":        !iter.ExcludeFromTimeTracking,
-			}).Infof("vacation credits between %s and %s (%d days)", iter.ApplicableFrom, endsAt, endsAt.Sub(iter.ApplicableFrom)/(24*time.Hour))
 
 			if req.Msg.Analyze {
 				sl := &rosterv1.AnalyzeVacationSum{

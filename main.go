@@ -66,7 +66,7 @@ func main() {
 	}
 
 	if err := discovery.Register(ctx, catalog, &discovery.ServiceInstance{
-		Name:    wellknown.RosterV1ServiceScope,
+		Name:    string(wellknown.RosterV1ServiceScope),
 		Address: cfg.AdminAddress,
 	}); err != nil {
 		l.Error("failed to register at service catalog", "error", err.Error())
