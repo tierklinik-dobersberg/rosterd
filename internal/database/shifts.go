@@ -107,3 +107,23 @@ func (db *DatabaseImpl) ListWorkShifts(ctx context.Context) ([]structs.WorkShift
 
 	return result, nil
 }
+
+func (db *DatabaseImpl) GetWorkShiftById(ctx context.Context, id string) (structs.WorkShift, error) {
+	var result structs.WorkShift
+
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return result, err
+	}
+
+	res := db.shifts.FindOne(ctx, bson.M{"_id": oid})
+	if err := res.Err(); err != nil {
+		return result, err
+	}
+
+	if err := res.Decode(&result); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
