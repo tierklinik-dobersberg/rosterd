@@ -162,8 +162,12 @@ func (svc *Service) UpdateWorkShift(ctx context.Context, req *connect.Request[ro
 		case "eligible_role_ids":
 			shift.EligibleRoles = req.Msg.Update.EligibleRoleIds
 		case "time_worth":
-			worth := int(math.Floor(float64(req.Msg.Update.TimeWorth.AsDuration()) / float64(time.Minute)))
-			shift.MinutesWorth = &worth
+			if req.Msg.Update.TimeWorth != nil {
+				worth := int(math.Floor(float64(req.Msg.Update.TimeWorth.AsDuration()) / float64(time.Minute)))
+				shift.MinutesWorth = &worth
+			} else {
+				shift.MinutesWorth = nil
+			}
 		case "required_staff_count":
 			shift.RequiredStaffCount = int(req.Msg.Update.RequiredStaffCount)
 		case "color":
