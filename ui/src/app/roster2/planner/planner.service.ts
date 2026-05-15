@@ -4,7 +4,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { injectCommentService, injectHolidayService, injectOfftimeService, injectRosterService } from "@tierklinik-dobersberg/angular/connect";
 import { toDateString } from '@tierklinik-dobersberg/angular/utils/date';
 import { AnalyzeWorkTimeResponse, ConstraintViolationList, ExportRosterType, FindOffTimeRequestsResponse, GetRequiredShiftsResponse, OffTimeEntry, PlannedShift, RequiredShift, Roster, SaveRosterRequest, WorkShift, WorkTimeAnalysis } from "@tierklinik-dobersberg/apis/roster/v1";
-import { GetHolidayResponse, PublicHoliday } from '@tierklinik-dobersberg/apis/calendar/v1';
+import { GetHolidayResponse, HolidayType, PublicHoliday } from '@tierklinik-dobersberg/apis/calendar/v1';
 import { addDays, endOfMonth, endOfWeek, isSameDay, startOfMonth, startOfWeek } from 'date-fns';
 import * as FileSaver from 'file-saver';
 import { toast } from 'ngx-sonner';
@@ -1013,6 +1013,11 @@ export class RosterPlannerService {
     const holidayLookupMap = new Map<string, PublicHoliday>();
     holidays.holidays
       .forEach(ph => {
+        // skip non-public holidays here
+        if (ph.type !== HolidayType.PUBLIC) {
+          return
+        }
+
         holidayLookupMap.set(ph.date, ph)
       });
 

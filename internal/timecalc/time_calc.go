@@ -3,7 +3,6 @@ package timecalc
 import (
 	"context"
 	"fmt"
-	stdlog "log"
 	"time"
 
 	calendarv1 "github.com/tierklinik-dobersberg/apis/gen/go/tkd/calendar/v1"
@@ -194,7 +193,6 @@ func CalculateExpectedWorkTime(
 type WorkTimeList []structs.WorkTime
 
 func (wtl WorkTimeList) FindForDate(t time.Time) (structs.WorkTime, bool) {
-	key := t.Local().Format("2006-01-02")
 
 	for idx, wt := range wtl {
 		// if wt is not even applicable yet, skip it
@@ -220,7 +218,8 @@ func (wtl WorkTimeList) FindForDate(t time.Time) (structs.WorkTime, bool) {
 			}
 		}
 
-		stdlog.Printf("%s (%s): applicable: applicableFrom=%s with-timetracking=%v", key, wt.UserID, wt.ApplicableFrom, !wt.ExcludeFromTimeTracking)
+		//key := t.Local().Format("2006-01-02")
+		//stdlog.Printf("%s (%s): applicable: applicableFrom=%s with-timetracking=%v", key, wt.UserID, wt.ApplicableFrom, !wt.ExcludeFromTimeTracking)
 
 		return wt, true
 	}

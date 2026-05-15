@@ -733,8 +733,6 @@ func (svc *RosterService) getPublicHolidayLookupMap(ctx context.Context, from ti
 			continue
 		}
 
-		slog.Info("checking public holiday", "holidayName", holiday.LocalName, "type", holiday.Type.String())
-
 		holidayLookupMap[holiday.Date] = holiday
 	}
 
