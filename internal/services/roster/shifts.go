@@ -200,13 +200,13 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 		}
 	}
 
-	// fetch all holidays
-	holidays, err := svc.getHolidayLookupMap(ctx, from, to)
+	// fetch all publicHolidays
+	publicHolidays, err := svc.getPublicHolidayLookupMap(ctx, from, to)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	workDays := getWorkDays(ctx, holidays, from, to)
+	workDays := getWorkDays(ctx, publicHolidays, from, to)
 
 	// generate a list of required shifts
 	var (
@@ -217,7 +217,7 @@ func (svc *RosterService) getRequiredShifts(ctx context.Context, from, to time.T
 	)
 
 	for iter := from; to.After(iter) || to.Equal(iter); iter = iter.AddDate(0, 0, 1) {
-		_, isHoliday := holidays[iter.Format("2006-01-02")]
+		_, isHoliday := publicHolidays[iter.Format("2006-01-02")]
 
 		currentWorkTimes, err := svc.Datastore.GetCurrentWorkTimes(ctx, iter)
 		if err != nil {

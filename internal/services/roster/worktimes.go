@@ -151,12 +151,12 @@ func (svc *RosterService) analyzeWorkTime(ctx context.Context, rosterTypeName st
 	}
 
 	// get the number of working-days
-	holidays, err := svc.getHolidayLookupMap(ctx, f, t)
+	publicHolidays, err := svc.getPublicHolidayLookupMap(ctx, f, t)
 	if err != nil {
 		return nil, err
 	}
 
-	monthlyWorkDays, err := timecalc.GatherWorkDaysByMonth(holidays, from, to)
+	monthlyWorkDays, err := timecalc.GatherWorkDaysByMonth(publicHolidays, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("failed to gather monthly work-days: %w", err)
 	}

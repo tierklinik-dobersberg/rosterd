@@ -705,7 +705,9 @@ func (svc *RosterService) GetRoster(ctx context.Context, req *connect.Request[ro
 	return connect.NewResponse(response), nil
 }
 
-func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Time, to time.Time) (map[string]*calendarv1.PublicHoliday, error) {
+// getPublicHolidayLookupMap fetches a list of holidays for a given time slot using tkd.calendar.v1.HolidayService
+// only public holidays are returned (i.e. school, bank, ... and other holidays are ignored)
+func (svc *RosterService) getPublicHolidayLookupMap(ctx context.Context, from time.Time, to time.Time) (map[string]*calendarv1.PublicHoliday, error) {
 	holidaysToFetch := []time.Time{from}
 	if from.Year() != to.Year() || from.Month() != to.Month() {
 		holidaysToFetch = append(holidaysToFetch, to)
@@ -723,8 +725,14 @@ func (svc *RosterService) getHolidayLookupMap(ctx context.Context, from time.Tim
 
 		holidays = append(holidays, res.Msg.Holidays...)
 	}
+
 	holidayLookupMap := make(map[string]*calendarv1.PublicHoliday, len(holidays))
 	for _, holiday := range holidays {
+		// Skip all non-public holidays
+		if holiday.Type != calendarv1.HolidayType_PUBLIC {
+			continue
+		}
+
 		holidayLookupMap[holiday.Date] = holiday
 	}
 

@@ -49,7 +49,7 @@ func (svc *RosterService) ExportRoster(ctx context.Context, req *connect.Request
 	uslm := data.IndexSlice(allUsers, func(p *idmv1.Profile) string { return p.User.Id })
 
 	// holiday
-	holidays, err := svc.getHolidayLookupMap(ctx, roster.FromTime(), roster.ToTime())
+	holidays, err := svc.getPublicHolidayLookupMap(ctx, roster.FromTime(), roster.ToTime())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch holidays: %w", err)
 	}
